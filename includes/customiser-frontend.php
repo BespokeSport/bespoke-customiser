@@ -3,37 +3,54 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Register the [bespoke_customiser] shortcode
- * Usage: [bespoke_customiser product_id="1276"]
+ *
+ * Usage examples:
+ *   [bespoke_customiser product_id="1276" product_type="shinpads"]
+ *   [bespoke_customiser product_id="1305" product_type="gripsocks"]
+ *   [bespoke_customiser product_id="1312" product_type="armbands"]
+ *
+ * product_type must match one of the keys in bespoke_get_product_types()
+ * in customiser-designs.php.
  */
 add_shortcode( 'bespoke_customiser', 'bespoke_render_customiser' );
 
 function bespoke_render_customiser( $atts ) {
-    $atts = shortcode_atts([
-        'product_id' => '1276',   // Default: Personalised Shin Pads
+    $atts = shortcode_atts( [
+        'product_id'   => '1276',     // Default: Personalised Shin Pads
+        'product_type' => 'shinpads', // Default product type for design filtering
     ], $atts );
 
-    $product_id = intval( $atts['product_id'] );
-    $product    = wc_get_product( $product_id );
+    $product_id   = intval( $atts['product_id'] );
+    $product_type = sanitize_key( $atts['product_type'] );
+
+    // Validate product_type against the registered list
+    $valid_types = array_keys( bespoke_get_product_types() );
+    if ( ! in_array( $product_type, $valid_types, true ) ) {
+        $product_type = 'shinpads'; // Fall back safely
+    }
+
+    $product = wc_get_product( $product_id );
 
     if ( ! $product ) {
         return '<p>Product not found.</p>';
     }
 
-    $price     = $product->get_price();
-    $ajax_url  = admin_url( 'admin-ajax.php' );
-    $nonce     = wp_create_nonce( 'bespoke_add_to_cart' );
+    $price    = $product->get_price();
+    $ajax_url = admin_url( 'admin-ajax.php' );
+    $nonce    = wp_create_nonce( 'bespoke_add_to_cart' );
 
     ob_start();
     ?>
     <div id="bespoke-customiser-root"
          data-product-id="<?php echo esc_attr( $product_id ); ?>"
+         data-product-type="<?php echo esc_attr( $product_type ); ?>"
          data-price="<?php echo esc_attr( number_format( $price, 2 ) ); ?>"
          data-ajax-url="<?php echo esc_attr( $ajax_url ); ?>"
          data-nonce="<?php echo esc_attr( $nonce ); ?>">
 
         <?php
-        // The customiser HTML is loaded from the compiled asset file
-        // This keeps the shortcode PHP clean and the HTML maintainable
+        // The customiser HTML is loaded from the compiled asset file.
+        // This keeps the shortcode PHP clean and the HTML maintainable.
         $customiser_file = BESPOKE_PLUGIN_DIR . 'assets/customiser.html';
         if ( file_exists( $customiser_file ) ) {
             $raw = file_get_contents( $customiser_file );
@@ -61,13 +78,14 @@ function bespoke_render_customiser( $atts ) {
     </div>
 
     <script>
-    // Pass WordPress data into the customiser
+    // Pass WordPress data into the customiser JavaScript
     window.BespokeConfig = {
-        productId:  <?php echo intval( $product_id ); ?>,
-        price:      '£<?php echo esc_js( number_format( $price, 2 ) ); ?>',
-        ajaxUrl:    '<?php echo esc_js( $ajax_url ); ?>',
-        nonce:      '<?php echo esc_js( $nonce ); ?>',
-        uploadUrl:  '<?php echo esc_js( BESPOKE_PLUGIN_URL . 'includes/customiser-ajax.php' ); ?>'
+        productId:   <?php echo intval( $product_id ); ?>,
+        productType: '<?php echo esc_js( $product_type ); ?>',
+        price:       '£<?php echo esc_js( number_format( $price, 2 ) ); ?>',
+        ajaxUrl:     '<?php echo esc_js( $ajax_url ); ?>',
+        nonce:       '<?php echo esc_js( $nonce ); ?>',
+        uploadUrl:   '<?php echo esc_js( BESPOKE_PLUGIN_URL . 'includes/customiser-ajax.php' ); ?>'
     };
     </script>
     <?php
@@ -81,7 +99,6 @@ function bespoke_render_customiser( $atts ) {
 add_action( 'wp_enqueue_scripts', function() {
     global $post;
     if ( is_a( $post, 'WP_Post' ) && has_shortcode( $post->post_content, 'bespoke_customiser' ) ) {
-        // Any additional styles can be added here
         wp_enqueue_style(
             'bespoke-customiser',
             BESPOKE_PLUGIN_URL . 'assets/customiser.css',
@@ -89,4 +106,4 @@ add_action( 'wp_enqueue_scripts', function() {
             BESPOKE_VERSION
         );
     }
-});
+} );

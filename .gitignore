@@ -1,0 +1,15 @@
+# OS junk
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# Editor junk
+.vscode/
+.idea/
+*.swp
+*~
+
+# Local-only scratch files
+*.bak
+*.tmp
+*.log
