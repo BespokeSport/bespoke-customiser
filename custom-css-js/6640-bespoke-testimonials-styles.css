@@ -1,0 +1,90 @@
+﻿/*
+ * Custom CSS/JS Plugin Entry
+ * ID:       6640
+ * Title:    BEspoke â€” Testimonials Styles
+ * Type:     css (header)
+ * Linking:  internal
+ * Priority: 5
+ * Status:   publish (frontend=True)
+ */
+/* Testimonials Section */
+#bespoke-testimonials {
+  background: #0E0E10;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  padding: 120px 0 140px;
+}
+.bespoke-testi-inner {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0 56px;
+  text-align: center;
+}
+.bespoke-testi-label {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.4);
+  margin-bottom: 56px;
+}
+.bespoke-testi-quote-wrap {
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.bespoke-testi-quote {
+  font-family: 'Anton', sans-serif;
+  font-size: clamp(28px, 3.5vw, 52px);
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  color: #ffffff;
+  max-width: 1000px;
+  margin: 0 auto 32px;
+  transition: opacity 0.4s ease;
+}
+.bespoke-testi-attr {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  transition: opacity 0.4s ease;
+}
+.bespoke-testi-name {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+  letter-spacing: 0.05em;
+}
+.bespoke-testi-divider {
+  color: rgba(255,255,255,0.3);
+  font-size: 16px;
+}
+.bespoke-testi-product {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: #5DCAA5;
+  letter-spacing: 0.05em;
+}
+.bespoke-testi-dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 48px;
+}
+.bespoke-testi-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.2);
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.3s ease, transform 0.3s ease;
+}
+.bespoke-testi-dot.active {
+  background: #5DCAA5;
+  transform: scale(1.4);
+}

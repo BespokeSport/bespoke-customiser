@@ -1,0 +1,73 @@
+﻿/*
+ * Custom CSS/JS Plugin Entry
+ * ID:       6638
+ * Title:    BEspoke â€” Stats Bar Styles
+ * Type:     css (header)
+ * Linking:  internal
+ * Priority: 5
+ * Status:   publish (frontend=True)
+ */
+/* Stats Bar */
+#bespoke-stats {
+  background: #050505;
+  color: #fff;
+  padding: 120px 0 140px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+.bespoke-stats-inner {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0 56px;
+}
+.bespoke-stats-label {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.45);
+  margin-bottom: 56px;
+}
+.bespoke-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 48px;
+}
+.bespoke-stat-item {
+  padding-top: 32px;
+  border-top: 1px solid rgba(255,255,255,0.15);
+}
+.bespoke-stat-index {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: #5DCAA5;
+  margin-bottom: 20px;
+  text-transform: uppercase;
+}
+.bespoke-stat-big {
+  font-family: 'Anton', sans-serif;
+  font-size: clamp(72px, 9vw, 130px);
+  line-height: 0.9;
+  letter-spacing: -0.01em;
+  color: #fff;
+  margin-bottom: 16px;
+}
+.bespoke-stat-sub {
+  font-size: clamp(48px, 6vw, 90px);
+  color: #5DCAA5;
+}
+.bespoke-stat-label {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.4);
+  margin-bottom: 16px;
+}
+.bespoke-stat-body {
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  color: rgba(255,255,255,0.65);
+  margin: 0;
+}

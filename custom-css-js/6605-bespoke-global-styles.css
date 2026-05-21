@@ -1,0 +1,329 @@
+﻿/*
+ * Custom CSS/JS Plugin Entry
+ * ID:       6605
+ * Title:    BEspoke Global Styles
+ * Type:     css (header)
+ * Linking:  internal
+ * Priority: 5
+ * Status:   publish (frontend=True)
+ */
+/* ============================================================
+   BEspoke Sport â€” Global CSS
+   ============================================================ */
+
+:root {
+  --bs-black:        #0D0D0D;
+  --bs-card-dark:    #1A1A1A;
+  --bs-white:        #F5F5F0;
+  --bs-green:        #5DCAA5;
+  --bs-green-dark:   #1D9E75;
+  --bs-muted:        #888888;
+  --bs-border-dark:  #2A2A2A;
+  --bs-border-light: #E0E0D8;
+  --bs-font:         'Inter', sans-serif;
+  --bs-radius-sm:    4px;
+  --bs-radius-md:    8px;
+  --bs-radius-lg:    12px;
+  --bs-transition:   0.22s ease;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  font-family: var(--bs-font);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+img { display: block; max-width: 100%; }
+
+h1, h2, h3, h4, h5, h6,
+.elementor-heading-title {
+  font-family: var(--bs-font);
+  font-weight: 500;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.bs-eyebrow {
+  font-family: var(--bs-font);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--bs-green);
+}
+
+.elementor-button.elementor-button-primary,
+.bs-btn-primary {
+  background-color: var(--bs-green) !important;
+  color: #04342C !important;
+  border: none !important;
+  border-radius: var(--bs-radius-sm) !important;
+  font-family: var(--bs-font) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.03em !important;
+  padding: 14px 28px !important;
+  transition: background-color var(--bs-transition), transform var(--bs-transition) !important;
+}
+.elementor-button.elementor-button-primary:hover,
+.bs-btn-primary:hover {
+  background-color: var(--bs-green-dark) !important;
+  transform: translateY(-1px);
+}
+
+.elementor-button.elementor-button-ghost,
+.bs-btn-ghost {
+  background-color: transparent !important;
+  color: var(--bs-white) !important;
+  border: 0.5px solid rgba(255,255,255,0.35) !important;
+  border-radius: var(--bs-radius-sm) !important;
+  font-family: var(--bs-font) !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+  padding: 14px 28px !important;
+  transition: border-color var(--bs-transition), background-color var(--bs-transition) !important;
+}
+.elementor-button.elementor-button-ghost:hover {
+  background-color: rgba(255,255,255,0.07) !important;
+  border-color: rgba(255,255,255,0.6) !important;
+}
+
+.elementor-widget-button .elementor-button {
+  transition: all var(--bs-transition) !important;
+}
+
+.bs-dark {
+  background-color: var(--bs-black) !important;
+  color: var(--bs-white);
+}
+.bs-dark h1, .bs-dark h2, .bs-dark h3,
+.bs-dark .elementor-heading-title {
+  color: var(--bs-white) !important;
+}
+.bs-dark p,
+.bs-dark .elementor-widget-text-editor {
+  color: var(--bs-muted) !important;
+}
+.bs-dark p strong { color: var(--bs-white); }
+
+.bs-accent { color: var(--bs-green) !important; }
+
+.bs-section-cut::after {
+  content: '';
+  display: block;
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 80px;
+  background: var(--bs-white);
+  clip-path: polygon(0 100%, 100% 0, 100% 100%);
+}
+.bs-section-cut {
+  position: relative;
+  overflow: hidden;
+}
+
+.woocommerce ul.products li.product,
+.woocommerce-page ul.products li.product {
+  border: 0.5px solid var(--bs-border-light);
+  border-radius: var(--bs-radius-lg);
+  overflow: hidden;
+  transition: transform var(--bs-transition), box-shadow var(--bs-transition);
+  background: #fff;
+}
+.woocommerce ul.products li.product:hover,
+.woocommerce-page ul.products li.product:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.08);
+}
+
+.woocommerce ul.products li.product .woocommerce-loop-product__title {
+  font-family: var(--bs-font);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--bs-card-dark);
+  letter-spacing: -0.01em;
+}
+
+.woocommerce ul.products li.product .price,
+.woocommerce ul.products li.product .price .amount {
+  font-family: var(--bs-font);
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--bs-muted);
+}
+
+.woocommerce ul.products li.product .button,
+.woocommerce ul.products li.product a.button {
+  background-color: var(--bs-black) !important;
+  color: var(--bs-white) !important;
+  border-radius: var(--bs-radius-sm) !important;
+  font-family: var(--bs-font) !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.04em !important;
+  padding: 10px 18px !important;
+  transition: background-color var(--bs-transition) !important;
+  border: none !important;
+}
+.woocommerce ul.products li.product .button:hover,
+.woocommerce ul.products li.product a.button:hover {
+  background-color: var(--bs-green) !important;
+  color: #04342C !important;
+}
+
+.woocommerce ul.products li.product a img {
+  transition: transform 0.4s ease;
+}
+.woocommerce ul.products li.product:hover a img {
+  transform: scale(1.03);
+}
+
+.woocommerce div.product .product_title {
+  font-family: var(--bs-font);
+  font-size: 32px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: var(--bs-card-dark);
+}
+
+.woocommerce div.product p.price,
+.woocommerce div.product span.price {
+  font-family: var(--bs-font);
+  font-size: 20px;
+  color: var(--bs-card-dark);
+}
+
+.woocommerce #respond input#submit,
+.woocommerce a.button,
+.woocommerce button.button,
+.woocommerce input.button,
+.woocommerce div.product form.cart .button {
+  background-color: var(--bs-black) !important;
+  color: var(--bs-white) !important;
+  border-radius: var(--bs-radius-sm) !important;
+  font-family: var(--bs-font) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.04em !important;
+  padding: 14px 28px !important;
+  transition: background-color var(--bs-transition) !important;
+}
+.woocommerce #respond input#submit:hover,
+.woocommerce a.button:hover,
+.woocommerce button.button:hover,
+.woocommerce input.button:hover,
+.woocommerce div.product form.cart .button:hover {
+  background-color: var(--bs-green) !important;
+  color: #04342C !important;
+}
+
+.elementor-nav-menu a.elementor-item {
+  font-family: var(--bs-font) !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+  color: rgba(255,255,255,0.7) !important;
+  transition: color var(--bs-transition) !important;
+}
+.elementor-nav-menu a.elementor-item:hover,
+.elementor-nav-menu a.elementor-item.elementor-item-active {
+  color: var(--bs-white) !important;
+}
+
+.bs-rule { border: none; border-top: 0.5px solid var(--bs-border-dark); margin: 0; }
+.bs-rule-light { border: none; border-top: 0.5px solid var(--bs-border-light); margin: 0; }
+.bs-dark ::-webkit-scrollbar { width: 4px; }
+.bs-dark ::-webkit-scrollbar-track { background: var(--bs-card-dark); }
+.bs-dark ::-webkit-scrollbar-thumb { background: var(--bs-border-dark); }
+
+/*  Product card text padding  */
+.woocommerce ul.products li.product .woocommerce-loop-product__title,
+.woocommerce ul.products li.product .price,
+.woocommerce ul.products li.product .button {
+	  margin-left: 12px;
+	  margin-right: 12px;
+}
+.woocommerce ul.products li.product .woocommerce-loop-product__title {
+	  padding-left: 0;
+}
+.woocommerce ul.products li.product {
+	  padding-bottom: 16px;
+}
+
+/*  "Read More"  "Customize" button text fix  */
+.woocommerce ul.products li.product a.button.product_type_simple::after,
+.woocommerce ul.products li.product a.button:not(.add_to_cart_button) {
+	  /* handled via content override below */
+}
+.woocommerce ul.products li.product a.read_more {
+	  background-color: var(--bs-black) !important;
+	  color: var(--bs-white) !important;
+	  border-radius: var(--bs-radius-sm) !important;
+	  font-family: var(--bs-font) !important;
+	  font-size: 12px !important;
+	  font-weight: 500 !important;
+	  letter-spacing: 0.04em !important;
+	  padding: 10px 18px !important;
+	  transition: background-color var(--bs-transition) !important;
+	  font-size: 0 !important;
+	  line-height: 0 !important;
+}
+.woocommerce ul.products li.product a.read_more::after {
+	  content: 'CUSTOMIZE';
+	  font-size: 12px !important;
+	  line-height: normal !important;
+	  font-family: var(--bs-font);
+	  font-weight: 500;
+	  letter-spacing: 0.04em;
+}
+}
+}
+}
+}
+}
+}
+
+/* =================================================
+   Anton Display Font
+   ================================================= */
+@import url('https://fonts.googleapis.com/css2?family=Anton&display=swap');
+
+/* =================================================
+   Hero â€” Anton headline + eyebrow
+   ================================================= */
+
+/* Hero H1 â€” Anton display type */
+.elementor-location-single .elementor-section:first-of-type h1,
+.elementor-section h1.elementor-heading-title,
+section.elementor-section h1 {
+  font-family: 'Anton', sans-serif !important;
+  font-size: clamp(72px, 9vw, 140px) !important;
+  line-height: 0.92 !important;
+  letter-spacing: -0.01em !important;
+  font-weight: 400 !important;
+  text-transform: uppercase !important;
+}
+
+/* Eyebrow text â€” mono-style label */
+.elementor-widget-text-editor p:first-child,
+.hero-eyebrow,
+[class*="eyebrow"] {
+  font-family: 'Inter', sans-serif !important;
+  font-size: 11px !important;
+  letter-spacing: 0.14em !important;
+  text-transform: uppercase !important;
+  color: var(--bespoke-green) !important;
+  font-weight: 400 !important;
+}
+
+/* KEY SIGNINGS heading â€” Anton */
+.elementor-heading-title {
+  font-family: 'Anton', sans-serif !important;
+  letter-spacing: -0.01em !important;
+  font-weight: 400 !important;
+}

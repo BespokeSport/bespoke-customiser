@@ -1,0 +1,34 @@
+﻿/*
+ * Custom CSS/JS Plugin Entry
+ * ID:       6618
+ * Title:    BEspoke Homepage Styles
+ * Type:     css (header)
+ * Linking:  internal
+ * Priority: 5
+ * Status:   publish (frontend=True)
+ */
+/* BEspoke Homepage Styles */
+#masthead, .site-header { display: none !important; }
+.elementor-element-619d5f1 .elementor-button { background: #5DCAA5 !important; color: #04342C !important; }
+.elementor-element-d5d3fd2 .elementor-heading-title, body .elementor-element-d5d3fd2 .elementor-heading-title.elementor-size-xl { font-size: clamp(80px, 10vw, 160px) !important; line-height: 0.9 !important; letter-spacing: -0.02em !important; font-family: 'Anton', sans-serif !important; }
+#bespoke-marquee { background: #5DCAA5 !important; overflow: hidden !important; padding: 24px 0 !important; border-top: 1px solid rgba(255,255,255,0.18) !important; border-bottom: 1px solid rgba(255,255,255,0.18) !important; position: relative !important; z-index: 10 !important; width: 100% !important; display: block !important; }
+.bespoke-marquee-track { display: flex !important; flex-wrap: nowrap !important; white-space: nowrap !important; animation: bespoke-marquee-scroll 45s linear infinite !important; width: max-content !important; }
+.bespoke-marquee-item { display: inline-flex !important; align-items: center !important; gap: 48px !important; font-family: 'Anton', sans-serif !important; font-size: 32px !important; letter-spacing: 0.04em !important; color: #04342C !important; white-space: nowrap !important; padding: 0 0 0 48px !important; text-transform: uppercase !important; }
+.bespoke-marquee-dot { display: inline-block !important; width: 8px !important; height: 8px !important; background: #04342C !important; border-radius: 50% !important; opacity: 0.5 !important; flex-shrink: 0 !important; font-size: 0 !important; }
+@keyframes bespoke-marquee-scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-33.333%); } }
+.elementor-element-1091053 { background: #0E0E10 !important; padding: 120px 0 140px !important; }
+.elementor-element-1091053 .elementor-heading-title, .elementor-element-a18dec0 .elementor-heading-title { color: #ffffff !important; font-size: clamp(64px, 8vw, 128px) !important; line-height: 0.88 !important; letter-spacing: -0.01em !important; margin-bottom: 48px !important; }
+.elementor-element-c9cefc7 { background: #0E0E10 !important; }
+.elementor-element-c9cefc7 ul.products { display: grid !important; grid-template-columns: repeat(3, 1fr) !important; gap: 16px !important; margin: 0 !important; padding: 0 !important; list-style: none !important; }
+.elementor-element-c9cefc7 ul.products li.product { position: relative !important; height: 480px !important; overflow: hidden !important; background: #1a1a1a !important; border: none !important; border-radius: 0 !important; padding: 0 !important; margin: 0 !important; cursor: pointer !important; transition: transform 0.4s ease !important; }
+.elementor-element-c9cefc7 ul.products li.product:hover { transform: scale(1.015) !important; }
+.elementor-element-c9cefc7 ul.products li.product img { position: absolute !important; inset: 0 !important; width: 100% !important; height: 100% !important; object-fit: cover !important; margin: 0 !important; display: block !important; }
+.elementor-element-c9cefc7 ul.products li.product::after { content: '' !important; position: absolute !important; inset: 0 !important; background: linear-gradient(180deg, rgba(0,0,0,0.05) 0%, transparent 30%, rgba(0,0,0,0.75) 70%, rgba(0,0,0,0.92) 100%) !important; z-index: 1 !important; pointer-events: none !important; }
+.elementor-element-c9cefc7 ul.products li.product .ast-woo-product-category { position: absolute !important; top: 20px !important; left: 24px !important; z-index: 2 !important; font-size: 10px !important; letter-spacing: 0.14em !important; text-transform: uppercase !important; color: rgba(255,255,255,0.6) !important; font-family: 'Inter', sans-serif !important; margin: 0 !important; }
+.elementor-element-c9cefc7 ul.products li.product h2, .elementor-element-c9cefc7 ul.products li.product .woocommerce-loop-product__title { position: absolute !important; bottom: 60px !important; left: 24px !important; right: 24px !important; z-index: 2 !important; font-family: 'Anton', sans-serif !important; font-size: 28px !important; line-height: 1 !important; color: #ffffff !important; margin: 0 !important; padding: 0 !important; text-transform: uppercase !important; background: transparent !important; }
+.elementor-element-c9cefc7 ul.products li.product .price { position: absolute !important; bottom: 24px !important; left: 24px !important; z-index: 2 !important; color: rgba(255,255,255,0.6) !important; font-size: 13px !important; font-family: 'Inter', sans-serif !important; margin: 0 !important; background: transparent !important; }
+.elementor-element-c9cefc7 ul.products li.product .price .amount { color: rgba(255,255,255,0.6) !important; }
+.elementor-element-c9cefc7 ul.products li.product .button, .elementor-element-c9cefc7 ul.products li.product a.button { position: absolute !important; bottom: 18px !important; right: 20px !important; z-index: 2 !important; background: transparent !important; color: rgba(255,255,255,0.8) !important; border: 1px solid rgba(255,255,255,0.35) !important; padding: 9px 14px !important; font-size: 10px !important; letter-spacing: 0.12em !important; text-transform: uppercase !important; font-family: 'Inter', sans-serif !important; border-radius: 0 !important; width: auto !important; height: auto !important; line-height: 1 !important; }
+.elementor-element-c9cefc7 ul.products li.product .onsale { position: absolute !important; top: 16px !important; right: 16px !important; z-index: 3 !important; background: #5DCAA5 !important; color: #04342C !important; border-radius: 0 !important; font-size: 10px !important; padding: 6px 10px !important; min-height: auto !important; min-width: auto !important; line-height: 1 !important; }
+.elementor-element-c9cefc7 ul.products li.product .star-rating { display: none !important; }
+.elementor-element-c9cefc7 ul.products li.product a { display: block !important; position: static !important; }
