@@ -178,6 +178,9 @@ function bespoke_render_customiser( $atts ) {
 
     <?php /* ── Customiser runtime fixes (formerly Code Snippet #29) ────────── */ ?>
     <style id="bespoke-customiser-runtime-fixes">
+        /* Page title in white so it reads on the dark customiser background */
+        .entry-title { color: #ffffff !important; }
+
         /* Page-level: stop the homepage marquee bursting the body out to 4087px wide */
         html, body { overflow-x: hidden !important; max-width: 100vw !important; }
         #bespoke-marquee { max-width: 100vw !important; overflow-x: hidden !important; box-sizing: border-box !important; }
