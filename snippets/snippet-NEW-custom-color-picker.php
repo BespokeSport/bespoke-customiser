@@ -2,14 +2,15 @@
 /**
  * Snippet ID:    29
  * Name:          BESPOKE: Custom colour picker (test)
- * Status:        TEST / TEMPORARY
+ * Status:        INACTIVE / SUPERSEDED
  *
- * Injects a custom HSV colour picker into the customiser to replace the
- * native <input type="color"> behaviour. Required because mobile Android
- * shows the OS HSV picker which doesn't match the desktop gradient+hue UI.
+ * Content is now folded into includes/customiser-frontend.php as inline
+ * <style> + <script> blocks. Kept here as a safety net only — if for any
+ * reason the plugin file's runtime fixes need to be disabled, reactivating
+ * this snippet would restore them.
  *
- * When ready to ship, this code will be folded into assets/customiser.html
- * and this snippet will be deactivated.
+ * Original purpose: inject custom HSV colour picker + page-level layout
+ * fixes (overflow, dt-label/dt-hint pills, SVG text stroke removal).
  *
  * Note: uses PHP nowdoc (<<<'TAG') so JS template literals, $ chars and
  * backticks pass through unmodified. The `?>` mode-switch pattern is NOT

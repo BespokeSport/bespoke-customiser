@@ -68,6 +68,13 @@ function bespoke_render_fonts_admin_page() {
         bespoke_delete_font_by_index( $idx );
     }
 
+    // Handle reorder (POST)
+    if ( isset( $_POST['bespoke_move_font'] ) && check_admin_referer( 'bespoke_move_font_action' ) ) {
+        $idx       = isset( $_POST['font_index'] ) ? intval( $_POST['font_index'] ) : -1;
+        $direction = isset( $_POST['direction'] ) ? sanitize_key( $_POST['direction'] ) : '';
+        bespoke_move_font( $idx, $direction );
+    }
+
     // Handle upload (POST)
     if ( isset( $_POST['bespoke_upload_font'] ) && check_admin_referer( 'bespoke_upload_font_action' ) ) {
         $name = isset( $_POST['font_name'] ) ? sanitize_text_field( $_POST['font_name'] ) : '';
@@ -125,19 +132,40 @@ function bespoke_render_fonts_admin_page() {
                     color: #1d2327;
                 }
             </style>
+            <p class="description" style="margin-bottom: 10px;">
+                Fonts appear in the customiser in the order shown below. Use the &uarr; and &darr; buttons to reorder them.
+            </p>
             <table class="wp-list-table widefat fixed striped">
                 <thead>
                     <tr>
-                        <th style="width: 18%;">Display name</th>
-                        <th style="width: 22%;">Filename</th>
-                        <th style="width: 14%;">Uploaded</th>
-                        <th style="width: 36%;">Preview</th>
+                        <th style="width: 8%;">Order</th>
+                        <th style="width: 16%;">Display name</th>
+                        <th style="width: 20%;">Filename</th>
+                        <th style="width: 12%;">Uploaded</th>
+                        <th style="width: 34%;">Preview</th>
                         <th style="width: 10%;">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach ( $fonts as $idx => $f ) : ?>
+                    <?php
+                    $last_idx = count( $fonts ) - 1;
+                    foreach ( $fonts as $idx => $f ) : ?>
                         <tr>
+                            <td>
+                                <strong style="display: inline-block; min-width: 1.5em;"><?php echo (int) $idx + 1; ?>.</strong>
+                                <form method="post" style="display: inline;">
+                                    <?php wp_nonce_field( 'bespoke_move_font_action' ); ?>
+                                    <input type="hidden" name="font_index" value="<?php echo (int) $idx; ?>" />
+                                    <input type="hidden" name="direction" value="up" />
+                                    <button type="submit" name="bespoke_move_font" class="button button-small" title="Move up" <?php echo $idx === 0 ? 'disabled' : ''; ?>>&uarr;</button>
+                                </form>
+                                <form method="post" style="display: inline;">
+                                    <?php wp_nonce_field( 'bespoke_move_font_action' ); ?>
+                                    <input type="hidden" name="font_index" value="<?php echo (int) $idx; ?>" />
+                                    <input type="hidden" name="direction" value="down" />
+                                    <button type="submit" name="bespoke_move_font" class="button button-small" title="Move down" <?php echo $idx === $last_idx ? 'disabled' : ''; ?>>&darr;</button>
+                                </form>
+                            </td>
                             <td><strong><?php echo esc_html( $f['name'] ); ?></strong></td>
                             <td><code><?php echo esc_html( $f['filename'] ); ?></code></td>
                             <td><?php echo esc_html( date( 'Y-m-d H:i', $f['uploaded_at'] ) ); ?></td>
@@ -234,7 +262,29 @@ function bespoke_delete_font_by_index( $idx ) {
 
 
 /* =========================================================================
-   6. PUBLIC API (for use by the customiser frontend integration)
+   6. REORDER HANDLER
+   ========================================================================= */
+
+function bespoke_move_font( $idx, $direction ) {
+    $fonts = get_option( 'bespoke_customiser_fonts', [] );
+    if ( ! isset( $fonts[ $idx ] ) ) {
+        add_settings_error( 'bespoke_fonts', 'no_such', 'Font not found.', 'error' );
+        return;
+    }
+    $swap_with = $direction === 'up' ? $idx - 1 : ( $direction === 'down' ? $idx + 1 : -1 );
+    if ( ! isset( $fonts[ $swap_with ] ) ) {
+        return; // Edge of list — silently do nothing.
+    }
+    $tmp                 = $fonts[ $idx ];
+    $fonts[ $idx ]       = $fonts[ $swap_with ];
+    $fonts[ $swap_with ] = $tmp;
+    update_option( 'bespoke_customiser_fonts', array_values( $fonts ) );
+    add_settings_error( 'bespoke_fonts', 'moved', 'Order updated.', 'updated' );
+}
+
+
+/* =========================================================================
+   7. PUBLIC API (for use by the customiser frontend integration)
    ========================================================================= */
 
 /**

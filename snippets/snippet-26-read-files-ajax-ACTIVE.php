@@ -1,18 +1,18 @@
 <?php
 /**
  * Snippet ID:    26
- * Name:          (no name set in Code Snippets)
+ * Name:          BESPOKE: Read plugin files (AJAX debug)
  * Status:        ACTIVE
- * Last modified: 2026-05-18 16:59:51
+ * Last modified: 2026-05-22 (path fix)
  * AJAX endpoint that returns the contents of the plugin's PHP/HTML files.
+ * Useful for previous Claude sessions to inspect server-side code.
  *
- * KNOWN BUG: hardcodes plugin folder as "bespoke-sport" but the actual
- * folder is "bespoke-customiser". This snippet is currently broken / will
- * return "NOT FOUND" for every file. Needs path corrected before re-use.
+ * Previously broken because of "bespoke-sport" path — corrected to
+ * "bespoke-customiser" on 2026-05-22.
  */
 
 add_action('wp_ajax_bespoke_read_files', function() {
-    $plugin_dir = WP_PLUGIN_DIR . '/bespoke-sport/';
+    $plugin_dir = WP_PLUGIN_DIR . '/bespoke-customiser/';
     $files = [
         'main' => $plugin_dir . 'bespoke-customiser.php',
         'ajax' => $plugin_dir . 'includes/customiser-ajax.php',
