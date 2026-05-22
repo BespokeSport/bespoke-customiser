@@ -82,6 +82,44 @@ function bespoke_get_product_types() {
 
 
 /* =========================================================================
+   2b. ADMIN ASSETS
+   Enqueue the WordPress media uploader on the design edit screen so the
+   thumbnail / SVG upload buttons can open the Media Library.
+   Also allow SVG uploads (restricted to manage_options users).
+   ========================================================================= */
+
+add_action( 'admin_enqueue_scripts', function( $hook ) {
+    global $post;
+    if ( ( $hook === 'post.php' || $hook === 'post-new.php' )
+         && isset( $post->post_type ) && $post->post_type === 'bespoke_design' ) {
+        wp_enqueue_media();
+    }
+} );
+
+// Allow SVG uploads for admins (needed so the design SVG can be picked from
+// the Media Library). Hardened: only users who can manage_options.
+add_filter( 'upload_mimes', function( $mimes ) {
+    if ( current_user_can( 'manage_options' ) ) {
+        $mimes['svg']  = 'image/svg+xml';
+        $mimes['svgz'] = 'image/svg+xml';
+    }
+    return $mimes;
+} );
+
+// WordPress 5.0.1+ re-checks MIME via fileinfo and rejects SVGs because
+// they're plain text. This filter accepts an SVG whose extension is .svg.
+add_filter( 'wp_check_filetype_and_ext', function( $data, $file, $filename, $mimes ) {
+    if ( ! current_user_can( 'manage_options' ) ) return $data;
+    $ext = pathinfo( $filename, PATHINFO_EXTENSION );
+    if ( strtolower( $ext ) === 'svg' ) {
+        $data['type'] = 'image/svg+xml';
+        $data['ext']  = 'svg';
+    }
+    return $data;
+}, 10, 4 );
+
+
+/* =========================================================================
    3. META BOXES
    ========================================================================= */
 
@@ -207,18 +245,25 @@ function bespoke_design_files_cb( $post ) {
             </td>
         </tr>
 
-        <!-- SVG File URL -->
+        <!-- SVG File -->
         <tr>
-            <th><label for="bespoke_svg_url">SVG file URL</label></th>
+            <th><label>SVG file</label></th>
             <td>
+                <button type="button" class="button button-primary" id="bespoke-svg-btn">
+                    <?php echo $svg_url ? 'Change SVG' : 'Upload SVG'; ?>
+                </button>
+                <?php if ( $svg_url ) : ?>
+                    <button type="button" class="button" id="bespoke-svg-remove" style="margin-left:6px;">Remove</button>
+                <?php endif; ?>
                 <input type="url"
                        name="bespoke_svg_url"
                        id="bespoke_svg_url"
                        value="<?php echo esc_attr( $svg_url ); ?>"
                        class="large-text"
-                       placeholder="https://…" />
+                       placeholder="https://…"
+                       style="margin-top:10px;" />
                 <p class="description">
-                    Upload your SVG to the Media Library, copy its URL, and paste it here.<br />
+                    Click <strong>Upload SVG</strong> to add or replace the design's SVG via the Media Library, or paste a URL directly.<br />
                     <strong>Important:</strong> colour zones in your SVG must use CSS variables
                     <code>--col-1</code>, <code>--col-2</code>, <code>--col-3</code> etc.
                     to match the layers you define in the Colour Layers box below.
@@ -269,6 +314,37 @@ function bespoke_design_files_cb( $post ) {
             $( '#bespoke_thumb_id' ).val( '' );
             $( '#bespoke-thumb-preview' ).html( '' );
             $( '#bespoke-thumb-btn' ).text( 'Upload thumbnail' );
+            $( this ).remove();
+        } );
+
+        // ── Media library uploader for SVG file ───────────────────────────────
+        var svgUploader;
+
+        $( '#bespoke-svg-btn' ).on( 'click', function( e ) {
+            e.preventDefault();
+            if ( svgUploader ) {
+                svgUploader.open();
+                return;
+            }
+            svgUploader = wp.media( {
+                title:    'Select Design SVG',
+                button:   { text: 'Use this SVG' },
+                multiple: false,
+                library:  { type: 'image/svg+xml' }
+            } );
+            svgUploader.on( 'select', function() {
+                var attachment = svgUploader.state().get( 'selection' ).first().toJSON();
+                $( '#bespoke_svg_url' ).val( attachment.url );
+                $( '#bespoke-svg-btn' ).text( 'Change SVG' );
+            } );
+            svgUploader.open();
+        } );
+
+        // ── Remove SVG ────────────────────────────────────────────────────────
+        $( document ).on( 'click', '#bespoke-svg-remove', function( e ) {
+            e.preventDefault();
+            $( '#bespoke_svg_url' ).val( '' );
+            $( '#bespoke-svg-btn' ).text( 'Upload SVG' );
             $( this ).remove();
         } );
 

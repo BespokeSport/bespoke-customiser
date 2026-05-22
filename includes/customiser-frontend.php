@@ -176,6 +176,158 @@ function bespoke_render_customiser( $atts ) {
         </script>
     <?php endif; ?>
 
+    <?php
+    /* ── Registered designs integration ────────────────────────────────────
+     * If the admin has registered any designs via "Customiser Designs",
+     * expose them to the customiser and inject them into ALL_DESIGNS so
+     * they appear in the picker alongside (or in place of) the hardcoded ones.
+     */
+    $registered_designs = [];
+    if ( function_exists( 'bespoke_get_product_types' ) ) {
+        $q = new WP_Query( [
+            'post_type'      => 'bespoke_design',
+            'post_status'    => 'publish',
+            'posts_per_page' => -1,
+            'meta_query'     => [
+                'relation' => 'AND',
+                [ 'key' => '_bespoke_active', 'value' => '1' ],
+                [
+                    'key'     => '_bespoke_products',
+                    'value'   => '"' . $product_type . '"',
+                    'compare' => 'LIKE',
+                ],
+            ],
+            'meta_key' => '_bespoke_order',
+            'orderby'  => 'meta_value_num',
+            'order'    => 'ASC',
+        ] );
+        foreach ( $q->posts as $p ) {
+            $thumb_id  = get_post_meta( $p->ID, '_bespoke_thumb_id', true );
+            $thumb_url = $thumb_id ? wp_get_attachment_image_url( $thumb_id, 'medium' ) : '';
+            $svg_url   = get_post_meta( $p->ID, '_bespoke_svg_url',  true );
+            $layers    = get_post_meta( $p->ID, '_bespoke_layers',   true );
+            $registered_designs[] = [
+                'id'      => sanitize_title( $p->post_title ),
+                'label'   => $p->post_title,
+                'thumb'   => $thumb_url,
+                'svg_url' => $svg_url,
+                'layers'  => is_array( $layers ) ? array_values( $layers ) : [],
+            ];
+        }
+    }
+    if ( ! empty( $registered_designs ) ) : ?>
+        <script id="bespoke-registered-designs">
+        window.BESPOKE_REGISTERED_DESIGNS = <?php echo wp_json_encode( $registered_designs ); ?>;
+
+        (function(){
+            var REG = window.BESPOKE_REGISTERED_DESIGNS;
+            var svgCache = {};
+
+            // Build a lookup table id -> design object
+            var byId = {};
+            REG.forEach(function(d){ byId[d.id] = d; });
+
+            // 1. Push registered designs into ALL_DESIGNS so they appear in the picker
+            //    Then trigger buildDesignScroll() to rebuild the picker DOM (otherwise
+            //    designs added after the initial build are silently invisible).
+            function patchDesigns(){
+                if (!window.ALL_DESIGNS) { return setTimeout(patchDesigns, 200); }
+                var added = false;
+                REG.forEach(function(d){
+                    if (window.ALL_DESIGNS.some(function(e){ return e.id === d.id; })) return;
+                    window.ALL_DESIGNS.push({ id: d.id, label: d.label, thumb: d.thumb });
+                    added = true;
+                });
+                if (added && typeof window.buildDesignScroll === 'function') {
+                    window.buildDesignScroll();
+                }
+            }
+
+            // 2. After updateDesignLayers runs, if the active design is a registered
+            //    one, fetch its SVG and inject it into every bg-layer-{stepId} group.
+            function applyRegisteredDesignSVG(){
+                if (!window.S) return;
+                var d = byId[window.S.design];
+                if (!d || !d.svg_url) return;
+
+                function inject(svgText){
+                    // Find all bg-layer-{stepId} groups
+                    var groups = document.querySelectorAll('[id^="bg-layer-"]');
+                    groups.forEach(function(g){
+                        g.innerHTML = svgText;
+                        // Set CSS vars for each colour layer
+                        // Layer 1 -> --col-1, --bg-col   (background)
+                        // Layer 2 -> --col-2, --pat-col  (pattern)
+                        (d.layers || []).forEach(function(layer, idx){
+                            var varName = '--col-' + (idx + 1);
+                            // Map the user's state colours into the layer vars
+                            var colourFromState;
+                            if (idx === 0) colourFromState = window.S.bgColor;
+                            else if (idx === 1) colourFromState = window.S.patColor;
+                            else colourFromState = layer.default || '#000';
+                            g.style.setProperty(varName, colourFromState);
+                        });
+                        // Also keep the legacy vars in sync so other CSS hooks work
+                        if (window.S.bgColor) g.style.setProperty('--bg-col', window.S.bgColor);
+                        if (window.S.patColor) g.style.setProperty('--pat-col', window.S.patColor);
+                    });
+                }
+
+                if (svgCache[d.svg_url]) {
+                    inject(svgCache[d.svg_url]);
+                    return;
+                }
+                fetch(d.svg_url, {credentials: 'omit'}).then(function(r){ return r.text(); }).then(function(txt){
+                    // Extract just the inner SVG content (drop wrapping <svg> tags)
+                    var inner = txt.replace(/^[\s\S]*?<svg[^>]*>/i, '').replace(/<\/svg>\s*$/i, '');
+                    svgCache[d.svg_url] = inner;
+                    inject(inner);
+                }).catch(function(e){ console.warn('Bespoke design SVG fetch failed:', e); });
+            }
+
+            // Hook into updateDesignLayers if it exists, so our injection runs after
+            // the customiser's own rendering pass for the selected design.
+            function hookUpdateDesignLayers(){
+                if (typeof window.updateDesignLayers !== 'function') {
+                    return setTimeout(hookUpdateDesignLayers, 200);
+                }
+                var orig = window.updateDesignLayers;
+                window.updateDesignLayers = function(){
+                    var ret = orig.apply(this, arguments);
+                    applyRegisteredDesignSVG();
+                    return ret;
+                };
+                // Also handle initial load
+                applyRegisteredDesignSVG();
+            }
+
+            // Re-apply when state colours change (so colour picker updates the design)
+            function watchColourChanges(){
+                if (!window.S) { return setTimeout(watchColourChanges, 200); }
+                // Hook into colour input changes
+                document.addEventListener('input', function(e){
+                    if (e.target && e.target.matches && e.target.matches('.ct input[type=color]')) {
+                        // Debounce a tick so the state has updated
+                        requestAnimationFrame(applyRegisteredDesignSVG);
+                    }
+                });
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', function(){
+                    patchDesigns();
+                    hookUpdateDesignLayers();
+                    watchColourChanges();
+                });
+            } else {
+                patchDesigns();
+                hookUpdateDesignLayers();
+                watchColourChanges();
+            }
+        })();
+        </script>
+    <?php endif; ?>
+
     <?php /* ── Customiser runtime fixes (formerly Code Snippet #29) ────────── */ ?>
     <style id="bespoke-customiser-runtime-fixes">
         /* Page title in white so it reads on the dark customiser background */
