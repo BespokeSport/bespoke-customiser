@@ -42,10 +42,13 @@ add_action('wp_footer', function() {
       .bcp-done{background:#5DCAA5;color:#04342C;border:none;border-radius:6px;padding:9px 18px;font-family:'Inter',sans-serif;font-size:12px;font-weight:600;letter-spacing:0.06em;cursor:pointer;text-transform:uppercase}
       .bcp-done:hover{background:#4FB996}
       @media(min-width:900px){#bcp-overlay{justify-content:flex-start!important;padding-left:60px!important;box-sizing:border-box!important}}
+      @media(max-width:899px){#bcp-overlay{align-items:flex-end!important;justify-content:center!important;padding:0!important}.bcp-panel{width:100%!important;max-width:100%!important;border-radius:16px 16px 0 0!important;padding:16px!important}.bcp-sv{height:160px!important}}
       #dt-label,#dt-hint{align-self:center!important;background:#5DCAA5!important;color:#04342C!important;border-radius:999px!important;font-family:'Inter',sans-serif!important;position:relative!important;z-index:5!important}
       #dt-label{order:0!important;font-size:18px!important;font-weight:600!important;letter-spacing:0.12em!important;text-transform:uppercase!important;padding:10px 24px!important;margin-bottom:6px!important}
       #dt-hint{order:1!important;font-size:12px!important;font-weight:500!important;letter-spacing:0.02em!important;padding:6px 14px!important;margin-bottom:8px!important}
       #dt-svg-wrap{order:2!important}
+      html,body{overflow-x:hidden!important;max-width:100vw!important}
+      #bespoke-marquee{max-width:100vw!important;overflow-x:hidden!important;box-sizing:border-box!important}
     `;
     document.head.appendChild(css);
 
