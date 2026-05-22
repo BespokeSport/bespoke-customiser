@@ -96,6 +96,67 @@ add_action( 'admin_enqueue_scripts', function( $hook ) {
     }
 } );
 
+
+/* =========================================================================
+   2c. CUSTOM SVG UPLOAD ENDPOINT
+   Bypasses the WP media library entirely so security plugins (Really Simple
+   Security, etc.) can't strip the embedded base64 raster data from the SVG
+   on upload. Saves the file straight to /wp-content/uploads/bespoke-designs/.
+   Only admins (manage_options) can hit this endpoint.
+   ========================================================================= */
+
+if ( ! defined( 'BESPOKE_DESIGNS_DIR' ) ) {
+    define( 'BESPOKE_DESIGNS_DIR', wp_upload_dir()['basedir'] . '/bespoke-designs/' );
+    define( 'BESPOKE_DESIGNS_URL', wp_upload_dir()['baseurl'] . '/bespoke-designs/' );
+}
+
+add_action( 'init', function() {
+    if ( ! file_exists( BESPOKE_DESIGNS_DIR ) ) {
+        wp_mkdir_p( BESPOKE_DESIGNS_DIR );
+        @file_put_contents( BESPOKE_DESIGNS_DIR . '.htaccess', "Options -Indexes\n" );
+    }
+} );
+
+add_action( 'wp_ajax_bespoke_upload_design_svg', function() {
+    if ( ! current_user_can( 'manage_options' ) ) {
+        wp_send_json_error( 'Not authorised', 403 );
+    }
+    if ( ! check_ajax_referer( 'bespoke_design_svg_upload', '_nonce', false ) ) {
+        wp_send_json_error( 'Invalid nonce', 403 );
+    }
+    if ( empty( $_FILES['svg'] ) || $_FILES['svg']['error'] !== UPLOAD_ERR_OK ) {
+        wp_send_json_error( 'No file or upload error' );
+    }
+    $file = $_FILES['svg'];
+    $ext  = strtolower( pathinfo( $file['name'], PATHINFO_EXTENSION ) );
+    if ( $ext !== 'svg' ) {
+        wp_send_json_error( 'Only .svg files allowed' );
+    }
+    if ( ! file_exists( BESPOKE_DESIGNS_DIR ) ) {
+        wp_mkdir_p( BESPOKE_DESIGNS_DIR );
+    }
+
+    // Sanitised, dash-style filename (no spaces or special characters).
+    $safe   = sanitize_file_name( $file['name'] );
+    $base   = pathinfo( $safe, PATHINFO_FILENAME );
+    $target = BESPOKE_DESIGNS_DIR . $safe;
+    $counter = 1;
+    while ( file_exists( $target ) ) {
+        $target = BESPOKE_DESIGNS_DIR . $base . '-' . $counter . '.svg';
+        $counter++;
+    }
+
+    if ( ! @move_uploaded_file( $file['tmp_name'], $target ) ) {
+        wp_send_json_error( 'Could not save file (check folder permissions on /wp-content/uploads/bespoke-designs/)' );
+    }
+
+    wp_send_json_success( [
+        'url'      => BESPOKE_DESIGNS_URL . basename( $target ),
+        'filename' => basename( $target ),
+        'size'     => filesize( $target ),
+    ] );
+} );
+
 // Allow SVG uploads for admins (needed so the design SVG can be picked from
 // the Media Library). Hardened: only users who can manage_options.
 add_filter( 'upload_mimes', function( $mimes ) {
@@ -317,27 +378,59 @@ function bespoke_design_files_cb( $post ) {
             $( this ).remove();
         } );
 
-        // ── Media library uploader for SVG file ───────────────────────────────
-        var svgUploader;
+        // ── Custom SVG uploader (bypasses WP media library + security plugins) ─
+        // We use our own AJAX endpoint so the embedded base64 raster data in
+        // designs isn't stripped by Really Simple Security / SG Security.
+        var svgUploadNonce = '<?php echo esc_js( wp_create_nonce( "bespoke_design_svg_upload" ) ); ?>';
 
         $( '#bespoke-svg-btn' ).on( 'click', function( e ) {
             e.preventDefault();
-            if ( svgUploader ) {
-                svgUploader.open();
-                return;
-            }
-            svgUploader = wp.media( {
-                title:    'Select Design SVG',
-                button:   { text: 'Use this SVG' },
-                multiple: false,
-                library:  { type: 'image/svg+xml' }
-            } );
-            svgUploader.on( 'select', function() {
-                var attachment = svgUploader.state().get( 'selection' ).first().toJSON();
-                $( '#bespoke_svg_url' ).val( attachment.url );
-                $( '#bespoke-svg-btn' ).text( 'Change SVG' );
-            } );
-            svgUploader.open();
+            var fileInput = document.createElement( 'input' );
+            fileInput.type    = 'file';
+            fileInput.accept  = '.svg,image/svg+xml';
+            fileInput.onchange = function() {
+                var file = fileInput.files[0];
+                if ( ! file ) return;
+
+                var $btn = $( '#bespoke-svg-btn' );
+                var originalText = $btn.text();
+                $btn.text( 'Uploading…' ).prop( 'disabled', true );
+
+                var formData = new FormData();
+                formData.append( 'action',  'bespoke_upload_design_svg' );
+                formData.append( '_nonce',  svgUploadNonce );
+                formData.append( 'svg',     file );
+
+                fetch( ajaxurl, {
+                    method: 'POST',
+                    body:   formData,
+                    credentials: 'include'
+                } )
+                .then( function( r ) { return r.json(); } )
+                .then( function( res ) {
+                    $btn.prop( 'disabled', false );
+                    if ( res && res.success ) {
+                        $( '#bespoke_svg_url' ).val( res.data.url );
+                        $btn.text( 'Change SVG' );
+                        // Show success badge
+                        var sizeKb = Math.round( res.data.size / 1024 );
+                        $btn.after(
+                            '<span class="bespoke-svg-msg" style="margin-left:10px;color:#1d8348;">' +
+                            '✓ Uploaded: ' + res.data.filename + ' (' + sizeKb + ' KB)</span>'
+                        );
+                        setTimeout(function(){ $( '.bespoke-svg-msg' ).fadeOut(); }, 6000);
+                    } else {
+                        var msg = ( res && res.data ) || 'unknown error';
+                        $btn.text( originalText );
+                        alert( 'SVG upload failed: ' + msg );
+                    }
+                } )
+                .catch( function( err ) {
+                    $btn.prop( 'disabled', false ).text( originalText );
+                    alert( 'Upload error: ' + err );
+                } );
+            };
+            fileInput.click();
         } );
 
         // ── Remove SVG ────────────────────────────────────────────────────────

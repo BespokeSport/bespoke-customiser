@@ -251,25 +251,46 @@ function bespoke_render_customiser( $atts ) {
                 if (!d || !d.svg_url) return;
 
                 function inject(svgText){
-                    // Find all bg-layer-{stepId} groups
+                    // Use a proper SVG parser so the injected content stays in the SVG
+                    // namespace (innerHTML on an SVG element drops the namespace).
+                    // We APPEND the design content to bg-layer instead of replacing,
+                    // so the customiser's yellow pad rectangles stay visible behind
+                    // the design pattern.
+                    var doc = new DOMParser().parseFromString(svgText, 'image/svg+xml');
+                    var sourceSvg = doc.documentElement;
+                    if (sourceSvg.nodeName.toLowerCase() === 'parsererror') return;
+
                     var groups = document.querySelectorAll('[id^="bg-layer-"]');
                     groups.forEach(function(g){
-                        g.innerHTML = svgText;
-                        // Set CSS vars for each colour layer
-                        // Layer 1 -> --col-1, --bg-col   (background)
-                        // Layer 2 -> --col-2, --pat-col  (pattern)
+                        // First, remove any previously-injected design overlay so
+                        // switching between designs doesn't stack them.
+                        var prev = g.querySelector('[data-bespoke-design-overlay]');
+                        if (prev) prev.remove();
+
+                        // Create a wrapper <g> we tag so we can find/remove it later
+                        var ns = 'http://www.w3.org/2000/svg';
+                        var wrap = document.createElementNS(ns, 'g');
+                        wrap.setAttribute('data-bespoke-design-overlay', d.id);
+
+                        // Clone children from the parsed source SVG into the wrapper.
+                        // Using cloneNode keeps the SVG namespace intact.
+                        Array.from(sourceSvg.children).forEach(function(child){
+                            wrap.appendChild(child.cloneNode(true));
+                        });
+                        g.appendChild(wrap);
+
+                        // Set CSS vars for each colour layer so designs that DO
+                        // use var(--col-N) fills can be tinted by the picker.
                         (d.layers || []).forEach(function(layer, idx){
                             var varName = '--col-' + (idx + 1);
-                            // Map the user's state colours into the layer vars
                             var colourFromState;
                             if (idx === 0) colourFromState = window.S.bgColor;
                             else if (idx === 1) colourFromState = window.S.patColor;
                             else colourFromState = layer.default || '#000';
-                            g.style.setProperty(varName, colourFromState);
+                            wrap.style.setProperty(varName, colourFromState);
                         });
-                        // Also keep the legacy vars in sync so other CSS hooks work
-                        if (window.S.bgColor) g.style.setProperty('--bg-col', window.S.bgColor);
-                        if (window.S.patColor) g.style.setProperty('--pat-col', window.S.patColor);
+                        if (window.S.bgColor)  wrap.style.setProperty('--bg-col',  window.S.bgColor);
+                        if (window.S.patColor) wrap.style.setProperty('--pat-col', window.S.patColor);
                     });
                 }
 
@@ -277,11 +298,14 @@ function bespoke_render_customiser( $atts ) {
                     inject(svgCache[d.svg_url]);
                     return;
                 }
-                fetch(d.svg_url, {credentials: 'omit'}).then(function(r){ return r.text(); }).then(function(txt){
-                    // Extract just the inner SVG content (drop wrapping <svg> tags)
-                    var inner = txt.replace(/^[\s\S]*?<svg[^>]*>/i, '').replace(/<\/svg>\s*$/i, '');
-                    svgCache[d.svg_url] = inner;
-                    inject(inner);
+                // credentials:same-origin (default) ensures we send the staging site's
+                // HTTP Basic Auth cookie/header — otherwise nginx returns 401.
+                fetch(d.svg_url).then(function(r){ return r.text(); }).then(function(txt){
+                    // Cache the WHOLE SVG document. DOMParser needs a complete
+                    // <svg>…</svg> root to parse correctly — stripping the outer
+                    // tag produces a fragment which yields a <parsererror>.
+                    svgCache[d.svg_url] = txt;
+                    inject(txt);
                 }).catch(function(e){ console.warn('Bespoke design SVG fetch failed:', e); });
             }
 
