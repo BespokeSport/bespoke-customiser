@@ -49,6 +49,7 @@ add_action('wp_footer', function() {
       #dt-svg-wrap{order:2!important}
       html,body{overflow-x:hidden!important;max-width:100vw!important}
       #bespoke-marquee{max-width:100vw!important;overflow-x:hidden!important;box-sizing:border-box!important}
+      #dt-svg-wrap svg text,#bespoke-customiser-root svg text{stroke:none!important;stroke-width:0!important;paint-order:normal!important}
     `;
     document.head.appendChild(css);
 
@@ -132,6 +133,8 @@ add_action('wp_footer', function() {
     init();
   }
 })();
+(function(){function hideJunkFonts(){document.querySelectorAll('.font-card').forEach(function(c){var p=c.querySelector('.font-preview');if(p&&!p.textContent.trim())c.style.display='none';});}function start(){hideJunkFonts();var mo=new MutationObserver(hideJunkFonts);mo.observe(document.body,{childList:true,subtree:true});}if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',start);}else{start();}})();
+(function(){function fixCustomFonts(){if(!window.BESPOKE_CUSTOM_FONTS||!window.BESPOKE_CUSTOM_FONTS.length)return;var styleEl=document.getElementById('bespoke-custom-font-weight-fix');if(!styleEl){styleEl=document.createElement('style');styleEl.id='bespoke-custom-font-weight-fix';document.head.appendChild(styleEl);}var css='';window.BESPOKE_CUSTOM_FONTS.forEach(function(f){var srcStyle=document.getElementById('bespoke-custom-font-faces');if(!srcStyle)return;var m=srcStyle.textContent.match(new RegExp("@font-face\\s*\\{[^}]*font-family:\\s*['\"]"+f.id+"['\"][^}]*\\}",'i'));if(!m)return;var rule=m[0].replace(/\}$/,'font-weight:100 900;font-style:normal;}');css+=rule+'\n';});styleEl.textContent=css;var loads=window.BESPOKE_CUSTOM_FONTS.map(function(f){return document.fonts.load("900 90px "+f.family);});Promise.all(loads).then(function(){if(typeof window.makeSVG==='function')window.makeSVG();});}if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',fixCustomFonts);}else{fixCustomFonts();}})();
 </script>
 BCPSCRIPT;
 }, 100);

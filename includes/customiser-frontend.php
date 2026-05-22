@@ -88,6 +88,94 @@ function bespoke_render_customiser( $atts ) {
         uploadUrl:   '<?php echo esc_js( BESPOKE_PLUGIN_URL . 'includes/customiser-ajax.php' ); ?>'
     };
     </script>
+
+    <?php
+    // ─── Custom fonts integration ──────────────────────────────────────────
+    // If any fonts have been uploaded via the "Customiser Fonts" admin page,
+    // (1) emit @font-face declarations referencing the uploaded files,
+    // (2) expose them as window.BESPOKE_CUSTOM_FONTS, and
+    // (3) replace the customiser's hardcoded FONTS array + rebuild the picker.
+    $custom_fonts = function_exists( 'bespoke_get_custom_fonts' ) ? bespoke_get_custom_fonts() : [];
+    if ( ! empty( $custom_fonts ) ) :
+        // Build a JS-safe array with stable family names
+        $js_fonts = [];
+        $css_face = '';
+        foreach ( $custom_fonts as $idx => $f ) {
+            $ext    = strtolower( pathinfo( $f['filename'], PATHINFO_EXTENSION ) );
+            $format = $ext === 'otf' ? 'opentype' : 'truetype';
+            $family = 'bespoke-font-' . intval( $idx );
+            // font-weight: 100 900 tells the browser this single file covers
+            // every requested weight (otherwise SVG text at font-weight:900
+            // falls back to a system font on Chrome/Safari).
+            $css_face .= "@font-face{font-family:'" . esc_attr( $family ) . "';src:url('" . esc_url( $f['url'] ) . "') format('" . $format . "');font-weight:100 900;font-style:normal;font-display:swap;}\n";
+            $js_fonts[] = [
+                'id'      => $family,
+                'label'   => $f['name'],
+                'family'  => "'" . $family . "', sans-serif",
+                'preview' => 'SMITH',
+            ];
+        }
+        ?>
+        <style id="bespoke-custom-font-faces">
+            <?php echo $css_face; ?>
+        </style>
+        <script>
+        window.BESPOKE_CUSTOM_FONTS = <?php echo wp_json_encode( $js_fonts ); ?>;
+
+        (function(){
+            // Wait until the customiser has populated window.FONTS, then replace it
+            // with the uploaded fonts and rebuild the .font-card grid in the picker.
+            function rebuildPicker() {
+                if (!window.FONTS || !document.querySelector('.font-card')) {
+                    return setTimeout(rebuildPicker, 200);
+                }
+                // Replace FONTS contents (mutate in place so internal references update)
+                window.FONTS.length = 0;
+                window.BESPOKE_CUSTOM_FONTS.forEach(function(f){ window.FONTS.push(f); });
+
+                // Rebuild every .font-card grid on the page (Name + Number tabs each have one)
+                var grids = new Set();
+                document.querySelectorAll('.font-card').forEach(function(c){ grids.add(c.parentElement); });
+
+                grids.forEach(function(grid){
+                    // Detect which target this grid is for (name vs num) from existing cards
+                    var firstCard = grid.querySelector('.font-card');
+                    var isNum = grid.closest('[data-target=num], .step-num, #step-num') || (firstCard && firstCard.getAttribute('data-target') === 'num');
+                    var target = isNum ? 'num' : 'name';
+                    var currentFamily = window.S ? (target === 'num' ? window.S.numFontFamily : window.S.nameFontFamily) : null;
+
+                    grid.innerHTML = '';
+                    window.FONTS.forEach(function(f){
+                        var card = document.createElement('div');
+                        card.className = 'font-card' + (currentFamily === f.family ? ' sel' : '');
+                        card.setAttribute('data-target', target);
+                        card.innerHTML = '<div class="font-preview" style="font-family:' + f.family + '">' + (f.preview || 'SMITH') + '</div><div class="font-name">' + f.label + '</div>';
+                        card.addEventListener('click', function(){
+                            grid.querySelectorAll('.font-card').forEach(function(c){ c.classList.remove('sel'); });
+                            card.classList.add('sel');
+                            if (window.S) {
+                                if (target === 'num') window.S.numFontFamily = f.family;
+                                else window.S.nameFontFamily = f.family;
+                            }
+                            // Trigger SVG re-render (function name varies; try common ones)
+                            if (typeof window.makeSVG === 'function') window.makeSVG();
+                            if (typeof window.render === 'function') window.render();
+                            if (typeof window.updatePreview === 'function') window.updatePreview();
+                        });
+                        grid.appendChild(card);
+                    });
+                });
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', rebuildPicker);
+            } else {
+                rebuildPicker();
+            }
+        })();
+        </script>
+    <?php endif; ?>
+
     <?php
 
     return ob_get_clean();
