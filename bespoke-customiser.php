@@ -34,6 +34,7 @@ add_action( 'plugins_loaded', function() {
     if ( ! bespoke_check_woocommerce() ) return;
 
     require_once BESPOKE_PLUGIN_DIR . 'includes/customiser-designs.php';   // design management
+    require_once BESPOKE_PLUGIN_DIR . 'includes/customiser-products.php';  // per-product asset uploads (background + pad base)
     require_once BESPOKE_PLUGIN_DIR . 'includes/customiser-fonts.php';     // custom font upload
     require_once BESPOKE_PLUGIN_DIR . 'includes/customiser-frontend.php';
     require_once BESPOKE_PLUGIN_DIR . 'includes/customiser-woocommerce.php';

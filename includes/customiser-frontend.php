@@ -183,6 +183,9 @@ function bespoke_render_customiser( $atts ) {
      * they appear in the picker alongside (or in place of) the hardcoded ones.
      */
     $registered_designs = [];
+    $product_assets     = function_exists( 'bespoke_get_product_assets' )
+        ? bespoke_get_product_assets( $product_type )
+        : [];
     if ( function_exists( 'bespoke_get_product_types' ) ) {
         $q = new WP_Query( [
             'post_type'      => 'bespoke_design',
@@ -215,115 +218,425 @@ function bespoke_render_customiser( $atts ) {
             ];
         }
     }
-    if ( ! empty( $registered_designs ) ) : ?>
+    if ( ! empty( $registered_designs ) || ! empty( $product_assets ) ) : ?>
         <script id="bespoke-registered-designs">
         window.BESPOKE_REGISTERED_DESIGNS = <?php echo wp_json_encode( $registered_designs ); ?>;
+        window.BESPOKE_PRODUCT_ASSETS     = <?php echo wp_json_encode( $product_assets ); ?>;
 
         (function(){
-            var REG = window.BESPOKE_REGISTERED_DESIGNS;
+            var NS   = 'http://www.w3.org/2000/svg';
+            var REG  = window.BESPOKE_REGISTERED_DESIGNS || [];
+            var PA   = window.BESPOKE_PRODUCT_ASSETS    || {};
             var svgCache = {};
 
             // Build a lookup table id -> design object
             var byId = {};
             REG.forEach(function(d){ byId[d.id] = d; });
 
-            // 1. Push registered designs into ALL_DESIGNS so they appear in the picker
-            //    Then trigger buildDesignScroll() to rebuild the picker DOM (otherwise
-            //    designs added after the initial build are silently invisible).
+            // 1. REPLACE ALL_DESIGNS with the admin-registered designs only.
+            //    This strips out the hardcoded placeholder designs (Vanguard,
+            //    Boom, Scratch, etc.) that were baked into customiser.html by
+            //    earlier development. The picker will show only what's been
+            //    added via WP admin "Customiser Designs".
+            //
+            //    Safety: if there are no registered designs yet, we leave the
+            //    hardcoded ones alone so the picker isn't empty.
             function patchDesigns(){
                 if (!window.ALL_DESIGNS) { return setTimeout(patchDesigns, 200); }
-                var added = false;
+                if (REG.length === 0) return;
+                window.ALL_DESIGNS.length = 0;
                 REG.forEach(function(d){
-                    if (window.ALL_DESIGNS.some(function(e){ return e.id === d.id; })) return;
                     window.ALL_DESIGNS.push({ id: d.id, label: d.label, thumb: d.thumb });
-                    added = true;
                 });
-                if (added && typeof window.buildDesignScroll === 'function') {
+                // If the customiser's default design (vanguard) is no longer in
+                // the list, switch the initial selection to the first registered.
+                if (window.S && !REG.some(function(d){ return d.id === window.S.design; })) {
+                    window.S.design = REG[0].id;
+                }
+                if (typeof window.buildDesignScroll === 'function') {
                     window.buildDesignScroll();
                 }
+                if (typeof window.updateDesignLayers === 'function') {
+                    requestAnimationFrame(window.updateDesignLayers);
+                }
+            }
+
+            // ── SVG fetch helper (with caching) ───────────────────────────────
+            function fetchSvgText(url){
+                if (svgCache[url]) return Promise.resolve(svgCache[url]);
+                return fetch(url).then(function(r){ return r.text(); }).then(function(txt){
+                    svgCache[url] = txt;
+                    return txt;
+                });
+            }
+
+            // Returns a parsed <svg> element, or null on parse failure.
+            function parseSvg(svgText){
+                var doc = new DOMParser().parseFromString(svgText, 'image/svg+xml');
+                if (doc.documentElement.nodeName.toLowerCase() === 'parsererror') return null;
+                return doc.documentElement;
+            }
+
+            // Detect whether an SVG has embedded raster (PNG/JPG) image data.
+            // Raster-based designs need mix-blend-mode tinting; vector designs
+            // can be tinted by setting `fill` on the wrapper group.
+            function svgHasRasterImages(parsedSvg){
+                var images = parsedSvg.querySelectorAll('image');
+                for (var i = 0; i < images.length; i++) {
+                    var href = images[i].getAttribute('href') || images[i].getAttribute('xlink:href') || '';
+                    if (href.indexOf('data:image') === 0) return true;
+                }
+                return false;
+            }
+
+            // Detect if a URL points to a raster image (jpg/png/gif/webp) vs SVG.
+            function isRasterUrl(url){
+                return /\.(jpe?g|png|gif|webp)(\?.*)?$/i.test(url || '');
+            }
+
+            // Parse a hex colour string ("#rrggbb" or "#rgb") to [r, g, b] ints,
+            // or null if not a valid hex.
+            function hexToRgb(hex){
+                if (!hex) return null;
+                hex = hex.replace(/^#/, '');
+                if (hex.length === 3) hex = hex[0]+hex[0]+hex[1]+hex[1]+hex[2]+hex[2];
+                if (!/^[0-9a-fA-F]{6}$/.test(hex)) return null;
+                return [
+                    parseInt(hex.slice(0, 2), 16),
+                    parseInt(hex.slice(2, 4), 16),
+                    parseInt(hex.slice(4, 6), 16),
+                ];
+            }
+
+            // Build a layer <g> from a URL (SVG or raster image), applying a tint colour.
+            //   - tintColor null            → no tinting (background wallpaper)
+            //   - tintColor set + raster    → SVG filter (alpha-mask + solid tint, FPD-style)
+            //   - tintColor set + vector    → set fill on the wrapper (cascades to paths)
+            //   - tintColor set + raster-in-SVG → feColorMatrix luminance + tint
+            // Returns a promise that resolves to the layer element.
+            function buildLayer(url, tintColor, label){
+                // PNG/JPG/GIF/WebP — wrap in an SVG <image> element (covers viewport).
+                if (isRasterUrl(url)) {
+                    var imgLayer = document.createElementNS(NS, 'g');
+                    imgLayer.setAttribute('data-layer', label);
+                    var img = document.createElementNS(NS, 'image');
+                    img.setAttribute('x', '0');
+                    img.setAttribute('y', '0');
+                    img.setAttribute('width', '1200');
+                    img.setAttribute('height', '1200');
+                    img.setAttribute('preserveAspectRatio', 'xMidYMid slice');
+                    img.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', url);
+                    img.setAttribute('href', url);
+
+                    if (tintColor) {
+                        // Recolour the PNG using feColorMatrix — multiply each
+                        // channel by the tint colour's R/G/B ratio. For a white
+                        // pixel (1,1,1) this gives exactly the tint colour, for
+                        // transparent pixels alpha is preserved. Designed for
+                        // white-on-transparent PNGs (FPD-style). Uses
+                        // userSpaceOnUse + explicit pixel region for reliable
+                        // mobile rendering (objectBoundingBox + feFlood can
+                        // fail silently on mobile Safari).
+                        var rgb = hexToRgb(tintColor) || [0, 0, 0];
+                        var rN = (rgb[0] / 255).toFixed(4);
+                        var gN = (rgb[1] / 255).toFixed(4);
+                        var bN = (rgb[2] / 255).toFixed(4);
+                        var filterId = 'bcp-png-tint-' + Math.random().toString(36).slice(2, 8);
+                        var defs = document.createElementNS(NS, 'defs');
+                        var filter = document.createElementNS(NS, 'filter');
+                        filter.setAttribute('id', filterId);
+                        filter.setAttribute('filterUnits', 'userSpaceOnUse');
+                        filter.setAttribute('x', '0');
+                        filter.setAttribute('y', '0');
+                        filter.setAttribute('width', '1200');
+                        filter.setAttribute('height', '1200');
+                        filter.setAttribute('color-interpolation-filters', 'sRGB');
+                        var matrix = document.createElementNS(NS, 'feColorMatrix');
+                        matrix.setAttribute('type', 'matrix');
+                        matrix.setAttribute('values',
+                            rN + ' 0 0 0 0  ' +
+                            '0 ' + gN + ' 0 0 0  ' +
+                            '0 0 ' + bN + ' 0 0  ' +
+                            '0 0 0 1 0'
+                        );
+                        filter.appendChild(matrix);
+                        defs.appendChild(filter);
+                        imgLayer.appendChild(defs);
+                        img.setAttribute('filter', 'url(#' + filterId + ')');
+                    }
+                    imgLayer.appendChild(img);
+                    return Promise.resolve(imgLayer);
+                }
+
+                // SVG path
+                return fetchSvgText(url).then(function(svgText){
+                    var parsed = parseSvg(svgText);
+                    if (!parsed) return null;
+
+                    // Render the source SVG at its NATURAL size (don't auto-scale).
+                    // The source viewBox dimensions become the nested <svg>'s
+                    // pixel width/height — so a 978×822 source draws at 978×822,
+                    // and a 1200×1200 source fills the customiser canvas.
+                    var sourceViewBox = parsed.getAttribute('viewBox') || '0 0 1200 1200';
+                    var vbParts = sourceViewBox.split(/\s+/).map(parseFloat);
+                    var sw = vbParts[2] || 1200;
+                    var sh = vbParts[3] || 1200;
+
+                    // Center within the 1200×1200 canvas when source is smaller.
+                    var offsetX = Math.max(0, (1200 - sw) / 2);
+                    var offsetY = Math.max(0, (1200 - sh) / 2);
+                    var nested = document.createElementNS(NS, 'svg');
+                    nested.setAttribute('viewBox', sourceViewBox);
+                    nested.setAttribute('x', offsetX);
+                    nested.setAttribute('y', offsetY);
+                    nested.setAttribute('width',  sw);
+                    nested.setAttribute('height', sh);
+
+                    // Move children into the nested <svg>.
+                    Array.from(parsed.children).forEach(function(child){
+                        nested.appendChild(child.cloneNode(true));
+                    });
+
+                    var layer = document.createElementNS(NS, 'g');
+                    layer.setAttribute('data-layer', label);
+                    layer.appendChild(nested);
+
+                    if (!tintColor) return layer;
+
+                    if (svgHasRasterImages(parsed)) {
+                        // Raster pattern: tint via SVG feColorMatrix filter.
+                        // First matrix desaturates (RGB → luminance grayscale);
+                        // second matrix multiplies each channel by the tint
+                        // colour's R/G/B ratio. Whites become the tint colour,
+                        // blacks stay black, alpha preserved. Texture detail kept.
+                        var rgb = hexToRgb(tintColor) || [0,0,0];
+                        var rN = (rgb[0] / 255).toFixed(4);
+                        var gN = (rgb[1] / 255).toFixed(4);
+                        var bN = (rgb[2] / 255).toFixed(4);
+                        var filterId = 'bcp-tint-' + Math.random().toString(36).slice(2, 8);
+                        var defs = document.createElementNS(NS, 'defs');
+                        var filter = document.createElementNS(NS, 'filter');
+                        filter.setAttribute('id', filterId);
+                        filter.setAttribute('color-interpolation-filters', 'sRGB');
+                        // 1) Desaturate to luminance
+                        var m1 = document.createElementNS(NS, 'feColorMatrix');
+                        m1.setAttribute('type', 'matrix');
+                        m1.setAttribute('values',
+                            '0.299 0.587 0.114 0 0  ' +
+                            '0.299 0.587 0.114 0 0  ' +
+                            '0.299 0.587 0.114 0 0  ' +
+                            '0 0 0 1 0'
+                        );
+                        filter.appendChild(m1);
+                        // 2) Stretch luminance to use the full range. Many design
+                        //    textures sit in the lower brightness range, so
+                        //    multiplying by tint would produce a too-dark result.
+                        //    slope=3 + intercept=0 maps L:0..0.33 → 0..1, clamped.
+                        var ct = document.createElementNS(NS, 'feComponentTransfer');
+                        ['feFuncR', 'feFuncG', 'feFuncB'].forEach(function(fn){
+                            var f = document.createElementNS(NS, fn);
+                            f.setAttribute('type', 'linear');
+                            f.setAttribute('slope', '3');
+                            f.setAttribute('intercept', '0');
+                            ct.appendChild(f);
+                        });
+                        filter.appendChild(ct);
+                        // 3) Multiply by tint
+                        var m2 = document.createElementNS(NS, 'feColorMatrix');
+                        m2.setAttribute('type', 'matrix');
+                        m2.setAttribute('values',
+                            rN + ' 0 0 0 0  ' +
+                            '0 ' + gN + ' 0 0 0  ' +
+                            '0 0 ' + bN + ' 0 0  ' +
+                            '0 0 0 1 0'
+                        );
+                        filter.appendChild(m2);
+                        defs.appendChild(filter);
+                        layer.insertBefore(defs, layer.firstChild);
+                        nested.setAttribute('filter', 'url(#' + filterId + ')');
+                        return layer;
+                    } else {
+                        // Vector tint: setting fill on the wrapper cascades to
+                        // child paths that don't have an explicit fill attribute.
+                        layer.style.fill = tintColor;
+                        return layer;
+                    }
+                }).catch(function(e){
+                    console.warn('Bespoke layer fetch failed:', url, e);
+                    return null;
+                });
             }
 
             // 2. After updateDesignLayers runs, if the active design is a registered
-            //    one, fetch its SVG and inject it into every bg-layer-{stepId} group.
+            //    one, build the full layer stack into every bg-layer-{stepId} group.
             function applyRegisteredDesignSVG(){
                 if (!window.S) return;
                 var d = byId[window.S.design];
-                if (!d || !d.svg_url) return;
+                if (!d) return;
 
-                function inject(svgText){
-                    // Use a proper SVG parser so the injected content stays in the SVG
-                    // namespace (innerHTML on an SVG element drops the namespace).
-                    // We APPEND the design content to bg-layer instead of replacing,
-                    // so the customiser's yellow pad rectangles stay visible behind
-                    // the design pattern.
-                    var doc = new DOMParser().parseFromString(svgText, 'image/svg+xml');
-                    var sourceSvg = doc.documentElement;
-                    if (sourceSvg.nodeName.toLowerCase() === 'parsererror') return;
+                // Compose the layer stack (URLs + tint colours in render order)
+                var stack = [];
 
-                    var groups = document.querySelectorAll('[id^="bg-layer-"]');
-                    groups.forEach(function(g){
-                        // First, remove any previously-injected design overlay so
-                        // switching between designs doesn't stack them.
-                        var prev = g.querySelector('[data-bespoke-design-overlay]');
-                        if (prev) prev.remove();
+                // 1. Background — static wallpaper, no tint
+                if (PA.background_url) {
+                    stack.push({ url: PA.background_url, tint: null, label: 'background' });
+                }
 
-                        // Create a wrapper <g> we tag so we can find/remove it later
-                        var ns = 'http://www.w3.org/2000/svg';
-                        var wrap = document.createElementNS(ns, 'g');
-                        wrap.setAttribute('data-bespoke-design-overlay', d.id);
+                // 2. Pad base — uses design's layer-1 file if set, else product pad base
+                var padBaseUrl  = (d.layers && d.layers[0] && d.layers[0].file_url) || PA.pad_base_url || null;
+                if (padBaseUrl) {
+                    stack.push({ url: padBaseUrl, tint: window.S.bgColor || '#feef00', label: 'pad-base' });
+                }
 
-                        // Clone children from the parsed source SVG into the wrapper.
-                        // Using cloneNode keeps the SVG namespace intact.
-                        Array.from(sourceSvg.children).forEach(function(child){
-                            wrap.appendChild(child.cloneNode(true));
+                // 3. Pattern layers (design.layers index 1+)
+                (d.layers || []).forEach(function(layer, idx){
+                    if (idx === 0) return; // pad base handled above
+                    if (!layer.file_url) return;
+                    var colour;
+                    if (idx === 1)      colour = window.S.patColor || layer.default || '#211d33';
+                    else                colour = layer.default || '#000000';
+                    stack.push({ url: layer.file_url, tint: colour, label: 'pattern-' + idx });
+                });
+
+                if (!stack.length) return;
+
+                // If we have product-level background OR pad base, REPLACE the
+                // customiser's hardcoded yellow pad rectangles with our stack.
+                // Otherwise we'd be drawing on top of them which looks wrong.
+                var hasProductBase = !!(PA.background_url || PA.pad_base_url ||
+                    (d.layers && d.layers[0] && d.layers[0].file_url));
+
+                // Build layers in parallel, then append in correct order.
+                Promise.all(stack.map(function(s){ return buildLayer(s.url, s.tint, s.label); }))
+                    .then(function(layers){
+                        var groups = document.querySelectorAll('[id^="bg-layer-"]');
+                        groups.forEach(function(g, groupIdx){
+                            // Remove old overlay if present
+                            var prev = g.querySelector('[data-bespoke-design-overlay]');
+                            if (prev) prev.remove();
+                            // If we have our own pad base, clear the customiser's
+                            // native pad rendering (yellow rectangles + clip paths)
+                            // so we're not stacking on top of them.
+                            if (hasProductBase) {
+                                Array.from(g.children).forEach(function(child){
+                                    // Only remove non-overlay children
+                                    if (!child.hasAttribute('data-bespoke-design-overlay')) {
+                                        child.remove();
+                                    }
+                                });
+                            }
+                            // Build the parent wrap and append each layer in order
+                            var wrap = document.createElementNS(NS, 'g');
+                            wrap.setAttribute('data-bespoke-design-overlay', d.id);
+
+                            // Build a mask from the pad-base layer so pattern
+                            // layers can be clipped to the pad silhouette
+                            // (otherwise the pattern overflows past the pad).
+                            var padBaseIdx = stack.findIndex(function(s){ return s.label === 'pad-base'; });
+                            var padMaskId = null;
+                            if (padBaseIdx >= 0 && layers[padBaseIdx]) {
+                                var nestedSvg = layers[padBaseIdx].querySelector('svg');
+                                if (nestedSvg) {
+                                    padMaskId = 'bcp-padmask-' + d.id.replace(/[^a-z0-9]/g, '') + '-' + groupIdx;
+                                    var defs = document.createElementNS(NS, 'defs');
+                                    var mask = document.createElementNS(NS, 'mask');
+                                    mask.setAttribute('id', padMaskId);
+                                    mask.setAttribute('maskUnits', 'userSpaceOnUse');
+                                    mask.setAttribute('x', '0');
+                                    mask.setAttribute('y', '0');
+                                    mask.setAttribute('width', '1200');
+                                    mask.setAttribute('height', '1200');
+                                    // Clone the nested pad-base SVG, force white fill
+                                    // (mask uses luminance — white = show through).
+                                    var maskSvg = nestedSvg.cloneNode(true);
+                                    maskSvg.style.fill = '#fff';
+                                    mask.appendChild(maskSvg);
+                                    defs.appendChild(mask);
+                                    wrap.appendChild(defs);
+                                }
+                            }
+
+                            layers.forEach(function(l, i){
+                                if (!l) return;
+                                var cloned = l.cloneNode(true);
+                                // Apply pad mask to pattern layers (not to
+                                // background or pad-base itself).
+                                if (padMaskId && stack[i] && stack[i].label && stack[i].label.indexOf('pattern-') === 0) {
+                                    cloned.setAttribute('mask', 'url(#' + padMaskId + ')');
+                                }
+                                wrap.appendChild(cloned);
+                            });
+                            // Keep legacy CSS vars set so other CSS hooks still work
+                            if (window.S.bgColor)  wrap.style.setProperty('--bg-col',  window.S.bgColor);
+                            if (window.S.patColor) wrap.style.setProperty('--pat-col', window.S.patColor);
+                            (d.layers || []).forEach(function(layer, idx){
+                                var c = idx === 0 ? window.S.bgColor :
+                                        idx === 1 ? window.S.patColor :
+                                        (layer.default || '#000');
+                                if (c) wrap.style.setProperty('--col-' + (idx + 1), c);
+                            });
+                            g.appendChild(wrap);
                         });
-                        g.appendChild(wrap);
-
-                        // Set CSS vars for each colour layer so designs that DO
-                        // use var(--col-N) fills can be tinted by the picker.
-                        (d.layers || []).forEach(function(layer, idx){
-                            var varName = '--col-' + (idx + 1);
-                            var colourFromState;
-                            if (idx === 0) colourFromState = window.S.bgColor;
-                            else if (idx === 1) colourFromState = window.S.patColor;
-                            else colourFromState = layer.default || '#000';
-                            wrap.style.setProperty(varName, colourFromState);
-                        });
-                        if (window.S.bgColor)  wrap.style.setProperty('--bg-col',  window.S.bgColor);
-                        if (window.S.patColor) wrap.style.setProperty('--pat-col', window.S.patColor);
                     });
-                }
-
-                if (svgCache[d.svg_url]) {
-                    inject(svgCache[d.svg_url]);
-                    return;
-                }
-                // credentials:same-origin (default) ensures we send the staging site's
-                // HTTP Basic Auth cookie/header — otherwise nginx returns 401.
-                fetch(d.svg_url).then(function(r){ return r.text(); }).then(function(txt){
-                    // Cache the WHOLE SVG document. DOMParser needs a complete
-                    // <svg>…</svg> root to parse correctly — stripping the outer
-                    // tag produces a fragment which yields a <parsererror>.
-                    svgCache[d.svg_url] = txt;
-                    inject(txt);
-                }).catch(function(e){ console.warn('Bespoke design SVG fetch failed:', e); });
             }
 
-            // Hook into updateDesignLayers if it exists, so our injection runs after
-            // the customiser's own rendering pass for the selected design.
-            function hookUpdateDesignLayers(){
-                if (typeof window.updateDesignLayers !== 'function') {
-                    return setTimeout(hookUpdateDesignLayers, 200);
+            // Update the colour-picker tile labels to match the active design's
+            // layer labels. (For now just the first two rows — Pad background +
+            // Pattern. Designs with 3+ pattern layers are a future feature.)
+            function updateColourPickerLabels(){
+                if (!window.S) return;
+                var d = byId[window.S.design];
+                if (!d || !d.layers || !d.layers.length) return;
+                var lbls = document.querySelectorAll('#bespoke-customiser-root .zone-row .zone-lbl');
+                lbls.forEach(function(el){
+                    var txt = (el.textContent || '').trim();
+                    if (txt === 'Pad background' && d.layers[0] && d.layers[0].label) {
+                        el.textContent = d.layers[0].label;
+                    } else if (txt === 'Pattern' && d.layers[1] && d.layers[1].label) {
+                        el.textContent = d.layers[1].label;
+                    }
+                });
+            }
+
+            // Hook into updateDesignLayers, makeSVG, and syncAll so our injection
+            // runs whenever the customiser's own rendering pass replaces the
+            // bg-layer content (e.g. when the user navigates between steps).
+            function hookCustomiser(){
+                if (typeof window.updateDesignLayers !== 'function' ||
+                    typeof window.makeSVG !== 'function') {
+                    return setTimeout(hookCustomiser, 200);
                 }
-                var orig = window.updateDesignLayers;
+                var origUpdate = window.updateDesignLayers;
                 window.updateDesignLayers = function(){
-                    var ret = orig.apply(this, arguments);
-                    applyRegisteredDesignSVG();
+                    var ret = origUpdate.apply(this, arguments);
+                    requestAnimationFrame(function(){
+                        applyRegisteredDesignSVG();
+                        updateColourPickerLabels();
+                    });
                     return ret;
                 };
-                // Also handle initial load
+                var origMakeSVG = window.makeSVG;
+                window.makeSVG = function(){
+                    var ret = origMakeSVG.apply(this, arguments);
+                    // Defer so the new bg-layer is in the DOM before we inject.
+                    requestAnimationFrame(function(){
+                        applyRegisteredDesignSVG();
+                    });
+                    return ret;
+                };
+                if (typeof window.syncAll === 'function') {
+                    var origSync = window.syncAll;
+                    window.syncAll = function(){
+                        var ret = origSync.apply(this, arguments);
+                        requestAnimationFrame(applyRegisteredDesignSVG);
+                        return ret;
+                    };
+                }
+                // Initial load
                 applyRegisteredDesignSVG();
+                updateColourPickerLabels();
             }
+            var hookUpdateDesignLayers = hookCustomiser; // backwards-compat alias
 
             // Re-apply when state colours change (so colour picker updates the design)
             function watchColourChanges(){
@@ -337,16 +650,212 @@ function bespoke_render_customiser( $atts ) {
                 });
             }
 
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', function(){
-                    patchDesigns();
-                    hookUpdateDesignLayers();
-                    watchColourChanges();
+            // Tag the badge-step screen and its sec-labels so the mobile
+            // reorder CSS can target them. (CSS can't select by text content.)
+            function tagBadgeStep(){
+                var screens = document.querySelectorAll('#bespoke-customiser-root .screen');
+                screens.forEach(function(s){
+                    if (s.classList.contains('bcp-badge-step')) return;
+                    var labels = s.querySelectorAll('.sec-label');
+                    var labelMap = {};
+                    Array.from(labels).forEach(function(l){
+                        var txt = (l.textContent || '').trim().toLowerCase();
+                        if (txt === 'select size')           { labelMap.size   = l; }
+                        else if (txt === 'upload your club badge') { labelMap.upload = l; }
+                        else if (txt === 'badge size')       { labelMap.bsize  = l; }
+                    });
+                    if (labelMap.size && labelMap.upload && labelMap.bsize) {
+                        s.classList.add('bcp-badge-step');
+                        labelMap.size.setAttribute('data-bcp',   'size');
+                        labelMap.upload.setAttribute('data-bcp', 'upload');
+                        labelMap.bsize.setAttribute('data-bcp',  'bsize');
+                    }
                 });
-            } else {
-                patchDesigns();
+            }
+
+            function init(){
+                // Hook customiser functions FIRST so our injection runs whenever
+                // the customiser re-renders. Then patch designs — switching the
+                // default design from 'vanguard' (which no longer exists) to the
+                // first registered design (e.g. Apex), and triggering an initial
+                // updateDesignLayers so the preview paints on landing.
                 hookUpdateDesignLayers();
+                patchDesigns();
                 watchColourChanges();
+                tagBadgeStep();
+
+                // Belt-and-braces initial paint: there's a timing race between
+                // the customiser creating bg-layers and our hook being in
+                // place. The simple retry isn't enough — applyRegisteredDesignSVG
+                // silently does nothing if bg-layers don't exist yet, and
+                // the customiser only creates them when makeSVG runs (which
+                // is often deferred until step navigation).
+                //
+                // Strategy: if no bg-layers yet → force makeSVG (which our
+                // hook will catch, triggering applyRegisteredDesignSVG).
+                // If bg-layers exist but no overlay → call apply directly.
+                // Stops as soon as our overlay is present.
+                var retries = 0;
+                var retryId = setInterval(function(){
+                    retries++;
+                    if (document.querySelector('[data-bespoke-design-overlay]')) {
+                        clearInterval(retryId);
+                        return;
+                    }
+                    if (retries > 20) {
+                        clearInterval(retryId);
+                        return;
+                    }
+                    // Prefer triggering updateDesignLayers (which iterates all
+                    // existing previews and runs our hook). Falls back to
+                    // direct apply if not available.
+                    if (typeof window.updateDesignLayers === 'function') {
+                        window.updateDesignLayers();
+                    } else {
+                        applyRegisteredDesignSVG();
+                    }
+                }, 200);
+
+                // ── OVERRIDE capturePreviewSVG ──────────────────────────────
+                // Returns a Promise<Blob> — the customer's composed design
+                // rendered to a PNG image. Going via PNG sidesteps every SVG
+                // namespace / xlink quirk we've been chasing, and produces a
+                // file that opens and embeds cleanly anywhere.
+                //
+                // Pipeline:
+                //   1. Find the active screen's preview SVG
+                //   2. Refresh our overlay, clone the SVG
+                //   3. Swap badge image hrefs to the saved server URL
+                //   4. INLINE all <image> hrefs as base64 data URIs (so the
+                //      SVG is self-contained — canvas rendering won't try
+                //      to fetch external URLs and fail with broken icons)
+                //   5. Serialize SVG → Blob → load as <img> → draw to <canvas>
+                //   6. canvas.toBlob('image/png') and resolve
+                //
+                // Fallback: if canvas conversion fails, resolve with the SVG
+                // blob so the upload still happens (PHP detects which it is).
+
+                // Helper: fetch a URL and return a Promise resolving to a
+                // base64 data URI string. Same-origin credentials are sent
+                // automatically (needed for Basic Auth staging environments).
+                function urlToDataURI(url){
+                    return fetch(url).then(function(r){
+                        if (!r.ok) throw new Error('HTTP ' + r.status);
+                        return r.blob();
+                    }).then(function(blob){
+                        return new Promise(function(resolve, reject){
+                            var reader = new FileReader();
+                            reader.onload  = function(){ resolve(reader.result); };
+                            reader.onerror = function(){ reject(reader.error); };
+                            reader.readAsDataURL(blob);
+                        });
+                    });
+                }
+
+                // Helper: walk every <image> in the SVG, fetch its external
+                // href, and replace with a data URI. Returns a Promise that
+                // resolves once all images are inlined (failures are non-fatal).
+                function inlineAllImages(svgEl){
+                    var images = svgEl.querySelectorAll('image');
+                    var tasks = [];
+                    for (var i = 0; i < images.length; i++) {
+                        (function(img){
+                            var href = img.getAttribute('href') ||
+                                       img.getAttributeNS('http://www.w3.org/1999/xlink', 'href');
+                            if (!href || href.indexOf('data:') === 0) return;
+                            tasks.push(
+                                urlToDataURI(href)
+                                    .then(function(dataUri){
+                                        img.setAttribute('href', dataUri);
+                                        img.removeAttributeNS('http://www.w3.org/1999/xlink', 'href');
+                                    })
+                                    .catch(function(err){
+                                        console.warn('Bespoke: could not inline image', href, err);
+                                        // Leave the original href — image may still fail to render
+                                    })
+                            );
+                        })(images[i]);
+                    }
+                    return Promise.all(tasks);
+                }
+
+                window.capturePreviewSVG = function(badgeServerUrl){
+                    return new Promise(function(resolve){
+                        try {
+                            var svg = document.querySelector('.screen.active svg.preview');
+                            if (!svg) {
+                                var all = document.querySelectorAll('svg.preview');
+                                svg = all[all.length - 1] || all[0];
+                            }
+                            if (!svg) { resolve(null); return; }
+
+                            applyRegisteredDesignSVG();
+
+                            var clone = svg.cloneNode(true);
+                            clone.setAttribute('width',  '800');
+                            clone.setAttribute('height', '800');
+
+                            if (badgeServerUrl) {
+                                var badgeImgs = clone.querySelectorAll('[id^="badge-layer-"] image');
+                                for (var i = 0; i < badgeImgs.length; i++) {
+                                    badgeImgs[i].removeAttributeNS('http://www.w3.org/1999/xlink', 'href');
+                                    badgeImgs[i].setAttribute('href', badgeServerUrl);
+                                }
+                            }
+                            // Belt and braces: drop xlink:href if href exists
+                            var allImgs = clone.querySelectorAll('image');
+                            for (var j = 0; j < allImgs.length; j++) {
+                                if (allImgs[j].hasAttribute('href')) {
+                                    allImgs[j].removeAttributeNS('http://www.w3.org/1999/xlink', 'href');
+                                }
+                            }
+
+                            // Inline all external image references BEFORE
+                            // serializing — this is the key step that lets
+                            // canvas render the SVG fully.
+                            inlineAllImages(clone).then(function(){
+                                var svgStr  = new XMLSerializer().serializeToString(clone);
+                                var svgBlob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+                                var url     = URL.createObjectURL(svgBlob);
+
+                                var img = new Image();
+                                img.onload = function(){
+                                    try {
+                                        var canvas = document.createElement('canvas');
+                                        canvas.width  = 800;
+                                        canvas.height = 800;
+                                        var ctx = canvas.getContext('2d');
+                                        ctx.fillStyle = '#ffffff';
+                                        ctx.fillRect(0, 0, 800, 800);
+                                        ctx.drawImage(img, 0, 0, 800, 800);
+                                        canvas.toBlob(function(pngBlob){
+                                            URL.revokeObjectURL(url);
+                                            resolve(pngBlob || svgBlob);
+                                        }, 'image/png', 0.92);
+                                    } catch (canvErr) {
+                                        URL.revokeObjectURL(url);
+                                        console.warn('Bespoke PNG conversion failed — falling back to SVG:', canvErr);
+                                        resolve(svgBlob);
+                                    }
+                                };
+                                img.onerror = function(){
+                                    URL.revokeObjectURL(url);
+                                    console.warn('Bespoke SVG image load failed — falling back to SVG');
+                                    resolve(svgBlob);
+                                };
+                                img.src = url;
+                            });
+                        } catch (e) {
+                            console.warn('Bespoke capturePreviewSVG failed:', e);
+                            resolve(null);
+                        }
+                    });
+                };
+            }
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', init);
+            } else {
+                init();
             }
         })();
         </script>
@@ -356,6 +865,40 @@ function bespoke_render_customiser( $atts ) {
     <style id="bespoke-customiser-runtime-fixes">
         /* Page title in white so it reads on the dark customiser background */
         .entry-title { color: #ffffff !important; }
+
+        /* Hide the customiser's own top-bar (logo + "Shin pad customiser"
+           wordmark) on ALL viewports. Page header already shows the brand,
+           this is redundant and eats vertical space inside the customiser. */
+        #bespoke-customiser-root .top-bar { display: none !important; }
+
+        /* ── Mobile-only header + top-bar tweaks ─────────────────────────── */
+        @media (max-width: 899px) {
+            /* Shrink the site header (Astra) on customiser pages */
+            .ast-primary-header-bar { padding: 4px 0 !important; min-height: 0 !important; }
+            .ast-primary-header-bar .site-branding .custom-logo,
+            .ast-primary-header-bar .site-branding img { max-height: 32px !important; width: auto !important; }
+            .entry-title { font-size: clamp(22px, 5vw, 30px) !important; padding: 8px 0 !important; }
+
+            /* Reorder the Badge step on mobile:
+               Preview → Badge Size slider → Upload Badge → Select Size
+               Scoped to .active so we don't override the customiser's
+               display:none on inactive steps (would cause duplicate previews). */
+            #bespoke-customiser-root .screen.bcp-badge-step.active {
+                display: flex !important;
+                flex-direction: column !important;
+            }
+            .bcp-badge-step > .preview-box                  { order: 1; }
+            .bcp-badge-step > .drag-hint                    { order: 2; }
+            .bcp-badge-step > .sec-label[data-bcp="size"]   { order: 7; }
+            .bcp-badge-step > .size-selector                { order: 8; }
+            .bcp-badge-step > p                             { order: 9; }
+            .bcp-badge-step > .sec-label[data-bcp="upload"] { order: 4; }
+            .bcp-badge-step > .upload-zone                  { order: 5; }
+            .bcp-badge-step > .badge-row                    { order: 6; }
+            .bcp-badge-step > .sec-label[data-bcp="bsize"]  { order: 3; }
+            .bcp-badge-step > .size-row                     { order: 3; }
+            .bcp-badge-step > .nav-row                      { order: 10; }
+        }
 
         /* Page-level: stop the homepage marquee bursting the body out to 4087px wide */
         html, body { overflow-x: hidden !important; max-width: 100vw !important; }
@@ -400,16 +943,16 @@ function bespoke_render_customiser( $atts ) {
         /* Custom HSV colour picker ─────────────────────────────────────── */
         #bcp-overlay { position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; background: transparent !important; display: none; align-items: center !important; justify-content: center !important; z-index: 2147483647 !important; font-family: 'Inter', sans-serif; }
         #bcp-overlay.open { display: flex; }
-        .bcp-panel { background: #1A1A1A; border: 1px solid #2A2A2A; border-radius: 12px; padding: 20px; width: 300px; max-width: 90vw; box-sizing: border-box; box-shadow: 0 12px 40px rgba(0,0,0,0.5); }
-        .bcp-title { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255,255,255,0.5); margin-bottom: 14px; }
+        .bcp-panel { background: #1A1A1A; border: 1px solid #2A2A2A; border-radius: 12px; padding: 16px; width: 340px; max-width: 90vw; box-sizing: border-box; box-shadow: 0 12px 40px rgba(0,0,0,0.5); }
+        .bcp-title { font-size: 10px; letter-spacing: 0.10em; text-transform: uppercase; color: rgba(255,255,255,0.6); flex-shrink: 0; white-space: nowrap; }
         .bcp-sv { position: relative; width: 100%; height: 180px; border-radius: 8px; touch-action: none; user-select: none; cursor: crosshair; overflow: hidden; }
         .bcp-sv-cursor { position: absolute; width: 14px; height: 14px; border: 2px solid #fff; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; box-shadow: 0 1px 3px rgba(0,0,0,0.5); }
         .bcp-hue { position: relative; width: 100%; height: 18px; border-radius: 9px; margin-top: 14px; background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00); touch-action: none; user-select: none; cursor: pointer; }
         .bcp-hue-cursor { position: absolute; top: 50%; width: 14px; height: 14px; border: 2px solid #fff; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; box-shadow: 0 1px 3px rgba(0,0,0,0.5); }
-        .bcp-row { display: flex; gap: 8px; margin-top: 14px; align-items: center; }
-        .bcp-hex { flex: 1; background: #0E0E10; border: 1px solid #2A2A2A; border-radius: 6px; padding: 8px 10px; color: #fff; font-family: 'Inter', sans-serif; font-size: 13px; outline: none; text-transform: uppercase; letter-spacing: 0.04em; }
+        .bcp-row { display: flex; gap: 10px; margin-bottom: 14px; align-items: center; }
+        .bcp-hex { flex: 1; min-width: 0; background: #0E0E10; border: 1px solid #2A2A2A; border-radius: 6px; padding: 7px 9px; color: #fff; font-family: 'Inter', sans-serif; font-size: 12px; outline: none; text-transform: uppercase; letter-spacing: 0.04em; }
         .bcp-hex:focus { border-color: #5DCAA5; }
-        .bcp-done { background: #5DCAA5; color: #04342C; border: none; border-radius: 6px; padding: 9px 18px; font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; cursor: pointer; text-transform: uppercase; }
+        .bcp-done { flex-shrink: 0; background: #5DCAA5; color: #04342C; border: none; border-radius: 6px; padding: 8px 14px; font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 600; letter-spacing: 0.06em; cursor: pointer; text-transform: uppercase; }
         .bcp-done:hover { background: #4FB996; }
 
         /* Desktop: picker left-aligned so preview stays visible on the right */
@@ -435,7 +978,7 @@ function bespoke_render_customiser( $atts ) {
 
         var overlay = document.createElement('div');
         overlay.id = 'bcp-overlay';
-        overlay.innerHTML = '<div class="bcp-panel"><div class="bcp-title">Choose colour</div><div class="bcp-sv" id="bcp-sv"><div class="bcp-sv-cursor" id="bcp-sv-cursor"></div></div><div class="bcp-hue" id="bcp-hue"><div class="bcp-hue-cursor" id="bcp-hue-cursor"></div></div><div class="bcp-row"><input class="bcp-hex" id="bcp-hex" type="text" maxlength="7" /><button class="bcp-done" id="bcp-done">Done</button></div></div>';
+        overlay.innerHTML = '<div class="bcp-panel"><div class="bcp-row"><div class="bcp-title">Choose colour</div><input class="bcp-hex" id="bcp-hex" type="text" maxlength="7" /><button class="bcp-done" id="bcp-done">Done</button></div><div class="bcp-sv" id="bcp-sv"><div class="bcp-sv-cursor" id="bcp-sv-cursor"></div></div><div class="bcp-hue" id="bcp-hue"><div class="bcp-hue-cursor" id="bcp-hue-cursor"></div></div></div>';
         document.body.appendChild(overlay);
 
         var activeInput = null, h=0, s=1, v=1;

@@ -207,17 +207,28 @@ function bespoke_display_admin_order_meta( $item_id, $item, $product ) {
     $renderer = 'bespoke_render_admin_' . $type;
 
     if ( is_callable( $renderer ) ) {
-        call_user_func( $renderer, $customisation['data'] );
+        call_user_func( $renderer, $customisation['data'], $item );
     }
 }
+
+/* =========================================================================
+   HIDE INTERNAL META KEYS
+   _bespoke_customisation is a private JSON blob — hide it from the
+   cart, checkout, emails, and admin order item meta panels.
+   ========================================================================= */
+add_filter( 'woocommerce_hidden_order_itemmeta', function( $hidden ) {
+    $hidden[] = '_bespoke_customisation';
+    return $hidden;
+} );
 
 /**
  * Admin order display renderer for shin pads.
  * Outputs a complete production specification card.
  *
- * @param array $d  The 'data' portion of the customisation blob.
+ * @param array                 $d     The 'data' portion of the customisation blob.
+ * @param WC_Order_Item_Product $item  The order line item (needed for unique IDs).
  */
-function bespoke_render_admin_shinpads( $d ) {
+function bespoke_render_admin_shinpads( $d, $item ) {
 
     // Helper: render a colour swatch + hex value
     $colour_swatch = function( $hex ) {
@@ -247,6 +258,18 @@ function bespoke_render_admin_shinpads( $d ) {
             . esc_html( $label ) . '</td></tr>';
     };
 
+    // Helper: render an entire section as a sub-table (label + value rows)
+    $section = function( $heading_label, $rows_html ) {
+        return '<div style="margin-bottom:14px;">'
+            . '<div style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.6px;padding-bottom:4px;margin-bottom:6px;border-bottom:1px solid #eee;">'
+            . esc_html( $heading_label )
+            . '</div>'
+            . '<table style="width:100%;border-collapse:collapse;">'
+            . $rows_html
+            . '</table>'
+            . '</div>';
+    };
+
     ob_start();
     ?>
     <div style="
@@ -257,85 +280,89 @@ function bespoke_render_admin_shinpads( $d ) {
         border-radius: 6px;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     ">
-        <div style="font-size:11px;font-weight:700;color:#2E7D32;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;">
+        <div style="font-size:11px;font-weight:700;color:#2E7D32;text-transform:uppercase;letter-spacing:.6px;margin-bottom:14px;">
             ✦ BEspoke Sport — Shin Pad Specification
         </div>
 
-        <table style="width:100%;border-collapse:collapse;">
+        <!-- Two-column grid: left = product/pads, right = fonts/colours/badge -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;">
 
-            <?php echo $heading( 'Product' ); ?>
-            <?php echo $row( 'Size',   $d['size']   ?? '' ); ?>
-            <?php echo $row( 'Design', $d['design'] ?? '' ); ?>
-
-            <?php echo $heading( 'Left pad' ); ?>
-            <?php echo $row( 'Name',   $d['left']['name']   ?? '' ); ?>
-            <?php echo $row( 'Number', $d['left']['number'] ?? '' ); ?>
-
-            <?php echo $heading( 'Right pad' ); ?>
-            <?php echo $row( 'Name',   $d['right']['name']   ?? '' ); ?>
-            <?php echo $row( 'Number', $d['right']['number'] ?? '' ); ?>
-
-            <?php echo $heading( 'Fonts' ); ?>
-            <?php echo $row( 'Name font',   $d['fonts']['name']   ?? '' ); ?>
-            <?php echo $row( 'Number font', $d['fonts']['number'] ?? '' ); ?>
-
-            <?php echo $heading( 'Colours' ); ?>
-            <?php echo $row( 'Pad background', $colour_swatch( $d['colours']['background']  ?? '' ) ); ?>
-            <?php echo $row( 'Pattern',        $colour_swatch( $d['colours']['pattern']     ?? '' ) ); ?>
-            <?php echo $row( 'Name text',      $colour_swatch( $d['colours']['name_text']   ?? '' ) ); ?>
-            <?php echo $row( 'Number text',    $colour_swatch( $d['colours']['number_text'] ?? '' ) ); ?>
-
-            <?php echo $heading( 'Club badge' ); ?>
-            <?php
-            if ( ! empty( $d['badge']['url'] ) ) {
-                $badge_html = sprintf(
-                    '<a href="%s" target="_blank"><img src="%s" style="max-height:48px;max-width:80px;object-fit:contain;border:1px solid #eee;border-radius:4px;padding:2px;" /></a>',
-                    esc_url( $d['badge']['url'] ),
-                    esc_url( $d['badge']['url'] )
-                );
-                echo $row( 'Badge image', $badge_html );
-                echo $row( 'Filename',    esc_html( $d['badge']['filename'] ?? '' ) );
-            } else {
-                echo $row( 'Badge image', 'Not added' );
-            }
-            ?>
-
-            <?php if ( ! empty( $d['preview_url'] ) ) : ?>
-                <?php echo $heading( 'Design Preview' ); ?>
+            <!-- ── LEFT COLUMN ───────────────────────────────────────────── -->
+            <div>
                 <?php
-                $preview_html = sprintf(
-                    '<a href="%1$s" target="_blank"><img src="%1$s" style="max-height:120px;max-width:120px;object-fit:contain;border:1px solid #eee;border-radius:4px;padding:4px;background:#fff;" /></a>',
-                    esc_url( $d['preview_url'] )
+                echo $section( 'Product',
+                    $row( 'Size',   $d['size']   ?? '' ) .
+                    $row( 'Design', $d['design'] ?? '' )
                 );
-                echo $row( 'Preview', $preview_html );
+                echo $section( 'Left pad',
+                    $row( 'Name',   $d['left']['name']   ?? '' ) .
+                    $row( 'Number', $d['left']['number'] ?? '' )
+                );
+                echo $section( 'Right pad',
+                    $row( 'Name',   $d['right']['name']   ?? '' ) .
+                    $row( 'Number', $d['right']['number'] ?? '' )
+                );
                 ?>
-            <?php endif; ?>
+            </div>
 
-            <?php if ( ! empty( $d['notes'] ) ) : ?>
-                <?php echo $heading( 'Order notes' ); ?>
-                <?php echo $row( 'Notes', '<span style="white-space:pre-wrap;">' . esc_html( $d['notes'] ) . '</span>' ); ?>
-            <?php endif; ?>
+            <!-- ── RIGHT COLUMN ──────────────────────────────────────────── -->
+            <div>
+                <?php
+                echo $section( 'Fonts',
+                    $row( 'Name font',   $d['fonts']['name']   ?? '' ) .
+                    $row( 'Number font', $d['fonts']['number'] ?? '' )
+                );
+                echo $section( 'Colours',
+                    $row( 'Pad background', $colour_swatch( $d['colours']['background']  ?? '' ) ) .
+                    $row( 'Pattern',        $colour_swatch( $d['colours']['pattern']     ?? '' ) ) .
+                    $row( 'Name text',      $colour_swatch( $d['colours']['name_text']   ?? '' ) ) .
+                    $row( 'Number text',    $colour_swatch( $d['colours']['number_text'] ?? '' ) )
+                );
 
-        </table>
+                // Club badge
+                if ( ! empty( $d['badge']['url'] ) ) {
+                    $badge_html = sprintf(
+                        '<a href="%s" target="_blank"><img src="%s" style="max-height:48px;max-width:80px;object-fit:contain;border:1px solid #eee;border-radius:4px;padding:2px;background:#fff;" /></a>',
+                        esc_url( $d['badge']['url'] ),
+                        esc_url( $d['badge']['url'] )
+                    );
+                    echo $section( 'Club badge',
+                        $row( 'Badge image', $badge_html ) .
+                        $row( 'Filename',    esc_html( $d['badge']['filename'] ?? '' ) )
+                    );
+                } else {
+                    echo $section( 'Club badge', $row( 'Badge image', 'Not added' ) );
+                }
+                ?>
+            </div>
 
-        <?php
-        // Raw JSON toggle — useful for debugging or if production needs to
-        // re-render the SVG programmatically in future.
-        $json_id = 'bespoke-json-' . esc_attr( $item->get_id() );
-        ?>
-        <div style="margin-top:10px;">
-            <button
-                type="button"
-                onclick="var el=document.getElementById('<?php echo $json_id; ?>');el.style.display=el.style.display==='none'?'block':'none';"
-                style="font-size:11px;color:#999;background:none;border:none;cursor:pointer;padding:0;text-decoration:underline;"
-            >View raw JSON</button>
-            <pre id="<?php echo $json_id; ?>"
-                style="display:none;margin-top:8px;padding:10px;background:#fff;border:1px solid #e5e5e5;border-radius:4px;font-size:11px;overflow-x:auto;line-height:1.5;color:#333;"
-            ><?php echo esc_html( json_encode(
-                json_decode( $item->get_meta( '_bespoke_customisation' ) ),
-                JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
-            ) ); ?></pre>
         </div>
+
+        <!-- ── FULL-WIDTH ROW: Preview + Notes ───────────────────────────── -->
+        <?php if ( ! empty( $d['preview_url'] ) || ! empty( $d['notes'] ) ) : ?>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:4px;">
+                <?php if ( ! empty( $d['preview_url'] ) ) : ?>
+                    <div>
+                        <?php
+                        $preview_html = sprintf(
+                            '<a href="%1$s" target="_blank"><img src="%1$s" style="max-height:160px;max-width:100%%;object-fit:contain;border:1px solid #eee;border-radius:4px;padding:4px;background:#fff;display:block;" /></a>',
+                            esc_url( $d['preview_url'] )
+                        );
+                        echo $section( 'Design preview', $row( 'Preview', $preview_html ) );
+                        ?>
+                    </div>
+                <?php endif; ?>
+                <?php if ( ! empty( $d['notes'] ) ) : ?>
+                    <div>
+                        <?php
+                        echo $section( 'Order notes',
+                            $row( 'Notes', '<span style="white-space:pre-wrap;">' . esc_html( $d['notes'] ) . '</span>' )
+                        );
+                        ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+        <?php endif; ?>
 
     </div>
     <?php

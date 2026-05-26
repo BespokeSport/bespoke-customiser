@@ -117,6 +117,43 @@ add_action( 'init', function() {
     }
 } );
 
+add_action( 'wp_ajax_bespoke_upload_layer_file', function() {
+    if ( ! current_user_can( 'manage_options' ) ) {
+        wp_send_json_error( 'Not authorised', 403 );
+    }
+    if ( ! check_ajax_referer( 'bespoke_design_svg_upload', '_nonce', false ) ) {
+        wp_send_json_error( 'Invalid nonce', 403 );
+    }
+    if ( empty( $_FILES['file'] ) || $_FILES['file']['error'] !== UPLOAD_ERR_OK ) {
+        wp_send_json_error( 'No file or upload error' );
+    }
+    $file = $_FILES['file'];
+    $ext  = strtolower( pathinfo( $file['name'], PATHINFO_EXTENSION ) );
+    if ( ! in_array( $ext, [ 'svg', 'png', 'jpg', 'jpeg' ], true ) ) {
+        wp_send_json_error( 'Only .svg, .png, .jpg files are accepted' );
+    }
+    if ( ! file_exists( BESPOKE_DESIGNS_DIR ) ) {
+        wp_mkdir_p( BESPOKE_DESIGNS_DIR );
+    }
+    $safe   = sanitize_file_name( $file['name'] );
+    $base   = pathinfo( $safe, PATHINFO_FILENAME );
+    $target = BESPOKE_DESIGNS_DIR . $safe;
+    $counter = 1;
+    while ( file_exists( $target ) ) {
+        $target = BESPOKE_DESIGNS_DIR . $base . '-' . $counter . '.' . $ext;
+        $counter++;
+    }
+    if ( ! @move_uploaded_file( $file['tmp_name'], $target ) ) {
+        wp_send_json_error( 'Could not save file (check folder permissions on /wp-content/uploads/bespoke-designs/)' );
+    }
+    wp_send_json_success( [
+        'url'      => BESPOKE_DESIGNS_URL . basename( $target ),
+        'filename' => basename( $target ),
+        'size'     => filesize( $target ),
+    ] );
+} );
+
+
 add_action( 'wp_ajax_bespoke_upload_design_svg', function() {
     if ( ! current_user_can( 'manage_options' ) ) {
         wp_send_json_error( 'Not authorised', 403 );
@@ -306,34 +343,14 @@ function bespoke_design_files_cb( $post ) {
             </td>
         </tr>
 
-        <!-- SVG File -->
-        <tr>
-            <th><label>SVG file</label></th>
-            <td>
-                <button type="button" class="button button-primary" id="bespoke-svg-btn">
-                    <?php echo $svg_url ? 'Change SVG' : 'Upload SVG'; ?>
-                </button>
-                <?php if ( $svg_url ) : ?>
-                    <button type="button" class="button" id="bespoke-svg-remove" style="margin-left:6px;">Remove</button>
-                <?php endif; ?>
-                <input type="url"
-                       name="bespoke_svg_url"
-                       id="bespoke_svg_url"
-                       value="<?php echo esc_attr( $svg_url ); ?>"
-                       class="large-text"
-                       placeholder="https://…"
-                       style="margin-top:10px;" />
-                <p class="description">
-                    Click <strong>Upload SVG</strong> to add or replace the design's SVG via the Media Library, or paste a URL directly.<br />
-                    <strong>Important:</strong> colour zones in your SVG must use CSS variables
-                    <code>--col-1</code>, <code>--col-2</code>, <code>--col-3</code> etc.
-                    to match the layers you define in the Colour Layers box below.
-                </p>
-                <?php if ( $svg_url ) : ?>
-                    <p style="margin-top:6px;">
-                        <a href="<?php echo esc_url( $svg_url ); ?>" target="_blank">View current SVG ↗</a>
-                    </p>
-                <?php endif; ?>
+        <!--
+            Legacy single-SVG-per-design field removed 2026-05-22.
+            New flow: upload pattern files per row in the "Colour Layers" box below.
+            The bespoke_svg_url post meta is no longer read by the renderer.
+        -->
+        <tr style="display:none;">
+            <td colspan="2">
+                <input type="hidden" name="bespoke_svg_url" id="bespoke_svg_url" value="<?php echo esc_attr( $svg_url ); ?>" />
             </td>
         </tr>
 
@@ -459,26 +476,32 @@ function bespoke_design_layers_cb( $post ) {
         ];
     }
     ?>
-    <p style="margin-bottom:12px;color:#555;">
-        Define the independently-colourable zones in this design's SVG.<br />
-        Each layer maps to a CSS variable: Layer 1 → <code>--col-1</code>, Layer 2 → <code>--col-2</code>, etc.<br />
-        The customer will see a colour picker for each layer, labelled with the name you enter here.
-    </p>
+    <div style="margin-bottom:14px;padding:12px;background:#f0f6fc;border-left:4px solid #2271b1;">
+        <p style="margin:0 0 6px 0;"><strong>Each layer = one colour zone the customer can recolour.</strong></p>
+        <ul style="margin:0 0 0 18px;list-style:disc;">
+            <li><strong>Layer 1</strong> = the pad colour picker shown to the customer. <strong>Leave the file blank</strong> — it uses the shared <em>Pad Base</em> from <a href="<?php echo esc_url( admin_url( 'edit.php?post_type=bespoke_design&page=bespoke-product-setup' ) ); ?>">Product Setup</a>. Only upload a file here if this specific design needs a custom pad shape.</li>
+            <li><strong>Layer 2+</strong> = the actual pattern overlays for THIS design (e.g. distressed texture, stripes). <strong>A file is required</strong> for each. Each is tinted with the customer's colour picker for that zone.</li>
+        </ul>
+        <p style="margin:6px 0 0 0;color:#555;font-size:12px;">The shared <strong>Background</strong> (static wallpaper) is also set in Product Setup — no per-design file needed.</p>
+    </div>
 
     <table class="widefat" id="bespoke-layers-table" style="margin-bottom:12px;">
         <thead>
             <tr>
                 <th style="width:40px;">#</th>
-                <th>Layer label <span style="font-weight:400;color:#888;">(shown to customer)</span></th>
+                <th style="width:24%;">Layer label <span style="font-weight:400;color:#888;">(shown to customer)</span></th>
                 <th style="width:140px;">Default colour</th>
+                <th>Pattern file</th>
                 <th style="width:80px;">Remove</th>
             </tr>
         </thead>
         <tbody id="bespoke-layers-body">
             <?php foreach ( $layers as $i => $layer ) :
-                $n = $i + 1;
+                $n         = $i + 1;
+                $file_url  = $layer['file_url']      ?? '';
+                $file_name = $layer['file_filename'] ?? '';
             ?>
-            <tr class="bespoke-layer-row" style="background:#fff;">
+            <tr class="bespoke-layer-row" style="background:#fff;" data-layer-idx="<?php echo $i; ?>">
                 <td style="vertical-align:middle;font-weight:700;color:#888;"><?php echo $n; ?></td>
                 <td>
                     <input type="text"
@@ -486,7 +509,7 @@ function bespoke_design_layers_cb( $post ) {
                            value="<?php echo esc_attr( $layer['label'] ?? '' ); ?>"
                            placeholder="e.g. Pad background"
                            style="width:100%;" />
-                    <small style="color:#aaa;">SVG variable: <code>--col-<?php echo $n; ?></code></small>
+                    <small style="color:#aaa;">CSS variable: <code>--col-<?php echo $n; ?></code></small>
                 </td>
                 <td>
                     <div style="display:flex;align-items:center;gap:8px;">
@@ -499,6 +522,32 @@ function bespoke_design_layers_cb( $post ) {
                                value="<?php echo esc_attr( $layer['default'] ?? '#000000' ); ?>"
                                maxlength="7"
                                style="width:80px;font-family:monospace;" />
+                    </div>
+                </td>
+                <td>
+                    <div class="bespoke-layer-file-cell">
+                        <input type="hidden"
+                               class="bespoke-layer-file-url"
+                               name="bespoke_layers[<?php echo $i; ?>][file_url]"
+                               value="<?php echo esc_attr( $file_url ); ?>" />
+                        <input type="hidden"
+                               class="bespoke-layer-file-name"
+                               name="bespoke_layers[<?php echo $i; ?>][file_filename]"
+                               value="<?php echo esc_attr( $file_name ); ?>" />
+                        <span class="bespoke-layer-file-display" style="display:inline-block;min-width:140px;">
+                            <?php if ( $file_url ) : ?>
+                                <code style="font-size:11px;"><?php echo esc_html( $file_name ?: basename( $file_url ) ); ?></code>
+                                &nbsp;<a href="<?php echo esc_url( $file_url ); ?>" target="_blank" style="font-size:11px;">View ↗</a>
+                            <?php else : ?>
+                                <em style="color:#aaa;font-size:12px;"><?php echo $i === 0 ? 'Uses product Pad Base' : 'No file'; ?></em>
+                            <?php endif; ?>
+                        </span>
+                        <button type="button" class="button bespoke-layer-upload-btn">
+                            <?php echo $file_url ? 'Replace' : 'Upload'; ?>
+                        </button>
+                        <?php if ( $file_url ) : ?>
+                            <button type="button" class="button button-link-delete bespoke-layer-file-remove">×</button>
+                        <?php endif; ?>
                     </div>
                 </td>
                 <td>
@@ -533,12 +582,12 @@ function bespoke_design_layers_cb( $post ) {
             var rows = $( '#bespoke-layers-body .bespoke-layer-row' ).length;
             var idx  = rows;
             var num  = rows + 1;
-            var html = '<tr class="bespoke-layer-row" style="background:#fff;">'
+            var html = '<tr class="bespoke-layer-row" style="background:#fff;" data-layer-idx="' + idx + '">'
                 + '<td style="vertical-align:middle;font-weight:700;color:#888;">' + num + '</td>'
                 + '<td>'
                 + '<input type="text" name="bespoke_layers[' + idx + '][label]" value="" '
                 + 'placeholder="e.g. Pattern" style="width:100%;" />'
-                + '<small style="color:#aaa;">SVG variable: <code>--col-' + num + '</code></small>'
+                + '<small style="color:#aaa;">CSS variable: <code>--col-' + num + '</code></small>'
                 + '</td>'
                 + '<td>'
                 + '<div style="display:flex;align-items:center;gap:8px;">'
@@ -548,11 +597,92 @@ function bespoke_design_layers_cb( $post ) {
                 + 'style="width:80px;font-family:monospace;" />'
                 + '</div>'
                 + '</td>'
+                + '<td>'
+                + '<div class="bespoke-layer-file-cell">'
+                + '<input type="hidden" class="bespoke-layer-file-url" name="bespoke_layers[' + idx + '][file_url]" value="" />'
+                + '<input type="hidden" class="bespoke-layer-file-name" name="bespoke_layers[' + idx + '][file_filename]" value="" />'
+                + '<span class="bespoke-layer-file-display" style="display:inline-block;min-width:140px;">'
+                + '<em style="color:#aaa;font-size:12px;">No file</em>'
+                + '</span>'
+                + '<button type="button" class="button bespoke-layer-upload-btn">Upload</button>'
+                + '</div>'
+                + '</td>'
                 + '<td><button type="button" class="button bespoke-remove-layer" '
                 + 'style="color:#a00;">Remove</button></td>'
                 + '</tr>';
             $( '#bespoke-layers-body' ).append( html );
             renumberRows();
+        } );
+
+        // ── Layer file upload ─────────────────────────────────────────────────
+        var layerFileNonce = '<?php echo esc_js( wp_create_nonce( "bespoke_design_svg_upload" ) ); ?>';
+
+        $( document ).on( 'click', '.bespoke-layer-upload-btn', function() {
+            var $btn  = $( this );
+            var $cell = $btn.closest( '.bespoke-layer-file-cell' );
+            var $row  = $btn.closest( '.bespoke-layer-row' );
+            var idx   = $row.attr( 'data-layer-idx' );
+
+            var input = document.createElement( 'input' );
+            input.type   = 'file';
+            input.accept = '.svg,.png,.jpg,.jpeg,image/svg+xml,image/png,image/jpeg';
+            input.onchange = function() {
+                var file = input.files[0];
+                if ( ! file ) return;
+                var originalText = $btn.text();
+                $btn.text( 'Uploading…' ).prop( 'disabled', true );
+
+                var fd = new FormData();
+                fd.append( 'action', 'bespoke_upload_layer_file' );
+                fd.append( '_nonce', layerFileNonce );
+                fd.append( 'file',   file );
+
+                fetch( ajaxurl, { method: 'POST', body: fd, credentials: 'include' } )
+                    .then( function( r ) { return r.json(); } )
+                    .then( function( res ) {
+                        $btn.prop( 'disabled', false );
+                        if ( res && res.success ) {
+                            var sizeKb = Math.round( res.data.size / 1024 );
+                            $cell.find( '.bespoke-layer-file-url'  ).val( res.data.url );
+                            $cell.find( '.bespoke-layer-file-name' ).val( res.data.filename );
+                            $cell.find( '.bespoke-layer-file-display' ).html(
+                                '<code style="font-size:11px;">' + res.data.filename + '</code>' +
+                                ' &nbsp;<a href="' + res.data.url + '" target="_blank" style="font-size:11px;">View ↗</a>' +
+                                ' <small style="color:#1d8348;">(' + sizeKb + ' KB)</small>'
+                            );
+                            $btn.text( 'Replace' );
+                            if ( ! $cell.find( '.bespoke-layer-file-remove' ).length ) {
+                                $btn.after( '<button type="button" class="button button-link-delete bespoke-layer-file-remove">×</button>' );
+                            }
+                        } else {
+                            $btn.text( originalText );
+                            alert( 'Upload failed: ' + ( ( res && res.data ) || 'unknown error' ) );
+                        }
+                    } )
+                    .catch( function( err ) {
+                        $btn.prop( 'disabled', false ).text( originalText );
+                        alert( 'Upload error: ' + err );
+                    } );
+            };
+            input.click();
+        } );
+
+        // ── Remove a layer's file ─────────────────────────────────────────────
+        $( document ).on( 'click', '.bespoke-layer-file-remove', function() {
+            var $btn  = $( this );
+            var $cell = $btn.closest( '.bespoke-layer-file-cell' );
+            var $row  = $btn.closest( '.bespoke-layer-row' );
+            var idx   = $row.attr( 'data-layer-idx' );
+
+            $cell.find( '.bespoke-layer-file-url'  ).val( '' );
+            $cell.find( '.bespoke-layer-file-name' ).val( '' );
+            $cell.find( '.bespoke-layer-file-display' ).html(
+                '<em style="color:#aaa;font-size:12px;">' +
+                ( idx === '0' ? 'Uses product Pad Base' : 'No file' ) +
+                '</em>'
+            );
+            $cell.find( '.bespoke-layer-upload-btn' ).text( 'Upload' );
+            $btn.remove();
         } );
 
         // ── Remove a layer row ────────────────────────────────────────────────
@@ -628,13 +758,20 @@ function bespoke_design_save_meta( $post_id, $post ) {
     $raw_layers = isset( $_POST['bespoke_layers'] ) ? (array) $_POST['bespoke_layers'] : [];
     $layers     = [];
     foreach ( $raw_layers as $layer ) {
-        $label   = sanitize_text_field( $layer['label']   ?? '' );
-        $default = sanitize_hex_color(  $layer['default'] ?? '#000000' );
+        $label    = sanitize_text_field( $layer['label']         ?? '' );
+        $default  = sanitize_hex_color(  $layer['default']       ?? '#000000' );
+        $file_url = esc_url_raw(         $layer['file_url']      ?? '' );
+        $file_fn  = sanitize_file_name(  $layer['file_filename'] ?? '' );
         if ( $label ) {
-            $layers[] = [
+            $entry = [
                 'label'   => $label,
                 'default' => $default ?: '#000000',
             ];
+            if ( $file_url ) {
+                $entry['file_url']      = $file_url;
+                $entry['file_filename'] = $file_fn;
+            }
+            $layers[] = $entry;
         }
     }
     update_post_meta( $post_id, '_bespoke_layers', $layers );

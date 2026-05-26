@@ -110,17 +110,117 @@ function bespoke_handle_preview_upload() {
 
     $file = $_FILES['preview'];
 
-    // Read the raw content and verify it looks like SVG
+    // Read the raw content
     $content = file_get_contents( $file['tmp_name'] );
+
+    // ── PNG branch ──────────────────────────────────────────────────────────
+    // Detect PNG by magic bytes (first 4 bytes = \x89PNG). If it's a PNG, we
+    // just save it directly — no XML parsing or namespace work needed. This
+    // is the preferred path: the frontend renders the SVG to canvas and
+    // uploads the PNG, sidestepping every SVG quirk.
+    if ( substr( $content, 0, 4 ) === "\x89PNG" ) {
+        $safe_name = 'preview-' . time() . '-' . wp_generate_uuid4() . '.png';
+        $dest_path = BESPOKE_UPLOAD_DIR . $safe_name;
+        $dest_url  = BESPOKE_UPLOAD_URL . $safe_name;
+        if ( file_put_contents( $dest_path, $content ) === false ) {
+            wp_send_json_error( 'Could not save preview PNG.' );
+        }
+        wp_send_json_success( [ 'url' => $dest_url ] );
+        return;
+    }
+
+    // ── SVG fallback ────────────────────────────────────────────────────────
+    // If canvas conversion failed client-side, we still get an SVG blob.
+    // Continue with the original SVG cleanup pipeline.
     if ( strpos( $content, '<svg' ) === false ) {
         wp_send_json_error( 'Invalid preview file.' );
+    }
+
+    // ── Normalise SVG so it renders standalone ───────────────────────────────
+    // The customiser uses xlink:href on <image> elements. When the browser's
+    // XMLSerializer captures the live SVG and we save it as a standalone file,
+    // the xmlns:xlink declaration is sometimes lost. Also, the customiser sets
+    // BOTH xlink:href AND href on the same element (legacy browser support),
+    // so naive "convert xlink:href → href" produces duplicate attributes that
+    // fail with "Attribute href redefined".
+    //
+    // Use DOMDocument for safe, attribute-aware parsing:
+    //   1. Pre-declare the xlink namespace so the parser accepts the file
+    //   2. For every element with xlink:href, drop xlink:href and keep
+    //      plain href (set one if missing)
+    //   3. Save back — no duplicates, no missing namespace
+
+    // Pre-declare xmlns / xmlns:xlink so DOMDocument can parse legally
+    if ( ! preg_match( '/<svg\b[^>]*\bxmlns:xlink\s*=/i', $content ) ) {
+        $content = preg_replace(
+            '/<svg\b/',
+            '<svg xmlns:xlink="http://www.w3.org/1999/xlink"',
+            $content,
+            1
+        );
+    }
+    if ( ! preg_match( '/<svg\b[^>]*\bxmlns\s*=\s*["\']http:\/\/www\.w3\.org\/2000\/svg["\']/i', $content ) ) {
+        $content = preg_replace(
+            '/<svg\b/',
+            '<svg xmlns="http://www.w3.org/2000/svg"',
+            $content,
+            1
+        );
+    }
+
+    // Primary fix: dedup duplicate href attributes. For every opening tag
+    // containing BOTH xlink:href and a plain href, drop the xlink:href.
+    // Match whole opening tags (up to first '>'). This works on real SVG —
+    // the previous regex broke on URLs containing slashes inside attribute
+    // values because [^>\/]+ stopped at the first "/" in "http://".
+    $content = preg_replace_callback(
+        '/<[^>]+>/',
+        function( $m ) {
+            $tag = $m[0];
+            // Skip closing tags and comments
+            if ( strpos( $tag, '</' ) === 0 || strpos( $tag, '<!' ) === 0 ) {
+                return $tag;
+            }
+            $has_xlink_href = preg_match( '/\bxlink:href\s*=/', $tag );
+            // (?<![\w:]) — "href" NOT preceded by a word char or colon
+            // (so xlink:href won't match)
+            $has_plain_href = preg_match( '/(?<![\w:])href\s*=/', $tag );
+
+            if ( $has_xlink_href && $has_plain_href ) {
+                $tag = preg_replace( '/\s*xlink:href\s*=\s*(?:"[^"]*"|\'[^\']*\')/', '', $tag );
+            }
+            return $tag;
+        },
+        $content
+    );
+
+    // Secondary: try DOMDocument cleanup for any remaining xlink:href elements
+    // (those that had only xlink:href, no plain href — convert them).
+    libxml_use_internal_errors( true );
+    $doc    = new DOMDocument();
+    $loaded = $doc->loadXML( $content );
+    libxml_clear_errors();
+    libxml_use_internal_errors( false );
+
+    if ( $loaded ) {
+        $xpath = new DOMXPath( $doc );
+        $xpath->registerNamespace( 'x', 'http://www.w3.org/1999/xlink' );
+        foreach ( $xpath->query( '//*[@x:href]' ) as $node ) {
+            $xlink_value = $node->getAttributeNS( 'http://www.w3.org/1999/xlink', 'href' );
+            $node->removeAttributeNS( 'http://www.w3.org/1999/xlink', 'href' );
+            if ( ! $node->hasAttribute( 'href' ) ) {
+                $node->setAttribute( 'href', $xlink_value );
+            }
+        }
+        $content = $doc->saveXML();
     }
 
     $safe_name = 'preview-' . time() . '-' . wp_generate_uuid4() . '.svg';
     $dest_path = BESPOKE_UPLOAD_DIR . $safe_name;
     $dest_url  = BESPOKE_UPLOAD_URL . $safe_name;
 
-    if ( ! move_uploaded_file( $file['tmp_name'], $dest_path ) ) {
+    // Write the (possibly patched) content directly rather than move_uploaded_file
+    if ( file_put_contents( $dest_path, $content ) === false ) {
         wp_send_json_error( 'Could not save preview image.' );
     }
 
