@@ -954,6 +954,18 @@ function bespoke_render_customiser( $atts ) {
         .bcp-hex:focus { border-color: #5DCAA5; }
         .bcp-done { flex-shrink: 0; background: #5DCAA5; color: #04342C; border: none; border-radius: 6px; padding: 8px 14px; font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 600; letter-spacing: 0.06em; cursor: pointer; text-transform: uppercase; }
         .bcp-done:hover { background: #4FB996; }
+        .bcp-recent-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+        .bcp-recent-label { font-size: 10px; letter-spacing: 0.10em; text-transform: uppercase; color: rgba(255,255,255,0.6); white-space: nowrap; }
+        .bcp-recent { display: flex; gap: 6px; }
+        .bcp-recent-swatch { width: 25px; height: 25px; border-radius: 6px; border: 1px solid #2A2A2A; cursor: pointer; transition: transform 120ms ease, border-color 120ms ease; box-sizing: border-box; }
+        .bcp-recent-swatch:hover { transform: scale(1.08); border-color: #5DCAA5; }
+        .bcp-recent-empty { background: #0E0E10; opacity: 0.35; cursor: default; }
+        .bcp-recent-empty:hover { transform: none; border-color: #2A2A2A; }
+        .bcp-badge-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+        .bcp-badge-label { font-size: 10px; letter-spacing: 0.10em; text-transform: uppercase; color: rgba(255,255,255,0.6); white-space: nowrap; }
+        .bcp-badge-swatches { display: flex; gap: 6px; }
+        .bcp-badge-swatch { width: 25px; height: 25px; border-radius: 6px; border: 1px solid #2A2A2A; cursor: pointer; transition: transform 120ms ease, border-color 120ms ease; box-sizing: border-box; }
+        .bcp-badge-swatch:hover { transform: scale(1.08); border-color: #5DCAA5; }
 
         /* Desktop: picker left-aligned so preview stays visible on the right */
         @media (min-width: 900px) {
@@ -978,7 +990,7 @@ function bespoke_render_customiser( $atts ) {
 
         var overlay = document.createElement('div');
         overlay.id = 'bcp-overlay';
-        overlay.innerHTML = '<div class="bcp-panel"><div class="bcp-row"><div class="bcp-title">Choose colour</div><input class="bcp-hex" id="bcp-hex" type="text" maxlength="7" /><button class="bcp-done" id="bcp-done">Done</button></div><div class="bcp-sv" id="bcp-sv"><div class="bcp-sv-cursor" id="bcp-sv-cursor"></div></div><div class="bcp-hue" id="bcp-hue"><div class="bcp-hue-cursor" id="bcp-hue-cursor"></div></div></div>';
+        overlay.innerHTML = '<div class="bcp-panel"><div class="bcp-row"><div class="bcp-title">Choose colour</div><input class="bcp-hex" id="bcp-hex" type="text" maxlength="7" /><button class="bcp-done" id="bcp-done">Done</button></div><div class="bcp-badge-row" id="bcp-badge-row" style="display:none;"><div class="bcp-badge-label">Badge Colours</div><div class="bcp-badge-swatches" id="bcp-badge-swatches"></div></div><div class="bcp-recent-row"><div class="bcp-recent-label">Recent Colours</div><div class="bcp-recent" id="bcp-recent"></div></div><div class="bcp-sv" id="bcp-sv"><div class="bcp-sv-cursor" id="bcp-sv-cursor"></div></div><div class="bcp-hue" id="bcp-hue"><div class="bcp-hue-cursor" id="bcp-hue-cursor"></div></div></div>';
         document.body.appendChild(overlay);
 
         var activeInput = null, h=0, s=1, v=1;
@@ -1032,7 +1044,208 @@ function bespoke_render_customiser( $atts ) {
           if(v.length===6||v.length===3){try{setHex('#'+v)}catch(_){}}
         });
 
-        function close(){overlay.classList.remove('open');activeInput=null}
+        // Extract dominant colours from the customer's uploaded badge.
+        // Improvements over basic quantisation:
+        //   - Does NOT skip pure white or pure black (those are valid colours)
+        //   - Buckets pixels by 3-bit-per-channel grid (512 buckets)
+        //   - For each dominant bucket, returns the AVERAGE of pixels in it
+        //     (so #FF0080 stays as #FF0080, not the bucket centre)
+        //   - Euclidean distance similarity filter — avoids returning
+        //     multiple near-identical pinks
+        var _badgeColoursCache = { url: null, colours: null };
+        function extractColoursFromImage(imgEl, maxCount){
+          return new Promise(function(resolve){
+            try {
+              var canvas = document.createElement('canvas');
+              var maxDim = 120;
+              var w = imgEl.naturalWidth || imgEl.width;
+              var h = imgEl.naturalHeight || imgEl.height;
+              if (!w || !h) { resolve([]); return; }
+              var ratio = Math.min(maxDim / w, maxDim / h, 1);
+              canvas.width  = Math.max(1, Math.round(w * ratio));
+              canvas.height = Math.max(1, Math.round(h * ratio));
+              var ctx = canvas.getContext('2d');
+              ctx.drawImage(imgEl, 0, 0, canvas.width, canvas.height);
+              var data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+
+              // Bucket pixels by quantised colour, keep running sums so
+              // we can compute the actual average colour later.
+              var buckets = {};
+              for (var i = 0; i < data.length; i += 4) {
+                if (data[i+3] < 200) continue; // only solid pixels
+                var r = data[i], g = data[i+1], b = data[i+2];
+                // 3 bits per channel = 8 levels = 512 buckets
+                var key = ((r & 0xE0) << 8) | ((g & 0xE0) << 3) | ((b & 0xE0) >> 3);
+                if (!buckets[key]) buckets[key] = { c: 0, r: 0, g: 0, b: 0 };
+                var bk = buckets[key];
+                bk.c++; bk.r += r; bk.g += g; bk.b += b;
+              }
+
+              // Sort buckets by pixel count (most common first)
+              var keys = Object.keys(buckets).sort(function(a, b){
+                return buckets[b].c - buckets[a].c;
+              });
+
+              // Detect whether a candidate colour is approximately a linear
+              // blend of any pair of colours we've already picked. This
+              // catches the "anti-aliased edge" artifacts where yellow meets
+              // black and produces dark-olive intermediate pixels.
+              function isBlendOfPicks(cand, list, tolerance){
+                if (list.length < 2) return false;
+                for (var i = 0; i < list.length; i++) {
+                  for (var j = i + 1; j < list.length; j++) {
+                    var A = list[i], B = list[j];
+                    var ratios = [];
+                    var ok = true;
+                    for (var c = 0; c < 3; c++) {
+                      var d = B[c] - A[c];
+                      if (Math.abs(d) < 8) {
+                        // A and B nearly identical on this channel —
+                        // candidate must also be near them
+                        if (Math.abs(cand[c] - A[c]) > 15) { ok = false; break; }
+                      } else {
+                        var r = (cand[c] - A[c]) / d;
+                        if (r < -0.05 || r > 1.05) { ok = false; break; }
+                        ratios.push(r);
+                      }
+                    }
+                    if (!ok || ratios.length === 0) continue;
+                    var minR = Math.min.apply(null, ratios);
+                    var maxR = Math.max.apply(null, ratios);
+                    // Strictly between A and B with consistent ratio = blend
+                    if (maxR - minR < tolerance && minR > 0.1 && maxR < 0.9) return true;
+                  }
+                }
+                return false;
+              }
+
+              // Pick top buckets, skipping near-duplicates and edge blends.
+              var picks = [];
+              var MIN_DIST = 70;
+              for (var jj = 0; jj < keys.length && picks.length < maxCount; jj++) {
+                var bk2 = buckets[keys[jj]];
+                var R = Math.round(bk2.r / bk2.c);
+                var G = Math.round(bk2.g / bk2.c);
+                var B = Math.round(bk2.b / bk2.c);
+                // Skip if too similar to an existing pick
+                var similar = false;
+                for (var k = 0; k < picks.length; k++) {
+                  var dr = picks[k][0] - R;
+                  var dg = picks[k][1] - G;
+                  var db = picks[k][2] - B;
+                  if (Math.sqrt(dr*dr + dg*dg + db*db) < MIN_DIST) { similar = true; break; }
+                }
+                if (similar) continue;
+                // Skip if it's just an antialiased blend of existing picks
+                if (isBlendOfPicks([R, G, B], picks, 0.15)) continue;
+                picks.push([R, G, B]);
+              }
+
+              var hexes = picks.map(function(rgb){
+                function pad(n){ var s = n.toString(16).toUpperCase(); return s.length === 1 ? '0' + s : s; }
+                return '#' + pad(rgb[0]) + pad(rgb[1]) + pad(rgb[2]);
+              });
+              resolve(hexes);
+            } catch (e) {
+              console.warn('Bespoke badge colour extraction failed:', e);
+              resolve([]);
+            }
+          });
+        }
+
+        function renderBadgeColours(colours){
+          var container = $('bcp-badge-swatches');
+          var row       = $('bcp-badge-row');
+          if (!container || !row) return;
+          if (!colours || colours.length === 0) {
+            row.style.display = 'none';
+            return;
+          }
+          var html = '';
+          for (var i = 0; i < colours.length; i++) {
+            html += '<div class="bcp-badge-swatch" data-c="' + colours[i] + '" style="background:' + colours[i] + '" title="' + colours[i] + '"></div>';
+          }
+          container.innerHTML = html;
+          row.style.display = 'flex';
+          Array.prototype.forEach.call(
+            container.querySelectorAll('.bcp-badge-swatch[data-c]'),
+            function(el){
+              el.addEventListener('click', function(){
+                try { setHex(el.getAttribute('data-c')); } catch(_){}
+              });
+            }
+          );
+        }
+
+        function maybeExtractBadgeColours(){
+          if (!window.S || !window.S.badgeURL || !window.S.badge) {
+            renderBadgeColours(null);
+            return;
+          }
+          if (_badgeColoursCache.url === window.S.badgeURL && _badgeColoursCache.colours) {
+            renderBadgeColours(_badgeColoursCache.colours);
+            return;
+          }
+          var img = new Image();
+          img.onload = function(){
+            extractColoursFromImage(img, 5).then(function(cols){
+              _badgeColoursCache.url = window.S.badgeURL;
+              _badgeColoursCache.colours = cols;
+              renderBadgeColours(cols);
+            });
+          };
+          img.onerror = function(){ renderBadgeColours(null); };
+          img.src = window.S.badgeURL;
+        }
+
+        var RECENT_KEY = 'bcp_recent_colours';
+        var MAX_RECENT = 6;
+        function loadRecent(){
+          try { var raw = localStorage.getItem(RECENT_KEY); return raw ? JSON.parse(raw) : []; }
+          catch(e){ return []; }
+        }
+        function saveRecent(arr){
+          try { localStorage.setItem(RECENT_KEY, JSON.stringify(arr)); } catch(e){}
+        }
+        function pushRecent(hexValue){
+          hexValue = (hexValue || '').toUpperCase();
+          if (!/^#[0-9A-F]{6}$/.test(hexValue)) return;
+          var arr = loadRecent().filter(function(c){ return c !== hexValue; });
+          arr.unshift(hexValue);
+          arr = arr.slice(0, MAX_RECENT);
+          saveRecent(arr);
+          renderRecent();
+        }
+        function renderRecent(){
+          var container = $('bcp-recent');
+          if (!container) return;
+          var arr = loadRecent();
+          var html = '';
+          for (var i = 0; i < MAX_RECENT; i++) {
+            if (arr[i]) {
+              html += '<div class="bcp-recent-swatch" data-c="' + arr[i] + '" style="background:' + arr[i] + '" title="' + arr[i] + '"></div>';
+            } else {
+              html += '<div class="bcp-recent-swatch bcp-recent-empty"></div>';
+            }
+          }
+          container.innerHTML = html;
+          Array.prototype.forEach.call(
+            container.querySelectorAll('.bcp-recent-swatch[data-c]'),
+            function(el){
+              el.addEventListener('click', function(){
+                try { setHex(el.getAttribute('data-c')); } catch(_){}
+              });
+            }
+          );
+        }
+        renderRecent();
+
+        function close(){
+          var rgb = hsv2rgb(h,s,v);
+          pushRecent(rgb2hex(rgb[0],rgb[1],rgb[2]));
+          overlay.classList.remove('open');
+          activeInput=null;
+        }
         done.addEventListener('click',close);
         overlay.addEventListener('click',function(e){if(e.target===overlay)close()});
 
@@ -1046,6 +1259,7 @@ function bespoke_render_customiser( $atts ) {
             overlay.classList.add('open');
             try{overlay.scrollIntoView({block:'center',inline:'center'})}catch(_){}
             hex.value=(i.value||'#FF0000').toUpperCase();
+            maybeExtractBadgeColours();
           }
           ct.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();open()});
           ct.addEventListener('touchend',function(e){e.preventDefault();open()},{passive:false});
