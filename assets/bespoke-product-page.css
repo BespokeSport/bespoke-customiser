@@ -391,6 +391,35 @@ body.single-product .up-sells .product .price {
   font-weight: 500 !important;
 }
 
+/* Related-grid "Customise" button — mint pill, matches the brand
+   accent and the main add-to-cart button styling. */
+body.single-product .related .product .button,
+body.single-product .related .product a.button,
+body.single-product .related .product .add_to_cart_button,
+body.single-product .up-sells .product .button,
+body.single-product .up-sells .product a.button,
+body.single-product .up-sells .product .add_to_cart_button {
+  background: var(--bs-mint) !important;
+  color: var(--bs-ink) !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  padding: 9px 18px !important;
+  font-family: var(--bs-font-ui) !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.10em !important;
+  text-transform: uppercase !important;
+  text-decoration: none !important;
+  margin-top: 10px !important;
+  display: inline-block !important;
+  transition: filter 0.2s !important;
+}
+body.single-product .related .product .button:hover,
+body.single-product .up-sells .product .button:hover {
+  filter: brightness(1.08) !important;
+  color: var(--bs-ink) !important;
+}
+
 
 /* --------------------------------------------------------------------------
    10. FORMS  (used by the customiser fallback / cart fields)
@@ -486,9 +515,9 @@ body.single-product .woocommerce-info::before {
   body.single-product .related .product h2.woocommerce-loop-product__title,
   body.single-product .up-sells .product .woocommerce-loop-product__title,
   body.single-product .up-sells .product h2.woocommerce-loop-product__title {
-    font-size: 13px !important;
-    padding: 10px 0 4px !important;
-    line-height: 1.2 !important;
+    font-size: 14px !important;
+    padding: 10px 0 6px !important;
+    line-height: 1.25 !important;
   }
   /* Prices in the related grid — override the master .woocommerce-Price-amount
      48px rule (sections 4) which otherwise wins specificity here and renders
@@ -504,9 +533,9 @@ body.single-product .woocommerce-info::before {
   body.single-product .up-sells .product .price .woocommerce-Price-amount bdi,
   body.single-product .up-sells .product .woocommerce-Price-amount,
   body.single-product .up-sells .product .woocommerce-Price-amount bdi {
-    font-size: 13px !important;
+    font-size: 16px !important;
     line-height: 1.25 !important;
-    font-weight: 600 !important;
+    font-weight: 700 !important;
   }
   /* Constrain product image so the card stays compact */
   body.single-product .related .product img,

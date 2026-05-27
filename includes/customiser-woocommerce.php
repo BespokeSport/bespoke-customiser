@@ -111,6 +111,29 @@ function bespoke_wc_hide_default_cart_for_customisable_products() {
 }
 
 /**
+ * Loop add-to-cart text — any product with a customiser type uses the
+ * verb "Customise" (British spelling) on its shop / related-products
+ * card button. Falls back to the default WC text for non-customisable
+ * products so we don't change unrelated buttons.
+ *
+ * The filter fires on every product card render in a loop (shop archive,
+ * related products, up-sells, search results) — it returns the text the
+ * card link displays.
+ */
+add_filter( 'woocommerce_product_add_to_cart_text', 'bespoke_wc_customise_loop_text', 10, 2 );
+
+function bespoke_wc_customise_loop_text( $text, $product ) {
+    if ( ! $product instanceof WC_Product ) {
+        return $text;
+    }
+    $type = get_post_meta( $product->get_id(), '_bespoke_product_type', true );
+    if ( $type ) {
+        return 'Customise';
+    }
+    return $text;
+}
+
+/**
  * Enqueue the drop-in product page stylesheet on every single-product
  * page where the product has a customiser type set. Gives the page the
  * dark theme + title/price/tabs/notice-card styling that matches the
