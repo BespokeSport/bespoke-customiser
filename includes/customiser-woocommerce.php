@@ -312,9 +312,35 @@ function bespoke_render_admin_shinpads( $d, $item ) {
                     $row( 'Name font',   $d['fonts']['name']   ?? '' ) .
                     $row( 'Number font', $d['fonts']['number'] ?? '' )
                 );
+                // Pattern colour rows. Multi-pattern designs (e.g. Tramline)
+                // send a 'patterns' array — show each layer as Pattern 1,
+                // Pattern 2, etc. Single-pattern designs (or older orders
+                // placed before the multi-pattern update) fall back to the
+                // legacy 'pattern' field.
+                $patterns_arr = $d['colours']['patterns'] ?? [];
+                if ( ! is_array( $patterns_arr ) ) {
+                    $patterns_arr = [];
+                }
+                if ( empty( $patterns_arr ) ) {
+                    $legacy = $d['colours']['pattern'] ?? '';
+                    if ( $legacy ) $patterns_arr = [ $legacy ];
+                }
+                $pattern_rows = '';
+                if ( count( $patterns_arr ) <= 1 ) {
+                    $first = $patterns_arr[0] ?? '';
+                    $pattern_rows = $row( 'Pattern', $colour_swatch( $first ) );
+                } else {
+                    foreach ( $patterns_arr as $i => $hex ) {
+                        $pattern_rows .= $row(
+                            'Pattern ' . ( $i + 1 ),
+                            $colour_swatch( $hex )
+                        );
+                    }
+                }
+
                 echo $section( 'Colours',
                     $row( 'Pad background', $colour_swatch( $d['colours']['background']  ?? '' ) ) .
-                    $row( 'Pattern',        $colour_swatch( $d['colours']['pattern']     ?? '' ) ) .
+                    $pattern_rows .
                     $row( 'Name text',      $colour_swatch( $d['colours']['name_text']   ?? '' ) ) .
                     $row( 'Number text',    $colour_swatch( $d['colours']['number_text'] ?? '' ) )
                 );

@@ -17,6 +17,52 @@ defined( 'ABSPATH' ) || exit;
 
 
 /* =========================================================================
+   HELPERS
+   ========================================================================= */
+
+/**
+ * Read the per-layer pattern colours sent by the frontend.
+ *
+ * The customiser posts:
+ *   bespoke_colour_pat_count = N  (how many pattern layers)
+ *   bespoke_colour_pat_0     = #rrggbb  (layer 1)
+ *   bespoke_colour_pat_1     = #rrggbb  (layer 2)
+ *   ...
+ *
+ * Returns a numerically-indexed array of sanitised hex colours.
+ * Falls back to [ bespoke_colour_pat ] (the legacy single value) if no
+ * count was sent — so older browsers / cached pages still work.
+ *
+ * @return array<int,string>
+ */
+function bespoke_collect_pattern_colours() {
+
+    $count = isset( $_POST['bespoke_colour_pat_count'] )
+        ? intval( $_POST['bespoke_colour_pat_count'] )
+        : 0;
+
+    // Legacy fallback — no count field means an older customiser build.
+    if ( $count < 1 ) {
+        $legacy = sanitize_hex_color( $_POST['bespoke_colour_pat'] ?? '' );
+        return $legacy ? [ $legacy ] : [];
+    }
+
+    // Cap at a sane upper bound to defend against malicious clients.
+    $count = min( $count, 12 );
+
+    $out = [];
+    for ( $i = 0; $i < $count; $i++ ) {
+        $val = sanitize_hex_color( $_POST[ 'bespoke_colour_pat_' . $i ] ?? '' );
+        if ( $val ) {
+            $out[ $i ] = $val;
+        }
+    }
+
+    return $out;
+}
+
+
+/* =========================================================================
    1. BADGE UPLOAD
    ========================================================================= */
 
@@ -314,9 +360,19 @@ function bespoke_handle_add_to_cart() {
             ],
 
             // ── Colours ───────────────────────────────────────────────────────
+            //
+            // 'pattern'  — legacy single pattern colour (= layer 1).
+            //              Kept for backward compatibility with old code
+            //              that only knows about a single pattern colour.
+            // 'patterns' — full per-layer array. Index 0 = pattern layer 1,
+            //              index 1 = pattern layer 2, ... For multi-pattern
+            //              designs (e.g. Tramline) every layer the customer
+            //              tinted is stored here so production can reproduce
+            //              the exact colour scheme.
             'colours' => [
                 'background'  => sanitize_hex_color( $_POST['bespoke_colour_bg']   ?? '' ),
                 'pattern'     => sanitize_hex_color( $_POST['bespoke_colour_pat']  ?? '' ),
+                'patterns'    => bespoke_collect_pattern_colours(),
                 'name_text'   => sanitize_hex_color( $_POST['bespoke_colour_name'] ?? '' ),
                 'number_text' => sanitize_hex_color( $_POST['bespoke_colour_num']  ?? '' ),
             ],

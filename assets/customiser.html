@@ -629,6 +629,12 @@ var DEF = {
 var S = {
   step:0,
   bgColor:'#feef00', patColor:'#211d33',
+  // patColors[]: per-pattern-layer colours (indexed by pattern layer number).
+  // patColors[0] mirrors patColor (kept for backward compat with code that
+  // reads S.patColor directly). patColors[1+] are extra pattern layers for
+  // multi-pattern designs (e.g. Tramline has 2 pattern layers).
+  // Populated by the registered-designs renderer when a design is selected.
+  patColors: [],
   nameColor:'#FFFFFF', numColor:'#FFFFFF',
   nameL:'', nameR:'', numL:'', numR:'',
   sameName:true, sameNum:true,
@@ -1302,15 +1308,33 @@ function debouncedColor(zone, val) {
   if(zone==='pat') document.getElementById('ct-pat').style.background=val;
   if(zone==='name')document.getElementById('ct-name').style.background=val;
   if(zone==='num') document.getElementById('ct-num').style.background=val;
+  // Multi-pattern: pat2, pat3, ... map to dynamically-injected rows.
+  if(/^pat\d+$/.test(zone)){
+    var ct = document.getElementById('ct-' + zone);
+    if (ct) ct.style.background = val;
+  }
   // Debounce the expensive SVG re-render to 40ms after last move
   clearTimeout(_colorDebounceTimer);
   _colorDebounceTimer = setTimeout(function(){ onColor(zone, val); }, 40);
 }
 function onColor(zone,val){
   if(zone==='bg'){S.bgColor=val;document.getElementById('ct-bg').style.background=val;}
-  if(zone==='pat'){S.patColor=val;document.getElementById('ct-pat').style.background=val;}
+  if(zone==='pat'){
+    S.patColor=val;
+    if(!S.patColors)S.patColors=[];
+    S.patColors[0]=val;
+    document.getElementById('ct-pat').style.background=val;
+  }
   if(zone==='name'){S.nameColor=val;document.getElementById('ct-name').style.background=val;}
   if(zone==='num'){S.numColor=val;document.getElementById('ct-num').style.background=val;}
+  // Multi-pattern: pat2 → patColors[1], pat3 → patColors[2], etc.
+  if(/^pat\d+$/.test(zone)){
+    var idx = parseInt(zone.slice(3), 10) - 1;
+    if(!S.patColors)S.patColors=[];
+    S.patColors[idx] = val;
+    var ct = document.getElementById('ct-' + zone);
+    if (ct) ct.style.background = val;
+  }
   buildDesignScroll();
   updateDesignLayers();
   syncAll();
@@ -1351,7 +1375,7 @@ function fillSummary(){
   ['bg','pat','nt','nu'].forEach(function(k,i){document.getElementById('sd-'+k).style.background=cols[i];document.getElementById('sh-'+k).textContent=cols[i];});
 }
 function reset(){
-  S={step:0,bgColor:'#feef00',patColor:'#211d33',nameColor:'#FFFFFF',numColor:'#FFFFFF',nameL:'',nameR:'',numL:'',numR:'',sameName:true,sameNum:true,badge:null,badgeURL:null,design:'vanguard',padSize:"M",orderNotes:"",badgeSize:210,nameSize:90,numSize:155,nameFontFamily:'"Arial Black", Arial, sans-serif',numFontFamily:'"Arial Black", Arial, sans-serif',pos:JSON.parse(JSON.stringify(DEF))};
+  S={step:0,bgColor:'#feef00',patColor:'#211d33',patColors:[],nameColor:'#FFFFFF',numColor:'#FFFFFF',nameL:'',nameR:'',numL:'',numR:'',sameName:true,sameNum:true,badge:null,badgeURL:null,design:'vanguard',padSize:"M",orderNotes:"",badgeSize:210,nameSize:90,numSize:155,nameFontFamily:'"Arial Black", Arial, sans-serif',numFontFamily:'"Arial Black", Arial, sans-serif',pos:JSON.parse(JSON.stringify(DEF))};
   previews={};
   for(var i=0;i<6;i++){var pb=document.getElementById('pb'+i);if(pb)pb.innerHTML='';}
   document.getElementById('s6').classList.remove('active');
@@ -1582,9 +1606,18 @@ function bespokeAddToCart() {
 
     // Colours
     formData.append('bespoke_colour_bg',     S.bgColor);
-    formData.append('bespoke_colour_pat',    S.patColor);
+    formData.append('bespoke_colour_pat',    S.patColor);   // legacy: layer 1 only
     formData.append('bespoke_colour_name',   S.nameColor);
     formData.append('bespoke_colour_num',    S.numColor);
+
+    // Pattern colours — full per-layer array for multi-pattern designs.
+    // bespoke_colour_pat_0 = layer 1, bespoke_colour_pat_1 = layer 2, ...
+    // bespoke_colour_pat_count tells PHP how many entries to expect.
+    var patCols = (S.patColors && S.patColors.length) ? S.patColors : [S.patColor];
+    formData.append('bespoke_colour_pat_count', String(patCols.length));
+    patCols.forEach(function(c, i){
+      formData.append('bespoke_colour_pat_' + i, c || '');
+    });
 
     // Fonts
     var nameFont = FONTS.find(function(f){return f.family===S.nameFontFamily;});

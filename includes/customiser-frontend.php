@@ -489,13 +489,36 @@ function bespoke_render_customiser( $atts ) {
                 }
 
                 // 3. Pattern layers (design.layers index 1+)
+                //
+                // Each pattern layer reads its colour from S.patColors[],
+                // indexed by pattern position (layer idx-1, because pad-base
+                // is layer 0). Missing entries are initialised from the
+                // layer's `default` value set in the WP admin so the design
+                // appears immediately on first paint.
+                //
+                // S.patColor is kept in sync with patColors[0] so existing
+                // single-pattern code that reads S.patColor keeps working.
+                if (!window.S.patColors) window.S.patColors = [];
                 (d.layers || []).forEach(function(layer, idx){
                     if (idx === 0) return; // pad base handled above
                     if (!layer.file_url) return;
-                    var colour;
-                    if (idx === 1)      colour = window.S.patColor || layer.default || '#211d33';
-                    else                colour = layer.default || '#000000';
-                    stack.push({ url: layer.file_url, tint: colour, label: 'pattern-' + idx });
+                    var patIdx = idx - 1; // 0-based into S.patColors
+                    if (window.S.patColors[patIdx] === undefined ||
+                        window.S.patColors[patIdx] === null ||
+                        window.S.patColors[patIdx] === '') {
+                        // First time we've seen this layer for this design —
+                        // seed from admin default (or sensible fallback).
+                        window.S.patColors[patIdx] =
+                            layer.default || (patIdx === 0 ? '#211d33' : '#000000');
+                    }
+                    // Keep S.patColor mirrored to patColors[0] so the
+                    // legacy "Pattern" row in the static HTML reflects state.
+                    if (patIdx === 0) window.S.patColor = window.S.patColors[0];
+                    stack.push({
+                        url: layer.file_url,
+                        tint: window.S.patColors[patIdx],
+                        label: 'pattern-' + idx
+                    });
                 });
 
                 if (!stack.length) return;
@@ -532,11 +555,17 @@ function bespoke_render_customiser( $atts ) {
                             // Build a mask from the pad-base layer so pattern
                             // layers can be clipped to the pad silhouette
                             // (otherwise the pattern overflows past the pad).
+                            // Supports both vector (SVG) and raster (PNG/JPG)
+                            // pad-base files — vectors use luminance masking
+                            // with forced white fill, rasters use alpha-channel
+                            // masking with mask-type="alpha".
                             var padBaseIdx = stack.findIndex(function(s){ return s.label === 'pad-base'; });
                             var padMaskId = null;
                             if (padBaseIdx >= 0 && layers[padBaseIdx]) {
-                                var nestedSvg = layers[padBaseIdx].querySelector('svg');
-                                if (nestedSvg) {
+                                var padBaseLayer = layers[padBaseIdx];
+                                var nestedSvg = padBaseLayer.querySelector('svg');
+                                var rasterImg = padBaseLayer.querySelector('image');
+                                if (nestedSvg || rasterImg) {
                                     padMaskId = 'bcp-padmask-' + d.id.replace(/[^a-z0-9]/g, '') + '-' + groupIdx;
                                     var defs = document.createElementNS(NS, 'defs');
                                     var mask = document.createElementNS(NS, 'mask');
@@ -546,11 +575,20 @@ function bespoke_render_customiser( $atts ) {
                                     mask.setAttribute('y', '0');
                                     mask.setAttribute('width', '1200');
                                     mask.setAttribute('height', '1200');
-                                    // Clone the nested pad-base SVG, force white fill
-                                    // (mask uses luminance — white = show through).
-                                    var maskSvg = nestedSvg.cloneNode(true);
-                                    maskSvg.style.fill = '#fff';
-                                    mask.appendChild(maskSvg);
+                                    if (nestedSvg) {
+                                        // Vector pad base — clone with white fill.
+                                        // Default luminance mask: white = show.
+                                        var maskSvg = nestedSvg.cloneNode(true);
+                                        maskSvg.style.fill = '#fff';
+                                        mask.appendChild(maskSvg);
+                                    } else {
+                                        // Raster pad base — use the image's alpha
+                                        // channel as the mask. Transparent edges
+                                        // outside the pad shape become invisible.
+                                        mask.setAttribute('mask-type', 'alpha');
+                                        var maskImg = rasterImg.cloneNode(true);
+                                        mask.appendChild(maskImg);
+                                    }
                                     defs.appendChild(mask);
                                     wrap.appendChild(defs);
                                 }
@@ -580,23 +618,154 @@ function bespoke_render_customiser( $atts ) {
                     });
             }
 
-            // Update the colour-picker tile labels to match the active design's
-            // layer labels. (For now just the first two rows — Pad background +
-            // Pattern. Designs with 3+ pattern layers are a future feature.)
-            function updateColourPickerLabels(){
+            // Rebuild the colour-picker rows for the active design:
+            //
+            //   - Updates labels on the static "Pad background" + "Pattern"
+            //     rows to match the admin-defined layer labels.
+            //   - For designs with 3+ pattern layers, dynamically inserts
+            //     extra .zone-row entries (Pattern 2, Pattern 3, ...) so
+            //     the customer can tint each pattern layer independently.
+            //   - Initialises window.S.patColors[] from layer defaults for
+            //     any unset entries; existing user choices are preserved.
+            //
+            // Replaces the previous updateColourPickerLabels() which only
+            // handled labels for the two static rows.
+            function rebuildPatternRows(){
                 if (!window.S) return;
                 var d = byId[window.S.design];
                 if (!d || !d.layers || !d.layers.length) return;
-                var lbls = document.querySelectorAll('#bespoke-customiser-root .zone-row .zone-lbl');
+                var layers = d.layers;
+                // Pattern layers = layers[1..]. patLayerCount = number of
+                // pattern colour pickers we need (1 = just the static row,
+                // 2+ = static row + dynamic rows for the extras).
+                var patLayerCount = Math.max(0, layers.length - 1);
+
+                // ── 1. Sync window.S.patColors[] with the active design ──
+                if (!window.S.patColors) window.S.patColors = [];
+                for (var i = 0; i < patLayerCount; i++) {
+                    if (window.S.patColors[i] === undefined ||
+                        window.S.patColors[i] === null ||
+                        window.S.patColors[i] === '') {
+                        var srcLayer = layers[i + 1];
+                        window.S.patColors[i] = (srcLayer && srcLayer.default) ||
+                            (i === 0 ? '#211d33' : '#000000');
+                    }
+                }
+                // Trim if previous design had more pattern layers than this one.
+                window.S.patColors.length = patLayerCount;
+                // Mirror layer 1 onto S.patColor so legacy code keeps working.
+                if (patLayerCount > 0) {
+                    window.S.patColor = window.S.patColors[0];
+                }
+
+                // ── 2. Update label on the static "Pad background" row ──
+                var lbls = document.querySelectorAll(
+                    '#bespoke-customiser-root .zone-row .zone-lbl'
+                );
                 lbls.forEach(function(el){
                     var txt = (el.textContent || '').trim();
-                    if (txt === 'Pad background' && d.layers[0] && d.layers[0].label) {
-                        el.textContent = d.layers[0].label;
-                    } else if (txt === 'Pattern' && d.layers[1] && d.layers[1].label) {
-                        el.textContent = d.layers[1].label;
+                    if (txt === 'Pad background' && layers[0] && layers[0].label) {
+                        el.textContent = layers[0].label;
                     }
                 });
+
+                // ── 3. Find the static "Pattern" row (anchor for dynamic rows) ──
+                var staticPatCT = document.getElementById('ct-pat');
+                if (!staticPatCT) return;
+                var staticPatRow = staticPatCT.closest('.zone-row');
+                if (!staticPatRow) return;
+                var container = staticPatRow.parentElement;
+
+                // Update the static Pattern row's label + input value to match
+                // the active design's layer 1.
+                var staticLbl = staticPatRow.querySelector('.zone-lbl');
+                if (staticLbl && layers[1] && layers[1].label) {
+                    staticLbl.textContent = layers[1].label;
+                } else if (staticLbl) {
+                    staticLbl.textContent = 'Pattern';
+                }
+                var staticInput = document.getElementById('cp-pat');
+                if (staticInput && window.S.patColors[0] &&
+                    document.activeElement !== staticInput) {
+                    staticInput.value = window.S.patColors[0];
+                    staticPatCT.style.background = window.S.patColors[0];
+                }
+
+                // ── 4. Add / update / remove dynamic Pattern N rows ──
+                var existing = container.querySelectorAll(
+                    '.zone-row[data-bcp-dynamic-pat]'
+                );
+                var needExtra = Math.max(0, patLayerCount - 1); // patterns 2+
+
+                if (existing.length === needExtra) {
+                    // Same row count — just refresh labels + values in place
+                    // so we don't churn the DOM (which would lose any focus
+                    // / mid-drag state in the picker).
+                    Array.prototype.forEach.call(existing, function(row, idx){
+                        var pi = idx + 1; // index into S.patColors (1, 2, ...)
+                        var srcLayer = layers[pi + 1];
+                        if (!srcLayer) return;
+                        var lbl = row.querySelector('.zone-lbl');
+                        if (lbl) lbl.textContent =
+                            srcLayer.label || ('Pattern ' + (pi + 1));
+                        var ct = row.querySelector('.ct');
+                        var input = row.querySelector('input[type=color]');
+                        var colour = window.S.patColors[pi];
+                        if (colour && document.activeElement !== input) {
+                            if (ct) ct.style.background = colour;
+                            if (input) input.value = colour;
+                        }
+                    });
+                    return;
+                }
+
+                // Row count differs — drop existing and rebuild from scratch.
+                Array.prototype.forEach.call(existing, function(el){ el.remove(); });
+
+                // Insert new dynamic pattern rows directly after the static
+                // Pattern row, so they sit between "Pattern" and "Name text"
+                // rather than at the bottom of the container.
+                var insertAfter = staticPatRow;
+                for (var pi2 = 1; pi2 < patLayerCount; pi2++) {
+                    var lyr = layers[pi2 + 1];
+                    if (!lyr || !lyr.file_url) continue;
+                    var patNum = pi2 + 1; // 1-based for IDs (pat2, pat3, ...)
+                    var colourVal = window.S.patColors[pi2] || '#000000';
+                    var labelText = lyr.label || ('Pattern ' + patNum);
+
+                    var row = document.createElement('div');
+                    row.className = 'zone-row';
+                    row.setAttribute('data-bcp-dynamic-pat', String(patNum));
+                    row.innerHTML =
+                        '<div class="zone-info">' +
+                            '<div class="zone-lbl"></div>' +
+                            '<div class="zone-sub">Pattern layer ' + patNum + ' colour</div>' +
+                        '</div>' +
+                        '<div class="ct" id="ct-pat' + patNum + '">' +
+                            '<input type="color" id="cp-pat' + patNum + '"/>' +
+                        '</div>';
+                    // Set text / values via DOM (avoid HTML-injection from labels)
+                    row.querySelector('.zone-lbl').textContent = labelText;
+                    row.querySelector('.ct').style.background = colourVal;
+                    var inp = row.querySelector('input[type=color]');
+                    inp.value = colourVal;
+
+                    // Wire to the same debounced colour pipeline as the static rows.
+                    (function(zoneCode, _inp){
+                        _inp.addEventListener('input', function(){
+                            if (typeof window.debouncedColor === 'function') {
+                                window.debouncedColor(zoneCode, _inp.value);
+                            }
+                        });
+                    })('pat' + patNum, inp);
+
+                    container.insertBefore(row, insertAfter.nextSibling);
+                    insertAfter = row;
+                }
             }
+
+            // Backwards-compat alias for older call sites
+            var updateColourPickerLabels = rebuildPatternRows;
 
             // Hook into updateDesignLayers, makeSVG, and syncAll so our injection
             // runs whenever the customiser's own rendering pass replaces the
@@ -1249,21 +1418,45 @@ function bespoke_render_customiser( $atts ) {
         done.addEventListener('click',close);
         overlay.addEventListener('click',function(e){if(e.target===overlay)close()});
 
-        document.querySelectorAll('.ct input[type=color]').forEach(function(i){i.style.pointerEvents='none'});
-        document.querySelectorAll('.ct').forEach(function(ct){
-          function open(){
-            var i=ct.querySelector('input[type=color]');
-            if(!i)return;
-            activeInput=i;
-            setHex(i.value||'#ff0000');
-            overlay.classList.add('open');
-            try{overlay.scrollIntoView({block:'center',inline:'center'})}catch(_){}
-            hex.value=(i.value||'#FF0000').toUpperCase();
-            maybeExtractBadgeColours();
-          }
-          ct.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();open()});
-          ct.addEventListener('touchend',function(e){e.preventDefault();open()},{passive:false});
+        // Disable native colour input on every existing colour swatch so
+        // clicking the .ct opens our HSV picker instead of the browser one.
+        document.querySelectorAll('.ct input[type=color]').forEach(function(i){
+          i.style.pointerEvents = 'none';
         });
+
+        // Open-picker helper — extracted so both click and touchend
+        // (and future dynamically-added rows) share one entry point.
+        function openPickerForCt(ct){
+          var i = ct.querySelector('input[type=color]');
+          if (!i) return;
+          i.style.pointerEvents = 'none'; // safety for dynamic rows
+          activeInput = i;
+          setHex(i.value || '#ff0000');
+          overlay.classList.add('open');
+          try { overlay.scrollIntoView({block:'center', inline:'center'}); } catch(_) {}
+          hex.value = (i.value || '#FF0000').toUpperCase();
+          maybeExtractBadgeColours();
+        }
+
+        // Event delegation — any .ct inside the customiser opens the picker.
+        // This means dynamically-injected pattern rows (Pattern 2, Pattern 3,
+        // ...) work without us having to re-attach listeners after each
+        // design change.
+        document.addEventListener('click', function(e){
+          var ct = e.target && e.target.closest && e.target.closest('.ct');
+          if (!ct) return;
+          if (!ct.closest('#bespoke-customiser-root')) return;
+          e.preventDefault();
+          e.stopPropagation();
+          openPickerForCt(ct);
+        });
+        document.addEventListener('touchend', function(e){
+          var ct = e.target && e.target.closest && e.target.closest('.ct');
+          if (!ct) return;
+          if (!ct.closest('#bespoke-customiser-root')) return;
+          e.preventDefault();
+          openPickerForCt(ct);
+        }, {passive: false});
       }
 
       if (document.readyState === 'loading') {
