@@ -294,68 +294,6 @@ function bespoke_render_customiser( $atts ) {
                 return /\.(jpe?g|png|gif|webp)(\?.*)?$/i.test(url || '');
             }
 
-            // Pad-base centering offset cache, keyed by URL. Different designers
-            // export pad-shape SVGs with the actual paths sitting in different
-            // positions within the 1200x1200 viewBox (Apex sits roughly centred
-            // at x≈115, y≈183, Tramline was exported with the pad at x≈207,
-            // y≈55 — top-right corner of the canvas). Rather than asking the
-            // designer to re-export, we measure the SVG content's bounding box
-            // and translate the whole overlay so the pad shape ends up at the
-            // 1200x1200 canvas centre regardless of where the artist drew it.
-            // The translate is applied to the wrap group, so the mask AND the
-            // pattern layers all move together — internal alignment is preserved.
-            var _padCenterCache = {};
-            function getPadCenteringOffset(padUrl){
-                return new Promise(function(resolve){
-                    if (!padUrl) { resolve({tx:0, ty:0}); return; }
-                    if (_padCenterCache[padUrl]) { resolve(_padCenterCache[padUrl]); return; }
-                    // Raster pad-bases are <image> elements that cover the full
-                    // 1200x1200 viewport, so they're already canvas-aligned —
-                    // no transform needed.
-                    if (isRasterUrl(padUrl)) {
-                        _padCenterCache[padUrl] = {tx:0, ty:0};
-                        resolve({tx:0, ty:0});
-                        return;
-                    }
-                    fetchSvgText(padUrl).then(function(svgText){
-                        try {
-                            var parsed = parseSvg(svgText);
-                            if (!parsed) { resolve({tx:0, ty:0}); return; }
-                            // Temporarily insert an off-screen probe to measure
-                            // the bounding box. getBBox only works on elements
-                            // that are in the document.
-                            var probe = document.createElementNS(NS, 'svg');
-                            probe.setAttribute('viewBox',
-                                parsed.getAttribute('viewBox') || '0 0 1200 1200'
-                            );
-                            probe.style.position = 'absolute';
-                            probe.style.visibility = 'hidden';
-                            probe.style.left = '-99999px';
-                            probe.style.top  = '-99999px';
-                            probe.style.width  = '100px';
-                            probe.style.height = '100px';
-                            Array.from(parsed.children).forEach(function(child){
-                                probe.appendChild(child.cloneNode(true));
-                            });
-                            document.body.appendChild(probe);
-                            var bb = probe.getBBox();
-                            document.body.removeChild(probe);
-                            var off = {tx:0, ty:0};
-                            if (bb && bb.width > 0 && bb.height > 0) {
-                                off.tx = 600 - (bb.x + bb.width  / 2);
-                                off.ty = 600 - (bb.y + bb.height / 2);
-                            }
-                            _padCenterCache[padUrl] = off;
-                            resolve(off);
-                        } catch(_) {
-                            _padCenterCache[padUrl] = {tx:0, ty:0};
-                            resolve({tx:0, ty:0});
-                        }
-                    }).catch(function(){
-                        resolve({tx:0, ty:0});
-                    });
-                });
-            }
 
             // Parse a hex colour string ("#rrggbb" or "#rgb") to [r, g, b] ints,
             // or null if not a valid hex.
@@ -392,20 +330,21 @@ function bespoke_render_customiser( $atts ) {
                     img.setAttribute('href', url);
 
                     if (tintColor) {
-                        // Recolour the PNG using the same three-stage pipeline
-                        // as the SVG-with-raster path below:
-                        //   1. Desaturate to luminance grayscale
-                        //   2. Stretch the luminance to use the full 0..1 range
-                        //   3. Multiply each channel by the tint colour
+                        // Flatten tint: every non-transparent pixel becomes
+                        // the chosen colour; alpha is preserved. The matrix
+                        // ignores the source RGB entirely and uses the tint
+                        // colour as a constant. This is the simplest, most
+                        // predictable behaviour — "pick a colour, the pattern
+                        // becomes that colour" — and works for ANY source
+                        // PNG (white, blue, photo, gradient) without producing
+                        // muddy multi-multiply results.
                         //
-                        // The previous single-matrix approach (channel multiply
-                        // only) worked for white-on-transparent PNGs but failed
-                        // for any PNG whose source pixels weren't already white.
-                        // E.g. a solid blue PNG multiplied by orange becomes
-                        // near-black because blue × orange ≈ (3, 19, 29). The
-                        // luminance pipeline first reduces every coloured pixel
-                        // to its grayscale equivalent, so the source colour no
-                        // longer fights the tint.
+                        // Matrix layout per row:
+                        //   [R-coeff G-coeff B-coeff A-coeff constant]
+                        // Row 1: 0 0 0 0 R  →  output R = constant R
+                        // Row 2: 0 0 0 0 G  →  output G = constant G
+                        // Row 3: 0 0 0 0 B  →  output B = constant B
+                        // Row 4: 0 0 0 1 0  →  output A = input A
                         var rgb = hexToRgb(tintColor) || [0, 0, 0];
                         var rN = (rgb[0] / 255).toFixed(4);
                         var gN = (rgb[1] / 255).toFixed(4);
@@ -421,40 +360,15 @@ function bespoke_render_customiser( $atts ) {
                         filter.setAttribute('height', '1200');
                         filter.setAttribute('color-interpolation-filters', 'sRGB');
 
-                        // 1) Desaturate to luminance (RGB → grayscale)
-                        var m1 = document.createElementNS(NS, 'feColorMatrix');
-                        m1.setAttribute('type', 'matrix');
-                        m1.setAttribute('values',
-                            '0.299 0.587 0.114 0 0  ' +
-                            '0.299 0.587 0.114 0 0  ' +
-                            '0.299 0.587 0.114 0 0  ' +
+                        var matrix = document.createElementNS(NS, 'feColorMatrix');
+                        matrix.setAttribute('type', 'matrix');
+                        matrix.setAttribute('values',
+                            '0 0 0 0 ' + rN + '  ' +
+                            '0 0 0 0 ' + gN + '  ' +
+                            '0 0 0 0 ' + bN + '  ' +
                             '0 0 0 1 0'
                         );
-                        filter.appendChild(m1);
-
-                        // 2) Stretch dark tones into the full brightness range
-                        //    so the result isn't muddy when the source PNG sits
-                        //    in the lower half of the luminance spectrum.
-                        var ct = document.createElementNS(NS, 'feComponentTransfer');
-                        ['feFuncR', 'feFuncG', 'feFuncB'].forEach(function(fn){
-                            var f = document.createElementNS(NS, fn);
-                            f.setAttribute('type', 'linear');
-                            f.setAttribute('slope', '3');
-                            f.setAttribute('intercept', '0');
-                            ct.appendChild(f);
-                        });
-                        filter.appendChild(ct);
-
-                        // 3) Multiply each channel by the tint colour
-                        var m2 = document.createElementNS(NS, 'feColorMatrix');
-                        m2.setAttribute('type', 'matrix');
-                        m2.setAttribute('values',
-                            rN + ' 0 0 0 0  ' +
-                            '0 ' + gN + ' 0 0 0  ' +
-                            '0 0 ' + bN + ' 0 0  ' +
-                            '0 0 0 1 0'
-                        );
-                        filter.appendChild(m2);
+                        filter.appendChild(matrix);
 
                         defs.appendChild(filter);
                         imgLayer.appendChild(defs);
@@ -625,47 +539,15 @@ function bespoke_render_customiser( $atts ) {
                 var hasProductBase = !!(PA.background_url || PA.pad_base_url ||
                     (d.layers && d.layers[0] && d.layers[0].file_url));
 
-                // Build the pad-base centering offset + all the layers in
-                // parallel. The offset is applied to the overlay wrap group
-                // so the pad — and every mask/pattern drawn relative to it —
-                // ends up centred on the canvas regardless of how the artist
-                // exported the SVG.
-                Promise.all([
-                    getPadCenteringOffset(padBaseUrl),
-                    Promise.all(stack.map(function(s){ return buildLayer(s.url, s.tint, s.label); }))
-                ]).then(function(results){
-                    var centerOffset = results[0] || {tx:0, ty:0};
-                    var layers       = results[1];
-
-                    // Apply the centering offset to each non-background layer.
-                    // We can't put a `transform` on the wrap <g> because SVG
-                    // creates a fresh coordinate context at every nested <svg>
-                    // — a parent <g>'s transform doesn't propagate INTO the
-                    // nested SVG's content. (Verified: with translate(-96,+134)
-                    // on the wrap, the path's CTM was still (0,0) — un-shifted.)
-                    // Instead, set x/y on each layer's nested <svg> or <image>,
-                    // which moves the layer's own viewport in its parent's
-                    // coordinate space. The mask is cloned from the pad-base
-                    // layer's content, so it picks up the same offset and
-                    // pattern layers stay aligned with the pad shape.
-                    if (centerOffset.tx !== 0 || centerOffset.ty !== 0) {
-                        layers.forEach(function(layer, i){
-                            if (!layer) return;
-                            if (stack[i] && stack[i].label === 'background') return;
-                            var nested = layer.querySelector('svg');
-                            if (nested) {
-                                nested.setAttribute('x', centerOffset.tx);
-                                nested.setAttribute('y', centerOffset.ty);
-                                return;
-                            }
-                            var img = layer.querySelector('image');
-                            if (img) {
-                                img.setAttribute('x', centerOffset.tx);
-                                img.setAttribute('y', centerOffset.ty);
-                            }
-                        });
-                    }
-
+                // Build all layers in parallel and append in correct order.
+                // Each layer renders at its natural 1200x1200 position —
+                // we trust the designer to position the pad shape and pattern
+                // content correctly within their source files. (Apex is the
+                // canonical reference: pad shape sits at bbox (115,183) inside
+                // the 1200x1200 viewBox to match the white pad silhouettes
+                // baked into the product background image.)
+                Promise.all(stack.map(function(s){ return buildLayer(s.url, s.tint, s.label); }))
+                    .then(function(layers){
                         var groups = document.querySelectorAll('[id^="bg-layer-"]');
                         groups.forEach(function(g, groupIdx){
                             // Remove old overlay if present
@@ -748,9 +630,6 @@ function bespoke_render_customiser( $atts ) {
                                 if (c) wrap.style.setProperty('--col-' + (idx + 1), c);
                             });
 
-                            // Centring is applied per-layer above (we can't
-                            // put a transform on the wrap because parent
-                            // transforms don't propagate into a nested <svg>).
                             g.appendChild(wrap);
                         });
                     });
