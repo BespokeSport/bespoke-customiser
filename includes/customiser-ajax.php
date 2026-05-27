@@ -385,10 +385,24 @@ function bespoke_handle_add_to_cart() {
     // The 'type' field tells the display and print handlers which product
     // this is, so they can render it correctly.
     //
+    // Product type drives which admin / cart renderer handles the
+    // saved data. Comes from the customiser frontend (mirrors the
+    // shortcode's product_type attribute). Sanitised to a key so an
+    // attacker can't slip arbitrary strings into our renderer lookup.
+    $product_type = sanitize_key( $_POST['bespoke_type'] ?? 'shinpads' );
+    // Allow-list against the registered product types so a typo or
+    // tampered POST doesn't end up creating an unknown 'type' value
+    // that no renderer handles.
+    $valid_types = function_exists( 'bespoke_get_product_types' )
+        ? array_keys( bespoke_get_product_types() )
+        : [ 'shinpads' ];
+    if ( ! in_array( $product_type, $valid_types, true ) ) {
+        $product_type = 'shinpads';
+    }
+
     $customisation = [
 
-        'type' => 'shinpads',   // Identifies this as a shin pad order.
-                                // Future types: 'armbands', 'bottles', 'gripsocks' etc.
+        'type' => $product_type,
 
         'data' => [
 

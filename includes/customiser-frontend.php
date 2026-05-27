@@ -640,13 +640,22 @@ function bespoke_render_customiser( $atts ) {
             // 2. After updateDesignLayers runs, if the active design is a registered
             //    one, build the full layer stack into every bg-layer-{stepId} group.
             //
+            // For products without a Design step (e.g. Grip Socks) there's
+            // no selected design — fall back to rendering just the product
+            // assets (background + pad-base) so the preview still shows
+            // the product silhouette instead of the default shin-pad
+            // template baked into BG_INNER_TEMPLATE.
+            //
             // Returns a Promise that resolves once the overlay has been
             // applied to every bg-layer in the DOM. Lets callers (e.g.
             // capturePreviewSVG) await the render before cloning the SVG.
             function applyRegisteredDesignSVG(){
                 if (!window.S) return Promise.resolve();
-                var d = byId[window.S.design];
-                if (!d) return Promise.resolve();
+                var d = byId[window.S.design] || null;
+                // Bail only if no design AND no product assets — otherwise
+                // we'd remove the placeholder shin-pad template without
+                // putting anything in its place.
+                if (!d && !PA.background_url && !PA.pad_base_url) return Promise.resolve();
 
                 // Compose the layer stack (URLs + tint colours in render order)
                 var stack = [];
@@ -657,7 +666,7 @@ function bespoke_render_customiser( $atts ) {
                 }
 
                 // 2. Pad base — uses design's layer-1 file if set, else product pad base
-                var padBaseUrl  = (d.layers && d.layers[0] && d.layers[0].file_url) || PA.pad_base_url || null;
+                var padBaseUrl  = (d && d.layers && d.layers[0] && d.layers[0].file_url) || PA.pad_base_url || null;
                 if (padBaseUrl) {
                     stack.push({
                         url:      padBaseUrl,
@@ -678,7 +687,7 @@ function bespoke_render_customiser( $atts ) {
                 // S.patColor is kept in sync with patColors[0] so existing
                 // single-pattern code that reads S.patColor keeps working.
                 if (!window.S.patColors) window.S.patColors = [];
-                (d.layers || []).forEach(function(layer, idx){
+                ((d && d.layers) || []).forEach(function(layer, idx){
                     if (idx === 0) return; // pad base handled above
                     if (!layer.file_url) return;
                     var patIdx = idx - 1; // 0-based into S.patColors
@@ -707,7 +716,7 @@ function bespoke_render_customiser( $atts ) {
                 // customiser's hardcoded yellow pad rectangles with our stack.
                 // Otherwise we'd be drawing on top of them which looks wrong.
                 var hasProductBase = !!(PA.background_url || PA.pad_base_url ||
-                    (d.layers && d.layers[0] && d.layers[0].file_url));
+                    (d && d.layers && d.layers[0] && d.layers[0].file_url));
 
                 // Build the pad-base centering offset + every layer in
                 // parallel. The offset is applied per-layer (NOT to the wrap
@@ -769,7 +778,9 @@ function bespoke_render_customiser( $atts ) {
                             }
                             // Build the parent wrap and append each layer in order
                             var wrap = document.createElementNS(NS, 'g');
-                            wrap.setAttribute('data-bespoke-design-overlay', d.id);
+                            // No design selected (products like Grip Socks)
+                            // — tag the wrap with a placeholder id.
+                            wrap.setAttribute('data-bespoke-design-overlay', d ? d.id : '_none');
 
                             // Build a mask from the pad-base layer so pattern
                             // layers can be clipped to the pad silhouette
@@ -785,7 +796,8 @@ function bespoke_render_customiser( $atts ) {
                                 var nestedSvg = padBaseLayer.querySelector('svg');
                                 var rasterImg = padBaseLayer.querySelector('image');
                                 if (nestedSvg || rasterImg) {
-                                    padMaskId = 'bcp-padmask-' + d.id.replace(/[^a-z0-9]/g, '') + '-' + groupIdx;
+                                    var maskSlug = d ? d.id.replace(/[^a-z0-9]/g, '') : 'nodesign';
+                                    padMaskId = 'bcp-padmask-' + maskSlug + '-' + groupIdx;
                                     var defs = document.createElementNS(NS, 'defs');
                                     var mask = document.createElementNS(NS, 'mask');
                                     mask.setAttribute('id', padMaskId);
@@ -826,7 +838,7 @@ function bespoke_render_customiser( $atts ) {
                             // Keep legacy CSS vars set so other CSS hooks still work
                             if (window.S.bgColor)  wrap.style.setProperty('--bg-col',  window.S.bgColor);
                             if (window.S.patColor) wrap.style.setProperty('--pat-col', window.S.patColor);
-                            (d.layers || []).forEach(function(layer, idx){
+                            ((d && d.layers) || []).forEach(function(layer, idx){
                                 var c = idx === 0 ? window.S.bgColor :
                                         idx === 1 ? window.S.patColor :
                                         (layer.default || '#000');
@@ -1353,6 +1365,12 @@ function bespoke_render_customiser( $atts ) {
         #bespoke-customiser-root .screen.active {
             display: flex !important;
             flex-direction: column !important;
+        }
+        /* Multi-product: a step disabled for the current product type
+           (e.g. Design / Colours for Grip Socks) stays out of the DOM
+           flow regardless of any .active toggling. */
+        #bespoke-customiser-root .screen.bcp-step-hidden {
+            display: none !important;
         }
         #bespoke-customiser-root .screen > .nav-row {
             order: -1 !important;

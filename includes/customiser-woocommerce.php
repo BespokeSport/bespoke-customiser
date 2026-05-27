@@ -175,6 +175,50 @@ function bespoke_render_cart_shinpads( $item_data, $d ) {
 }
 
 
+/**
+ * Cart display renderer for grip socks.
+ * Same shape as shin pads but without Design (grip socks have no
+ * design step). Relabels "pad" → "sock" so the customer sees the
+ * right wording at checkout.
+ *
+ * @param  array $item_data  Rows to append to.
+ * @param  array $d          The 'data' portion of the customisation blob.
+ * @return array
+ */
+function bespoke_render_cart_gripsocks( $item_data, $d ) {
+
+    if ( ! empty( $d['size'] ) ) {
+        $item_data[] = [ 'name' => 'Size', 'value' => esc_html( $d['size'] ) ];
+    }
+    $left_parts = array_filter( [
+        $d['left']['name']   ?? '',
+        $d['left']['number'] ?? '',
+    ] );
+    if ( $left_parts ) {
+        $item_data[] = [
+            'name'  => 'Left sock',
+            'value' => esc_html( implode( ' / ', $left_parts ) ),
+        ];
+    }
+    $right_parts = array_filter( [
+        $d['right']['name']   ?? '',
+        $d['right']['number'] ?? '',
+    ] );
+    if ( $right_parts ) {
+        $item_data[] = [
+            'name'  => 'Right sock',
+            'value' => esc_html( implode( ' / ', $right_parts ) ),
+        ];
+    }
+    $item_data[] = [
+        'name'  => 'Club badge',
+        'value' => ! empty( $d['badge']['url'] ) ? 'Uploaded' : 'Not added',
+    ];
+
+    return $item_data;
+}
+
+
 /* =========================================================================
    3. ADMIN ORDER VIEW
    Renders a full production spec inside the WP admin order page.
@@ -440,6 +484,150 @@ function bespoke_render_admin_shinpads( $d, $item ) {
         </div>
 
         <!-- ── FULL-WIDTH ROW: Preview + Notes ───────────────────────────── -->
+        <?php if ( ! empty( $d['preview_url'] ) || ! empty( $d['notes'] ) ) : ?>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:4px;">
+                <?php if ( ! empty( $d['preview_url'] ) ) : ?>
+                    <div>
+                        <?php
+                        $preview_html = sprintf(
+                            '<a href="%1$s" target="_blank"><img src="%1$s" style="max-height:160px;max-width:100%%;object-fit:contain;border:1px solid #eee;border-radius:4px;padding:4px;background:#fff;display:block;" /></a>',
+                            esc_url( $d['preview_url'] )
+                        );
+                        echo $section( 'Design preview', $row( 'Preview', $preview_html ) );
+                        ?>
+                    </div>
+                <?php endif; ?>
+                <?php if ( ! empty( $d['notes'] ) ) : ?>
+                    <div>
+                        <?php
+                        echo $section( 'Order notes',
+                            $row( 'Notes', '<span style="white-space:pre-wrap;">' . esc_html( $d['notes'] ) . '</span>' )
+                        );
+                        ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+        <?php endif; ?>
+
+    </div>
+    <?php
+
+    echo ob_get_clean();
+}
+
+
+/**
+ * Admin order display renderer for grip socks.
+ * Slimmer than shin pads — no Design row, no Pad-background / Pattern
+ * colour swatches (grip socks don't have those steps). Re-uses the
+ * helper closures by re-defining a minimal set inline so this file
+ * remains self-contained.
+ *
+ * @param array                 $d     The 'data' portion of the customisation blob.
+ * @param WC_Order_Item_Product $item  The order line item.
+ */
+function bespoke_render_admin_gripsocks( $d, $item ) {
+
+    $colour_swatch = function( $hex ) {
+        if ( ! $hex ) return '—';
+        $safe = esc_attr( $hex );
+        return sprintf(
+            '<span style="display:inline-flex;align-items:center;gap:6px;">'
+            . '<span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:%1$s;border:1px solid rgba(0,0,0,0.15);flex-shrink:0;"></span>'
+            . '<code style="font-size:12px;">%1$s</code>'
+            . '</span>',
+            $safe
+        );
+    };
+    $row = function( $label, $value ) {
+        if ( $value === '' || $value === null ) $value = '—';
+        return '<tr>'
+            . '<td style="padding:5px 10px 5px 0;color:#666;white-space:nowrap;font-size:12px;vertical-align:top;">' . esc_html( $label ) . '</td>'
+            . '<td style="padding:5px 0;font-size:12px;font-weight:600;color:#1a1a1a;">' . $value . '</td>'
+            . '</tr>';
+    };
+    $section = function( $heading_label, $rows_html ) {
+        return '<div style="margin-bottom:14px;">'
+            . '<div style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.6px;padding-bottom:4px;margin-bottom:6px;border-bottom:1px solid #eee;">'
+            . esc_html( $heading_label )
+            . '</div>'
+            . '<table style="width:100%;border-collapse:collapse;">'
+            . $rows_html
+            . '</table>'
+            . '</div>';
+    };
+    $clean_font = function( $raw ) {
+        $raw = trim( (string) $raw );
+        if ( $raw === '' ) return '—';
+        $first = trim( explode( ',', $raw )[0] );
+        $first = trim( $first, "\"' \t\n\r\0\x0B\\" );
+        return $first !== '' ? $first : $raw;
+    };
+
+    ob_start();
+    ?>
+    <div style="
+        margin-top: 12px;
+        padding: 14px 16px;
+        background: #f9f8f6;
+        border: 1px solid #e5e5e5;
+        border-radius: 6px;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    ">
+        <div style="font-size:11px;font-weight:700;color:#2E7D32;text-transform:uppercase;letter-spacing:.6px;margin-bottom:14px;">
+            ✦ BEspoke Sport — Grip Sock Specification
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;">
+
+            <!-- ── LEFT COLUMN ───────────────────────────────────────────── -->
+            <div>
+                <?php
+                echo $section( 'Product',
+                    $row( 'Size', $d['size'] ?? '' )
+                );
+                echo $section( 'Left sock',
+                    $row( 'Name',   $d['left']['name']   ?? '' ) .
+                    $row( 'Number', $d['left']['number'] ?? '' )
+                );
+                echo $section( 'Right sock',
+                    $row( 'Name',   $d['right']['name']   ?? '' ) .
+                    $row( 'Number', $d['right']['number'] ?? '' )
+                );
+                ?>
+            </div>
+
+            <!-- ── RIGHT COLUMN ──────────────────────────────────────────── -->
+            <div>
+                <?php
+                echo $section( 'Fonts',
+                    $row( 'Name font',   esc_html( $clean_font( $d['fonts']['name']   ?? '' ) ) ) .
+                    $row( 'Number font', esc_html( $clean_font( $d['fonts']['number'] ?? '' ) ) )
+                );
+                // Grip socks only customise text colour (no pad bg or
+                // pattern, since there's no design or colour step).
+                echo $section( 'Colours',
+                    $row( 'Name text',   $colour_swatch( $d['colours']['name_text']   ?? '' ) ) .
+                    $row( 'Number text', $colour_swatch( $d['colours']['number_text'] ?? '' ) )
+                );
+                if ( ! empty( $d['badge']['url'] ) ) {
+                    $badge_html = sprintf(
+                        '<a href="%s" target="_blank"><img src="%s" style="max-height:48px;max-width:80px;object-fit:contain;border:1px solid #eee;border-radius:4px;padding:2px;background:#fff;" /></a>',
+                        esc_url( $d['badge']['url'] ),
+                        esc_url( $d['badge']['url'] )
+                    );
+                    echo $section( 'Club badge',
+                        $row( 'Badge image', $badge_html ) .
+                        $row( 'Filename',    esc_html( $d['badge']['filename'] ?? '' ) )
+                    );
+                } else {
+                    echo $section( 'Club badge', $row( 'Badge image', 'Not added' ) );
+                }
+                ?>
+            </div>
+
+        </div>
+
         <?php if ( ! empty( $d['preview_url'] ) || ! empty( $d['notes'] ) ) : ?>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:4px;">
                 <?php if ( ! empty( $d['preview_url'] ) ) : ?>

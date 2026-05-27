@@ -1656,10 +1656,141 @@ function reset(){
   goTo(0);
 }
 
+/* ============================================================
+   MULTI-PRODUCT STEP CONFIGURATION
+   ============================================================
+   Each product type lists the customisation steps it uses, in
+   left-to-right order. Steps not listed are hidden from the
+   stepper bar and skipped by Back / Next navigation. Review
+   (step 5) and Success (step 6) are always present.
+
+   To add a new product type:
+     1. Add a key here mapping product_type → [step names]
+     2. Make sure the shortcode passes the matching product_type
+     3. (Optional) Add a renderer in customiser-woocommerce.php
+*/
+var BESPOKE_STEP_CONFIG = {
+  shinpads:           ['badge', 'name', 'number', 'design', 'colours'],
+  gripsocks:          ['badge', 'name', 'number'],
+  // Future:
+  // armbands:        ['badge', 'name', 'design', 'colours'],
+  // shinpad_sleeves: ['badge', 'name', 'number', 'design', 'colours'],
+  // etc.
+};
+// Step name → step index. Steps 5 (Review) and 6 (Success) are flow
+// terminals, always active, not in this table.
+var BESPOKE_STEP_NAMES = ['badge', 'name', 'number', 'design', 'colours'];
+
+function bespokeProductType(){
+  return (window.BespokeConfig && window.BespokeConfig.productType) || 'shinpads';
+}
+function bespokeActiveSteps(){
+  return BESPOKE_STEP_CONFIG[bespokeProductType()] || BESPOKE_STEP_CONFIG.shinpads;
+}
+function bespokeIsStepActive(idx){
+  if (idx >= 5) return true; // Review / Success always shown
+  var name = BESPOKE_STEP_NAMES[idx];
+  return name && bespokeActiveSteps().indexOf(name) !== -1;
+}
+
+/**
+ * Apply the active step config to the DOM:
+ *   - hide step tabs + screens whose name isn't in the active list
+ *   - rewrite each Back / Next / Skip button's target so it jumps
+ *     over hidden steps
+ */
+function applyStepConfig(){
+  // 1. Tabs + screens
+  BESPOKE_STEP_NAMES.forEach(function(name, idx){
+    var on = bespokeIsStepActive(idx);
+    var tab = document.getElementById('lbl-' + idx);
+    var screen = document.getElementById('s' + idx);
+    if (tab)    tab.style.display = on ? '' : 'none';
+    if (screen) {
+      if (on) screen.classList.remove('bcp-step-hidden');
+      else    screen.classList.add('bcp-step-hidden');
+    }
+  });
+
+  // 2. Helper: find nearest active step in a direction
+  function findNextActive(from){
+    for (var i = from; i < 5; i++) if (bespokeIsStepActive(i)) return i;
+    return 5; // Review
+  }
+  function findPrevActive(from){
+    for (var i = from; i >= 0; i--) if (bespokeIsStepActive(i)) return i;
+    return -1;
+  }
+
+  // 3. Patch Back / Next / Skip buttons on each step's screen
+  function nextLabel(target){
+    if (target === 5) return 'Review my design →';
+    if (target === 1) return 'Next: add name →';
+    if (target === 2) return 'Next: add number →';
+    if (target === 3) return 'Next: choose design →';
+    if (target === 4) return 'Next: choose colours →';
+    return 'Next →';
+  }
+  for (var i = 0; i < 5; i++) {
+    var screen = document.getElementById('s' + i);
+    if (!screen) continue;
+    var nextBtn = screen.querySelector('.btn-next');
+    if (nextBtn) {
+      var t = findNextActive(i + 1);
+      nextBtn.onclick = (function(target){ return function(){ goTo(target); }; })(t);
+      // Only overwrite text on the configurable Next buttons (Review
+      // screen's "Add to cart" / Success screen don't have one we care about).
+      nextBtn.textContent = nextLabel(t);
+    }
+    var backBtn = screen.querySelector('.btn-back');
+    if (backBtn) {
+      var p = findPrevActive(i - 1);
+      if (p >= 0) backBtn.onclick = (function(target){ return function(){ goTo(target); }; })(p);
+    }
+    var skipBtn = screen.querySelector('.btn-skip');
+    if (skipBtn && i === 0) {
+      var t2 = findNextActive(1);
+      skipBtn.onclick = (function(target){ return function(){ goTo(target); }; })(t2);
+    }
+  }
+
+  // 4. Also patch the Review screen's Back button (goes back to last
+  //    active step rather than always to s4).
+  var s5 = document.getElementById('s5');
+  if (s5) {
+    var s5Back = s5.querySelector('.btn-back');
+    if (s5Back) {
+      var lastActive = findPrevActive(4);
+      if (lastActive >= 0) {
+        s5Back.onclick = (function(target){ return function(){ goTo(target); }; })(lastActive);
+      }
+    }
+  }
+}
+
+// Wrap goTo so any caller trying to navigate to a hidden step is
+// redirected to the nearest active step in the same direction.
+var _origGoToForConfig = goTo;
+goTo = function(n){
+  if (n < 5 && !bespokeIsStepActive(n)) {
+    var current = (window.S && S.step) || 0;
+    if (n > current) {
+      // forward
+      for (var i = n + 1; i < 5; i++) if (bespokeIsStepActive(i)) { n = i; break; }
+      if (n < 5 && !bespokeIsStepActive(n)) n = 5;
+    } else {
+      // backward
+      for (var i = n - 1; i >= 0; i--) if (bespokeIsStepActive(i)) { n = i; break; }
+    }
+  }
+  return _origGoToForConfig.call(this, n);
+};
+
 makeSVG(0);
 buildDesignScroll();
 buildFontGrid("name");
 setupDesktop();
+applyStepConfig();
 
 
 
@@ -1867,6 +1998,11 @@ function bespokeAddToCart() {
     formData.append('action',                'bespoke_add_to_cart');
     formData.append('nonce',                 cfg.nonce);
     formData.append('product_id',            cfg.productId);
+
+    // Product type — drives the admin spec card renderer + tells the
+    // server which optional fields to expect (e.g. design + colours are
+    // optional for products like Grip Socks that skip those steps).
+    formData.append('bespoke_type',          bespokeProductType());
 
     // Design data
     formData.append('bespoke_size',          S.padSize);
