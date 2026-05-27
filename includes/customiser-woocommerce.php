@@ -110,6 +110,43 @@ function bespoke_wc_hide_default_cart_for_customisable_products() {
     remove_action( 'woocommerce_single_product_summary', 'woocommerce_template_single_add_to_cart', 30 );
 }
 
+/**
+ * Enqueue the drop-in product page stylesheet on every single-product
+ * page where the product has a customiser type set. Gives the page the
+ * dark theme + title/price/tabs/notice-card styling that matches the
+ * customiser's own design language.
+ *
+ * The CSS targets body.single-product so it only applies on WC product
+ * pages — won't bleed into the shop archive, cart, or anywhere else.
+ */
+add_action( 'wp_enqueue_scripts', 'bespoke_wc_enqueue_product_page_styles' );
+
+function bespoke_wc_enqueue_product_page_styles() {
+    if ( ! function_exists( 'is_product' ) || ! is_product() ) {
+        return;
+    }
+    global $post;
+    if ( ! $post ) {
+        return;
+    }
+    $type = get_post_meta( $post->ID, '_bespoke_product_type', true );
+    if ( ! $type ) {
+        return;
+    }
+    // BESPOKE_PLUGIN_URL is defined by the main plugin bootstrap.
+    if ( ! defined( 'BESPOKE_PLUGIN_URL' ) || ! defined( 'BESPOKE_PLUGIN_DIR' ) ) {
+        return;
+    }
+    $css_path = BESPOKE_PLUGIN_DIR . 'assets/bespoke-product-page.css';
+    $version  = file_exists( $css_path ) ? filemtime( $css_path ) : '1.0';
+    wp_enqueue_style(
+        'bespoke-product-page',
+        BESPOKE_PLUGIN_URL . 'assets/bespoke-product-page.css',
+        [],
+        $version
+    );
+}
+
 
 /* =========================================================================
    1. PERSIST CUSTOMISATION DATA TO THE ORDER

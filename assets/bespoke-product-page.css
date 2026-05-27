@@ -1,0 +1,450 @@
+/* ==========================================================================
+   BESPOKE SPORT · Product page styling
+   --------------------------------------------------------------------------
+   Drop-in CSS for the Astra theme + WooCommerce.
+   Targets: body.single-product (any /product/* page).
+
+   Where to paste this:
+     Appearance ▸ Customize ▸ Additional CSS
+     - OR -
+     wp-content/themes/astra-child/style.css
+
+   This stylesheet is intentionally heavy with !important rules because
+   Astra ships with high-specificity defaults. Remove !important once
+   you're confident a rule isn't being overridden.
+
+   Author: Bespoke Sport redesign
+   ========================================================================== */
+
+
+/* --------------------------------------------------------------------------
+   1. DESIGN TOKENS  (match the customiser)
+   -------------------------------------------------------------------------- */
+:root {
+  --bs-ink:        #0E0E10;   /* page background */
+  --bs-deep:       #050505;   /* deeper sections (description, footer-adj) */
+  --bs-panel:      #141417;   /* card / panel surface */
+  --bs-panel-2:    #1A1A1E;   /* nested panel */
+  --bs-mint:       #7FECB8;   /* accent — matches customiser */
+  --bs-mint-soft:  rgba(127,236,184,0.10);
+  --bs-cream:      #F2EFE9;
+  --bs-text:       rgba(255,255,255,0.85);
+  --bs-muted:      rgba(255,255,255,0.55);
+  --bs-line:       rgba(255,255,255,0.10);
+  --bs-font-ui:    'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  --bs-font-mono:  'JetBrains Mono', SFMono-Regular, ui-monospace, monospace;
+}
+
+/* Pull in the fonts (skip if already loaded by the theme) */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+
+/* --------------------------------------------------------------------------
+   2. GLOBAL — make the whole single-product page dark
+   -------------------------------------------------------------------------- */
+body.single-product,
+body.single-product .site,
+body.single-product .site-content,
+body.single-product .ast-container,
+body.single-product #primary,
+body.single-product .entry-content,
+body.single-product .content-area,
+body.single-product .single-product-page-layout {
+  background: var(--bs-ink) !important;
+  color: var(--bs-text) !important;
+  font-family: var(--bs-font-ui) !important;
+}
+
+/* The "boxed" white box Astra wraps around content */
+body.single-product .ast-article-single,
+body.single-product article.product {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: 0 !important;
+  padding: 0 !important;
+}
+
+/* Default text */
+body.single-product .entry-content p,
+body.single-product .entry-content li {
+  color: var(--bs-text) !important;
+  font-family: var(--bs-font-ui) !important;
+}
+
+/* Links inline */
+body.single-product .entry-content a {
+  color: #fff !important;
+  border-bottom: 1px solid var(--bs-mint) !important;
+  text-decoration: none !important;
+}
+body.single-product .entry-content a:hover {
+  color: var(--bs-mint) !important;
+}
+
+
+/* --------------------------------------------------------------------------
+   3. HIDE THE EMPTY GALLERY BLOCK above the customiser
+   -------------------------------------------------------------------------- */
+/* Astra/Woo renders the gallery slot even when the customiser replaces it.
+   This kills the white rectangle visible above the customiser in the
+   current build. Adjust the selector if your child theme uses different markup. */
+body.single-product .woocommerce-product-gallery,
+body.single-product .single-product-thumbnails,
+body.single-product .ast-woocommerce-container .product > .images {
+  display: none !important;
+}
+
+
+/* --------------------------------------------------------------------------
+   4. TITLE + PRICE area (the "summary")
+   -------------------------------------------------------------------------- */
+body.single-product .product_title,
+body.single-product .entry-title {
+  font-family: var(--bs-font-ui) !important;
+  font-weight: 800 !important;
+  font-size: clamp(36px, 4vw, 64px) !important;
+  letter-spacing: -0.02em !important;
+  line-height: 1 !important;
+  color: #fff !important;
+  margin: 0 0 12px !important;
+}
+
+/* The £ price */
+body.single-product .summary .price,
+body.single-product p.price,
+body.single-product .woocommerce-Price-amount,
+body.single-product .woocommerce-Price-amount.amount {
+  font-family: var(--bs-font-ui) !important;
+  font-weight: 800 !important;
+  color: #fff !important;
+  font-size: 48px !important;
+  line-height: 1 !important;
+  letter-spacing: -0.01em !important;
+  background: transparent !important;
+}
+
+/* Decimal / pence */
+body.single-product .woocommerce-Price-amount bdi {
+  color: #fff !important;
+}
+
+/* Stock indicator */
+body.single-product .stock {
+  font-family: var(--bs-font-mono) !important;
+  font-size: 11px !important;
+  letter-spacing: 0.14em !important;
+  text-transform: uppercase !important;
+  color: var(--bs-mint) !important;
+}
+
+
+/* --------------------------------------------------------------------------
+   5. LEAD-TIME NOTICE  (replaces the screaming red paragraph)
+   --------------------------------------------------------------------------
+   Astra usually puts the short description in:
+       .woocommerce-product-details__short-description
+   The red text is wrapped in inline <span style="color: red"> tags.
+   We override those AND restyle the container as a notice card. */
+
+body.single-product .woocommerce-product-details__short-description {
+  background: var(--bs-panel) !important;
+  border-radius: 8px !important;
+  padding: 24px 28px !important;
+  margin: 32px 0 24px !important;
+  border-left: 4px solid var(--bs-mint) !important;
+  position: relative;
+}
+
+/* Kill the inline-red emergency notice and re-style it */
+body.single-product .woocommerce-product-details__short-description span[style*="color"],
+body.single-product .woocommerce-product-details__short-description strong[style*="color"],
+body.single-product .woocommerce-product-details__short-description font[color] {
+  color: #fff !important;
+  background: transparent !important;
+  font-weight: 500 !important;
+}
+
+body.single-product .woocommerce-product-details__short-description p {
+  font-family: var(--bs-font-ui) !important;
+  font-size: 16px !important;
+  line-height: 1.55 !important;
+  color: var(--bs-text) !important;
+  text-align: left !important;
+  margin: 0 0 12px !important;
+  text-transform: none !important;
+}
+body.single-product .woocommerce-product-details__short-description p:last-child {
+  margin-bottom: 0 !important;
+}
+
+/* The dimension lines underneath (Small – 9cm(w) x 14cm(h)) — center-aligned in current
+   build; left-align and tidy spacing. */
+body.single-product .woocommerce-product-details__short-description p:nth-of-type(n+2) {
+  font-family: var(--bs-font-mono) !important;
+  font-size: 14px !important;
+  color: var(--bs-text) !important;
+}
+
+
+/* --------------------------------------------------------------------------
+   6. WOOCOMMERCE TABS  (Description / Additional info / Reviews)
+   -------------------------------------------------------------------------- */
+body.single-product .woocommerce-tabs {
+  background: var(--bs-deep) !important;
+  padding: 64px 0 !important;
+  margin: 56px -9999px 0 !important;
+  padding-left: 9999px !important;
+  padding-right: 9999px !important;
+  border-top: 1px solid var(--bs-line) !important;
+}
+
+/* The tab strip itself */
+body.single-product .woocommerce-tabs ul.tabs.wc-tabs,
+body.single-product .woocommerce-tabs ul.tabs {
+  background: transparent !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--bs-line) !important;
+  padding: 0 !important;
+  margin: 0 0 40px !important;
+  display: flex !important;
+}
+
+/* Hide the underline-decoration ::before / ::after pseudo-bars Astra adds */
+body.single-product .woocommerce-tabs ul.tabs li::before,
+body.single-product .woocommerce-tabs ul.tabs li::after {
+  display: none !important;
+}
+
+body.single-product .woocommerce-tabs ul.tabs li {
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+}
+
+body.single-product .woocommerce-tabs ul.tabs li a {
+  display: block !important;
+  padding: 18px 28px !important;
+  font-family: var(--bs-font-ui) !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.04em !important;
+  color: var(--bs-muted) !important;
+  text-decoration: none !important;
+  border-bottom: 2px solid transparent !important;
+  margin-bottom: -1px !important;
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+body.single-product .woocommerce-tabs ul.tabs li.active a,
+body.single-product .woocommerce-tabs ul.tabs li a:hover {
+  color: var(--bs-mint) !important;
+  border-bottom-color: var(--bs-mint) !important;
+}
+
+/* Tab panel body */
+body.single-product .woocommerce-tabs .panel,
+body.single-product .woocommerce-tabs .wc-tab {
+  background: transparent !important;
+  padding: 0 !important;
+}
+
+body.single-product .woocommerce-tabs .panel h2,
+body.single-product .woocommerce-tabs .wc-tab h2 {
+  display: none !important; /* the "Description" h2 — tab label already says it */
+}
+
+body.single-product .woocommerce-tabs .panel p,
+body.single-product .woocommerce-tabs .wc-tab p {
+  font-family: var(--bs-font-ui) !important;
+  font-size: 17px !important;
+  line-height: 1.65 !important;
+  color: var(--bs-text) !important;
+  max-width: 760px !important;
+  margin: 0 0 18px !important;
+}
+
+body.single-product .woocommerce-tabs .panel strong,
+body.single-product .woocommerce-tabs .wc-tab strong {
+  color: #fff !important;
+}
+
+
+/* --------------------------------------------------------------------------
+   7. ADD-TO-CART button + quantity
+   -------------------------------------------------------------------------- */
+body.single-product .single_add_to_cart_button,
+body.single-product button.alt,
+body.single-product .button.alt {
+  background: var(--bs-mint) !important;
+  color: var(--bs-ink) !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  padding: 16px 32px !important;
+  font-family: var(--bs-font-ui) !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.12em !important;
+  text-transform: uppercase !important;
+  transition: filter 0.2s;
+  box-shadow: none !important;
+}
+body.single-product .single_add_to_cart_button:hover {
+  filter: brightness(1.08) !important;
+}
+
+body.single-product .quantity input.qty {
+  background: var(--bs-panel) !important;
+  border: 1px solid var(--bs-line) !important;
+  color: #fff !important;
+  border-radius: 8px !important;
+  padding: 14px 12px !important;
+  font-family: var(--bs-font-mono) !important;
+  font-size: 14px !important;
+}
+
+
+/* --------------------------------------------------------------------------
+   8. PRODUCT META  (SKU / categories)
+   -------------------------------------------------------------------------- */
+body.single-product .product_meta {
+  border-top: 1px solid var(--bs-line) !important;
+  padding-top: 20px !important;
+  margin-top: 32px !important;
+  font-family: var(--bs-font-mono) !important;
+  font-size: 11px !important;
+  letter-spacing: 0.12em !important;
+  text-transform: uppercase !important;
+  color: var(--bs-muted) !important;
+}
+body.single-product .product_meta a {
+  color: var(--bs-text) !important;
+  border-bottom: 1px solid var(--bs-line) !important;
+}
+
+
+/* --------------------------------------------------------------------------
+   9. RELATED / UPSELL grid
+   -------------------------------------------------------------------------- */
+body.single-product .related.products,
+body.single-product .up-sells.upsells {
+  background: var(--bs-ink) !important;
+  padding: 80px 0 !important;
+  margin: 0 -9999px !important;
+  padding-left: 9999px !important;
+  padding-right: 9999px !important;
+  border-top: 1px solid var(--bs-line) !important;
+}
+
+body.single-product .related.products > h2,
+body.single-product .up-sells > h2 {
+  font-family: var(--bs-font-ui) !important;
+  font-weight: 800 !important;
+  font-size: 36px !important;
+  letter-spacing: -0.01em !important;
+  color: #fff !important;
+  margin: 0 0 32px !important;
+}
+
+body.single-product .related .product,
+body.single-product .up-sells .product {
+  background: var(--bs-panel) !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--bs-line) !important;
+  padding: 16px !important;
+}
+
+body.single-product .related .product .woocommerce-loop-product__title,
+body.single-product .up-sells .product .woocommerce-loop-product__title {
+  color: #fff !important;
+  font-family: var(--bs-font-ui) !important;
+  font-weight: 700 !important;
+  font-size: 18px !important;
+  padding: 12px 0 6px !important;
+}
+
+body.single-product .related .product .price,
+body.single-product .up-sells .product .price {
+  color: var(--bs-text) !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+}
+
+
+/* --------------------------------------------------------------------------
+   10. FORMS  (used by the customiser fallback / cart fields)
+   -------------------------------------------------------------------------- */
+body.single-product input[type="text"],
+body.single-product input[type="email"],
+body.single-product input[type="number"],
+body.single-product input[type="file"],
+body.single-product textarea,
+body.single-product select {
+  background: var(--bs-panel) !important;
+  color: #fff !important;
+  border: 1px solid var(--bs-line) !important;
+  border-radius: 8px !important;
+  padding: 12px 14px !important;
+  font-family: var(--bs-font-ui) !important;
+  font-size: 14px !important;
+}
+
+body.single-product input:focus,
+body.single-product textarea:focus,
+body.single-product select:focus {
+  border-color: var(--bs-mint) !important;
+  outline: 0 !important;
+  box-shadow: 0 0 0 3px var(--bs-mint-soft) !important;
+}
+
+body.single-product label {
+  font-family: var(--bs-font-mono) !important;
+  font-size: 11px !important;
+  letter-spacing: 0.14em !important;
+  text-transform: uppercase !important;
+  color: var(--bs-muted) !important;
+}
+
+
+/* --------------------------------------------------------------------------
+   11. WOOCOMMERCE NOTICES (cart messages, errors, success)
+   -------------------------------------------------------------------------- */
+body.single-product .woocommerce-message,
+body.single-product .woocommerce-info,
+body.single-product .woocommerce-error {
+  background: var(--bs-panel) !important;
+  color: #fff !important;
+  border: 0 !important;
+  border-left: 4px solid var(--bs-mint) !important;
+  border-radius: 6px !important;
+  padding: 16px 20px !important;
+  font-family: var(--bs-font-ui) !important;
+}
+body.single-product .woocommerce-error {
+  border-left-color: #E66467 !important;
+}
+body.single-product .woocommerce-message::before,
+body.single-product .woocommerce-info::before {
+  color: var(--bs-mint) !important;
+}
+
+
+/* --------------------------------------------------------------------------
+   12. MOBILE TUNING
+   -------------------------------------------------------------------------- */
+@media (max-width: 768px) {
+  body.single-product .product_title,
+  body.single-product .entry-title { font-size: 36px !important; }
+  body.single-product .summary .price,
+  body.single-product p.price { font-size: 36px !important; }
+  body.single-product .woocommerce-tabs ul.tabs li a { padding: 14px 16px !important; font-size: 13px !important; }
+  body.single-product .woocommerce-product-details__short-description { padding: 18px 20px !important; }
+}
+
+
+/* ==========================================================================
+   END · Bespoke Sport product styling
+   ========================================================================== */
