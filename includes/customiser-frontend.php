@@ -639,10 +639,14 @@ function bespoke_render_customiser( $atts ) {
 
             // 2. After updateDesignLayers runs, if the active design is a registered
             //    one, build the full layer stack into every bg-layer-{stepId} group.
+            //
+            // Returns a Promise that resolves once the overlay has been
+            // applied to every bg-layer in the DOM. Lets callers (e.g.
+            // capturePreviewSVG) await the render before cloning the SVG.
             function applyRegisteredDesignSVG(){
-                if (!window.S) return;
+                if (!window.S) return Promise.resolve();
                 var d = byId[window.S.design];
-                if (!d) return;
+                if (!d) return Promise.resolve();
 
                 // Compose the layer stack (URLs + tint colours in render order)
                 var stack = [];
@@ -710,7 +714,7 @@ function bespoke_render_customiser( $atts ) {
                 // group) because parent transforms don't propagate into a
                 // nested <svg> — SVG resets the coordinate context at every
                 // viewport boundary.
-                Promise.all([
+                return Promise.all([
                     getPadCenteringOffset(padBaseUrl),
                     Promise.all(stack.map(function(s){ return buildLayer(s.url, s.tint, s.label, s.gradient); }))
                 ]).then(function(results){
@@ -1020,6 +1024,19 @@ function bespoke_render_customiser( $atts ) {
                         return ret;
                     };
                 }
+                // Hook goTo so EVERY step navigation re-applies the design
+                // overlay with the latest state. Covers the case where a
+                // previewed step (e.g. pb5 Review) was created before the
+                // user enabled gradient — without this, the stale preview
+                // shows solid colours even though state is gradient.
+                if (typeof window.goTo === 'function') {
+                    var origGoTo = window.goTo;
+                    window.goTo = function(){
+                        var ret = origGoTo.apply(this, arguments);
+                        requestAnimationFrame(applyRegisteredDesignSVG);
+                        return ret;
+                    };
+                }
                 // Initial load
                 applyRegisteredDesignSVG();
                 updateColourPickerLabels();
@@ -1177,8 +1194,25 @@ function bespoke_render_customiser( $atts ) {
                             }
                             if (!svg) { resolve(null); return; }
 
-                            applyRegisteredDesignSVG();
+                            // Force an overlay refresh THEN await its
+                            // completion before cloning — otherwise the
+                            // clone can race the async layer build and
+                            // miss the latest gradient / colour state.
+                            Promise.resolve(applyRegisteredDesignSVG()).then(function(){
+                                _captureFromSvg(svg, badgeServerUrl, resolve);
+                            });
+                        } catch (e) {
+                            console.warn('Bespoke capturePreviewSVG failed:', e);
+                            resolve(null);
+                        }
+                    });
+                };
 
+                // Extracted from capturePreviewSVG so we can await the
+                // design re-render first. Performs the clone → badge swap
+                // → inline images → canvas → PNG pipeline.
+                function _captureFromSvg(svg, badgeServerUrl, resolve){
+                    try {
                             var clone = svg.cloneNode(true);
                             clone.setAttribute('width',  '800');
                             clone.setAttribute('height', '800');
@@ -1237,8 +1271,7 @@ function bespoke_render_customiser( $atts ) {
                             console.warn('Bespoke capturePreviewSVG failed:', e);
                             resolve(null);
                         }
-                    });
-                };
+                }
             }
             if (document.readyState === 'loading') {
                 document.addEventListener('DOMContentLoaded', init);
