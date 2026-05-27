@@ -625,14 +625,22 @@ function bespoke_render_customiser( $atts ) {
                     var centerOffset = results[0] || {tx:0, ty:0};
                     var layers       = results[1];
 
-                    // Shift every non-background layer by the same offset so
-                    // patterns stay aligned with the pad shape, and the mask
-                    // (cloned from the pad-base layer's content) inherits the
-                    // same shift automatically.
+                    // Shift ONLY the pad-base layer. Pattern PNGs are 1200x1200
+                    // with the design content already positioned correctly
+                    // inside the file — they need to stay at x=0, y=0 so they
+                    // cover the canvas. The pad-base is the only layer where
+                    // the source file content is mis-positioned (drawn off-
+                    // centre by the designer), so it's the only one we shift.
+                    //
+                    // The mask is later cloned from the pad-base layer's
+                    // content, so it inherits the same shift automatically.
+                    // Patterns are then masked through the (now-centred) pad
+                    // silhouette, revealing only the pattern content that
+                    // overlaps with the pad shape.
                     if (centerOffset.tx !== 0 || centerOffset.ty !== 0) {
                         layers.forEach(function(layer, i){
                             if (!layer) return;
-                            if (stack[i] && stack[i].label === 'background') return;
+                            if (!stack[i] || stack[i].label !== 'pad-base') return;
                             var nested = layer.querySelector('svg');
                             if (nested) {
                                 nested.setAttribute('x', centerOffset.tx);
