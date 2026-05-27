@@ -62,6 +62,11 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
 .size-row label{font-size:12px;color:#888888;white-space:nowrap;}
 .size-row input[type=range]{flex:1;accent-color:#5DCAA5;}
 .size-val{font-size:12px;color:#F5F5F0;font-weight:600;min-width:36px;text-align:right;}
+.surprise-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px;margin-bottom:16px;border:none;border-radius:10px;background:linear-gradient(135deg,#FF6B9D 0%,#C06FF5 50%,#5DCAA5 100%);color:#fff;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;cursor:pointer;font-family:inherit;box-shadow:0 4px 14px rgba(192,111,245,.35);transition:transform .15s ease,box-shadow .15s ease;}
+.surprise-btn:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(192,111,245,.45);}
+.surprise-btn:active{transform:translateY(0);box-shadow:0 2px 8px rgba(192,111,245,.3);}
+.surprise-btn .sm-icon{font-size:18px;line-height:1;display:inline-block;animation:bcp-sparkle 2.4s ease-in-out infinite;}
+@keyframes bcp-sparkle{0%,100%{transform:rotate(-8deg) scale(1);}50%{transform:rotate(8deg) scale(1.15);}}
 .design-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:18px;}
 .design-card{border:2px solid #2A2A2A;border-radius:10px;overflow:hidden;cursor:pointer;background:#161616;transition:border-color .15s,transform .1s;}
 .design-card:hover{border-color:#5DCAA5;transform:scale(1.02);}
@@ -546,6 +551,10 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
 
   <div class="screen" id="s3">
     <div class="preview-box"><div id="pb3"></div></div>
+    <button type="button" class="surprise-btn" onclick="surpriseMe()" aria-label="Pick a random design and colour palette">
+      <span class="sm-icon">✨</span>
+      <span>Surprise Me!</span>
+    </button>
     <div class="sec-label">Choose your design</div>
     <div class="font-nav" style="margin-bottom:14px;">
       <button class="font-nav-btn" onclick="scrollDesigns(-1)">&#8592;</button>
@@ -1339,6 +1348,107 @@ function onColor(zone,val){
   updateDesignLayers();
   syncAll();
 }
+
+/* ============================================================
+   SURPRISE ME — random design + curated colour palette
+   ============================================================
+   Curated palettes (rather than truly random RGB) — random colour
+   combinations clash 90% of the time, but a hand-picked palette
+   always looks intentional. Each palette has:
+     bg       — pad background
+     patterns — array of pattern-layer colours (cycles for multi-
+                pattern designs; single-pattern designs use [0])
+     name     — name text colour (high contrast on bg)
+     num      — number text colour (high contrast on bg)
+*/
+var BESPOKE_PALETTES = [
+  // Bright & bold
+  { bg:'#E53935', patterns:['#FFFFFF','#1A1A1A'], name:'#FFFFFF', num:'#FFFFFF' }, // Crimson
+  { bg:'#FFC107', patterns:['#1A1A1A','#E53935'], name:'#1A1A1A', num:'#1A1A1A' }, // Amber
+  { bg:'#1976D2', patterns:['#FFFFFF','#FFC107'], name:'#FFFFFF', num:'#FFC107' }, // Royal Blue
+  { bg:'#2E7D32', patterns:['#FFFFFF','#FFC107'], name:'#FFFFFF', num:'#FFFFFF' }, // Forest
+  { bg:'#7B1FA2', patterns:['#FFC107','#FFFFFF'], name:'#FFFFFF', num:'#FFC107' }, // Purple
+  { bg:'#FF6F00', patterns:['#1A1A1A','#FFFFFF'], name:'#FFFFFF', num:'#1A1A1A' }, // Tangerine
+  // Classic football
+  { bg:'#0A2463', patterns:['#FFD700','#FFFFFF'], name:'#FFD700', num:'#FFFFFF' }, // Royal Gold
+  { bg:'#DA020E', patterns:['#FFFFFF','#FBE122'], name:'#FFFFFF', num:'#FBE122' }, // Red & gold
+  { bg:'#132257', patterns:['#FFFFFF','#1A1A1A'], name:'#FFFFFF', num:'#FFFFFF' }, // Midnight
+  // Vibrant / fun
+  { bg:'#00BFA5', patterns:['#FFFFFF','#1A1A1A'], name:'#FFFFFF', num:'#1A1A1A' }, // Teal
+  { bg:'#E91E63', patterns:['#FFFFFF','#1A1A1A'], name:'#FFFFFF', num:'#FFFFFF' }, // Magenta
+  { bg:'#212121', patterns:['#76FF03','#FFFFFF'], name:'#76FF03', num:'#FFFFFF' }, // Stealth Lime
+  { bg:'#FFFFFF', patterns:['#1A1A1A','#E53935'], name:'#1A1A1A', num:'#E53935' }, // Mono Pop
+  { bg:'#FF4081', patterns:['#FFFFFF','#3F51B5'], name:'#FFFFFF', num:'#FFFFFF' }, // Hot Pink
+];
+
+function surpriseMe(){
+  if (!window.ALL_DESIGNS || !window.ALL_DESIGNS.length) return;
+
+  // Pick a random design — biased AGAINST the current one so the user
+  // always sees a change. With only 1 design available, no bias.
+  var pool = window.ALL_DESIGNS;
+  if (pool.length > 1) {
+    pool = window.ALL_DESIGNS.filter(function(d){ return d.id !== S.design; });
+  }
+  var design = pool[Math.floor(Math.random() * pool.length)];
+
+  // Pick a random palette — also biased against the current bg colour
+  // so repeated clicks always look different.
+  var palettePool = BESPOKE_PALETTES;
+  if (palettePool.length > 1) {
+    palettePool = BESPOKE_PALETTES.filter(function(p){
+      return p.bg.toUpperCase() !== (S.bgColor || '').toUpperCase();
+    });
+  }
+  var palette = palettePool[Math.floor(Math.random() * palettePool.length)];
+
+  // How many pattern colours does the chosen design need? Look it up
+  // from the registered design metadata (layers count - 1, since layer 0
+  // is the pad base). Fallback to 1 if we can't find it.
+  var registered = (window.BESPOKE_REGISTERED_DESIGNS || [])
+    .find(function(d){ return d.id === design.id; });
+  var patLayerCount = registered && registered.layers
+    ? Math.max(1, registered.layers.length - 1)
+    : 1;
+
+  // Build patColors array — cycle through palette.patterns so any
+  // number of layers gets coloured (single-pattern uses patterns[0],
+  // two-pattern uses [0]+[1], three-pattern uses [0]+[1]+[0], etc.).
+  var patColors = [];
+  for (var i = 0; i < patLayerCount; i++) {
+    patColors.push(palette.patterns[i % palette.patterns.length]);
+  }
+
+  // Update state
+  S.design     = design.id;
+  S.bgColor    = palette.bg;
+  S.patColor   = patColors[0];
+  S.patColors  = patColors;
+  S.nameColor  = palette.name;
+  S.numColor   = palette.num;
+
+  // Sync the colour-picker swatches and input values so the UI reflects
+  // the new state (the user will see all four picker tiles update too).
+  function syncSwatch(zone, colour){
+    var ct = document.getElementById('ct-' + zone);
+    var cp = document.getElementById('cp-' + zone);
+    if (ct) ct.style.background = colour;
+    if (cp) cp.value = colour;
+  }
+  syncSwatch('bg',   palette.bg);
+  syncSwatch('pat',  patColors[0]);
+  syncSwatch('name', palette.name);
+  syncSwatch('num',  palette.num);
+  // Dynamic pattern rows (Pattern 2, Pattern 3, ...) — their swatches
+  // get updated by rebuildPatternRows() which fires from the
+  // updateDesignLayers hook below.
+
+  // Repaint everything
+  buildDesignScroll();
+  updateDesignLayers();
+  syncAll();
+}
+
 function handleBadge(e){
   var file=e.target.files[0];if(!file)return;
   S.badge=file.name; S.badgeURL=URL.createObjectURL(file);
