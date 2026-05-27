@@ -205,7 +205,12 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
   .preview-box { display: none !important; }
   .drag-hint { display: none; }
 
-  /* Desktop right panel */
+  /* Desktop right panel. The top-bar is hidden by the runtime
+     CSS overrides, so the panel sticks to top:0 (not the old top:52
+     that allowed for the bar) and uses full viewport height. Padding
+     is minimal so the preview SVG reaches as close to the top of
+     the customiser frame as possible — aligning with the step-bar
+     on the left column. */
   #dt-panel {
     grid-column: 2;
     grid-row: 2;
@@ -214,11 +219,11 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 24px 32px;
+    padding: 8px 32px;
     gap: 12px;
-    height: calc(100vh - 52px);
+    height: 100vh;
     position: sticky;
-    top: 52px;
+    top: 0;
     overflow: hidden;
   }
   #dt-svg-wrap {
@@ -231,10 +236,10 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
     padding: 8px;
   }
   #dt-svg-wrap svg {
-    height: calc(100vh - 120px) !important;
-    width: calc(100vh - 120px) !important;
-    max-width: calc(100vw - 440px) !important;
-    max-height: calc(100vw - 440px) !important;
+    height: calc(100vh - 32px) !important;
+    width: calc(100vh - 32px) !important;
+    max-width: calc(100vw - 420px) !important;
+    max-height: calc(100vw - 420px) !important;
     border-radius: 14px;
     display: block;
     flex-shrink: 0;
