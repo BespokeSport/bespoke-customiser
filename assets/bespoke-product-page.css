@@ -446,6 +446,110 @@ body.single-product .woocommerce-info::before {
 
 
 /* --------------------------------------------------------------------------
+   12b. CUSTOM SINGLE-PRODUCT TEMPLATE LAYOUT
+   --------------------------------------------------------------------------
+   Layout containers used by templates/single-product-bespoke.php. The
+   class names (.bs-*) intentionally don't collide with WC / Astra / Elementor
+   so nothing leaks into other pages. */
+
+body.single-product .bespoke-single-product {
+  background: var(--bs-ink) !important;
+  color: var(--bs-text) !important;
+  font-family: var(--bs-font-ui) !important;
+  padding: 0 !important;
+}
+body.single-product .bs-shell {
+  max-width: 1440px !important;
+  margin: 0 auto !important;
+  padding: 0 56px !important;
+}
+
+/* Breadcrumb */
+body.single-product .bs-breadcrumb {
+  padding: 20px 0 !important;
+  border-bottom: 1px solid var(--bs-line) !important;
+  font-family: var(--bs-font-mono) !important;
+  font-size: 11px !important;
+  letter-spacing: 0.14em !important;
+  text-transform: uppercase !important;
+  color: var(--bs-muted) !important;
+}
+body.single-product .bs-breadcrumb a {
+  color: inherit !important;
+  text-decoration: none !important;
+  border-bottom: 0 !important;
+}
+body.single-product .bs-breadcrumb a:hover {
+  color: var(--bs-mint) !important;
+}
+body.single-product .bs-breadcrumb .sep {
+  margin: 0 14px !important;
+  color: rgba(255,255,255,0.3) !important;
+}
+
+/* Hero — eyebrow + title + subtitle on the left, price + suffix on the right */
+body.single-product .bs-hero {
+  display: grid !important;
+  grid-template-columns: 1fr auto !important;
+  gap: 40px !important;
+  align-items: start !important;
+  padding: 48px 0 32px !important;
+}
+body.single-product .bs-hero__left {
+  text-align: left !important;
+}
+body.single-product .bs-hero__right {
+  text-align: right !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-end !important;
+  gap: 4px !important;
+}
+body.single-product .bs-hero__right .bs-from {
+  font-family: var(--bs-font-mono) !important;
+  font-size: 10px !important;
+  letter-spacing: 0.14em !important;
+  text-transform: uppercase !important;
+  color: var(--bs-muted) !important;
+  margin-bottom: 4px !important;
+}
+body.single-product .bs-hero__right .price {
+  margin: 0 !important;
+  text-align: right !important;
+}
+
+/* Customiser wrapper just adds some vertical breathing room */
+body.single-product .bs-customiser-wrap {
+  margin: 24px 0 32px !important;
+}
+
+/* Tabs + at-a-glance side-by-side */
+body.single-product .bs-tabs-grid {
+  display: grid !important;
+  grid-template-columns: 2fr 1fr !important;
+  gap: 56px !important;
+  align-items: start !important;
+  padding: 32px 0 !important;
+}
+body.single-product .bs-tabs-grid .woocommerce-tabs {
+  /* Override section 6 of this file — inside the grid we don't want
+     the negative-margin full-bleed treatment. */
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border-top: 0 !important;
+}
+
+@media (max-width: 900px) {
+  body.single-product .bs-shell { padding: 0 20px !important; }
+  body.single-product .bs-hero { grid-template-columns: 1fr !important; gap: 16px !important; }
+  body.single-product .bs-hero__right { align-items: flex-start !important; text-align: left !important; }
+  body.single-product .bs-hero__right .price { text-align: left !important; }
+  body.single-product .bs-tabs-grid { grid-template-columns: 1fr !important; gap: 24px !important; }
+}
+
+
+/* --------------------------------------------------------------------------
    13. EYEBROW · SUBTITLE · PRICE SUFFIX  (content shortcodes)
    -------------------------------------------------------------------------- */
 body.single-product .bs-eyebrow {

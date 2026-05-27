@@ -33,6 +33,35 @@ defined( 'ABSPATH' ) || exit;
 
 
 /* =========================================================================
+   0. CUSTOM SINGLE-PRODUCT TEMPLATE
+   ============================================================================
+   When a WC product has _bespoke_product_type set, replace whatever
+   template the theme / Elementor was going to render with our own
+   templates/single-product-bespoke.php. Non-customisable products are
+   untouched — they continue to use Astra / Elementor / whatever.
+   Priority 999 so we beat Elementor's own template_include filter.
+   ========================================================================= */
+
+add_filter( 'template_include', 'bespoke_pdp_template_include', 999 );
+
+function bespoke_pdp_template_include( $template ) {
+    if ( ! function_exists( 'is_product' ) || ! is_product() ) {
+        return $template;
+    }
+    global $post;
+    if ( ! $post ) {
+        return $template;
+    }
+    $type = get_post_meta( $post->ID, '_bespoke_product_type', true );
+    if ( ! $type ) {
+        return $template; // standard product — leave the theme template alone
+    }
+    $custom = BESPOKE_PLUGIN_DIR . 'templates/single-product-bespoke.php';
+    return file_exists( $custom ) ? $custom : $template;
+}
+
+
+/* =========================================================================
    1. PRODUCT DATA TAB
    Adds the "BEspoke Page" tab next to General / Inventory / Shipping in
    the WooCommerce Product Data box.
