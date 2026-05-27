@@ -509,6 +509,23 @@ body.single-product .woocommerce-info::before {
     align-items: stretch !important;
     justify-content: flex-start !important;
   }
+  /* Astra (and Astra parent themes) inject ::before { content: " ";
+     display: table; } on ul.products as a legacy float-clearfix. Inside
+     a flex container that pseudo becomes a real flex item, stealing the
+     first gap slot — every product then sits 12px to the right of where
+     it should, and one item gets bumped off each row. Killing the
+     pseudo's content removes the ghost flex item entirely. */
+  body.single-product .related ul.products::before,
+  body.single-product .related ul.products::after,
+  body.single-product .up-sells ul.products::before,
+  body.single-product .up-sells ul.products::after,
+  body.single-product .related .products::before,
+  body.single-product .related .products::after,
+  body.single-product .up-sells .products::before,
+  body.single-product .up-sells .products::after {
+    content: none !important;
+    display: none !important;
+  }
   body.single-product .related ul.products li.product,
   body.single-product .related ul.products li.product.first,
   body.single-product .related ul.products li.product:first-child,
