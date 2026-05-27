@@ -294,6 +294,80 @@ function bespoke_render_customiser( $atts ) {
                 return /\.(jpe?g|png|gif|webp)(\?.*)?$/i.test(url || '');
             }
 
+            // Where pads should sit on the canvas. Matches Apex's bbox
+            // (115,183 → 1093,1006) which itself matches the white pad
+            // silhouettes baked into shinpads-background.jpg. Defining the
+            // target here means every design auto-positions to this single
+            // canonical anchor, no matter where the artist drew the pad
+            // shape inside their 1200x1200 source file.
+            var TARGET_PAD_CENTER_X = 603.5;
+            var TARGET_PAD_CENTER_Y = 593;
+
+            // Pad-base centering offset cache, keyed by URL.
+            //
+            // Designers export pad-shape SVGs with the actual paths sitting
+            // wherever they happened to draw them inside the 1200x1200
+            // viewBox. Apex landed at bbox (115,183) — matching the silhouettes
+            // in the product background; Tramline landed at (207,55) — top-
+            // right corner. Auto-detecting the bbox lets us shift any new
+            // design back to the canonical position so the user doesn't have
+            // to police pad alignment in every source file.
+            //
+            // The offset is later applied via x/y attributes on each layer's
+            // nested <svg> / <image> element (NOT via a transform on the
+            // wrap <g> — SVG creates a fresh coordinate context at every
+            // nested <svg> viewport, so wrap transforms don't propagate into
+            // the SVG's content rendering).
+            var _padCenterCache = {};
+            function getPadCenteringOffset(padUrl){
+                return new Promise(function(resolve){
+                    if (!padUrl) { resolve({tx:0, ty:0}); return; }
+                    if (_padCenterCache[padUrl]) { resolve(_padCenterCache[padUrl]); return; }
+                    // Raster pad-bases are <image> elements that cover the
+                    // full 1200x1200 viewport, so they're already aligned.
+                    if (isRasterUrl(padUrl)) {
+                        _padCenterCache[padUrl] = {tx:0, ty:0};
+                        resolve({tx:0, ty:0});
+                        return;
+                    }
+                    fetchSvgText(padUrl).then(function(svgText){
+                        try {
+                            var parsed = parseSvg(svgText);
+                            if (!parsed) { resolve({tx:0, ty:0}); return; }
+                            // getBBox needs the element to be attached to
+                            // the document, so we mount an off-screen probe.
+                            var probe = document.createElementNS(NS, 'svg');
+                            probe.setAttribute('viewBox',
+                                parsed.getAttribute('viewBox') || '0 0 1200 1200'
+                            );
+                            probe.style.position = 'absolute';
+                            probe.style.visibility = 'hidden';
+                            probe.style.left = '-99999px';
+                            probe.style.top  = '-99999px';
+                            probe.style.width  = '100px';
+                            probe.style.height = '100px';
+                            Array.from(parsed.children).forEach(function(child){
+                                probe.appendChild(child.cloneNode(true));
+                            });
+                            document.body.appendChild(probe);
+                            var bb = probe.getBBox();
+                            document.body.removeChild(probe);
+                            var off = {tx:0, ty:0};
+                            if (bb && bb.width > 0 && bb.height > 0) {
+                                off.tx = TARGET_PAD_CENTER_X - (bb.x + bb.width  / 2);
+                                off.ty = TARGET_PAD_CENTER_Y - (bb.y + bb.height / 2);
+                            }
+                            _padCenterCache[padUrl] = off;
+                            resolve(off);
+                        } catch(_) {
+                            _padCenterCache[padUrl] = {tx:0, ty:0};
+                            resolve({tx:0, ty:0});
+                        }
+                    }).catch(function(){
+                        resolve({tx:0, ty:0});
+                    });
+                });
+            }
 
             // Parse a hex colour string ("#rrggbb" or "#rgb") to [r, g, b] ints,
             // or null if not a valid hex.
@@ -539,15 +613,40 @@ function bespoke_render_customiser( $atts ) {
                 var hasProductBase = !!(PA.background_url || PA.pad_base_url ||
                     (d.layers && d.layers[0] && d.layers[0].file_url));
 
-                // Build all layers in parallel and append in correct order.
-                // Each layer renders at its natural 1200x1200 position —
-                // we trust the designer to position the pad shape and pattern
-                // content correctly within their source files. (Apex is the
-                // canonical reference: pad shape sits at bbox (115,183) inside
-                // the 1200x1200 viewBox to match the white pad silhouettes
-                // baked into the product background image.)
-                Promise.all(stack.map(function(s){ return buildLayer(s.url, s.tint, s.label); }))
-                    .then(function(layers){
+                // Build the pad-base centering offset + every layer in
+                // parallel. The offset is applied per-layer (NOT to the wrap
+                // group) because parent transforms don't propagate into a
+                // nested <svg> — SVG resets the coordinate context at every
+                // viewport boundary.
+                Promise.all([
+                    getPadCenteringOffset(padBaseUrl),
+                    Promise.all(stack.map(function(s){ return buildLayer(s.url, s.tint, s.label); }))
+                ]).then(function(results){
+                    var centerOffset = results[0] || {tx:0, ty:0};
+                    var layers       = results[1];
+
+                    // Shift every non-background layer by the same offset so
+                    // patterns stay aligned with the pad shape, and the mask
+                    // (cloned from the pad-base layer's content) inherits the
+                    // same shift automatically.
+                    if (centerOffset.tx !== 0 || centerOffset.ty !== 0) {
+                        layers.forEach(function(layer, i){
+                            if (!layer) return;
+                            if (stack[i] && stack[i].label === 'background') return;
+                            var nested = layer.querySelector('svg');
+                            if (nested) {
+                                nested.setAttribute('x', centerOffset.tx);
+                                nested.setAttribute('y', centerOffset.ty);
+                                return;
+                            }
+                            var img = layer.querySelector('image');
+                            if (img) {
+                                img.setAttribute('x', centerOffset.tx);
+                                img.setAttribute('y', centerOffset.ty);
+                            }
+                        });
+                    }
+
                         var groups = document.querySelectorAll('[id^="bg-layer-"]');
                         groups.forEach(function(g, groupIdx){
                             // Remove old overlay if present
