@@ -1424,8 +1424,41 @@ function _surpriseSnapshot(){
     patColor:  S.patColor,
     patColors: (S.patColors || []).slice(),
     nameColor: S.nameColor,
-    numColor:  S.numColor
+    numColor:  S.numColor,
+    // Snapshot gradients too so Back/Forward restores them faithfully.
+    // Deep-copy so later mutations don't bleed into history.
+    bgGradient: S.bgGradient ? { from: S.bgGradient.from, to: S.bgGradient.to } : null,
+    patGradients: (S.patGradients || []).map(function(g){
+      return g && g.from && g.to ? { from: g.from, to: g.to } : null;
+    })
   };
+}
+
+// Helper: update a static colour-picker tile's visible swatch background.
+// Renders the gradient if one is set, otherwise the solid colour.
+function _syncZoneSwatch(zone){
+  var ct = document.getElementById('ct-' + zone);
+  var cp = document.getElementById('cp-' + zone);
+  if (!ct) return;
+  var grad = null;
+  if (zone === 'bg') grad = S.bgGradient;
+  else if (zone === 'pat') grad = (S.patGradients || [])[0];
+  else {
+    var m = zone.match(/^pat(\d+)$/);
+    if (m) grad = (S.patGradients || [])[parseInt(m[1], 10) - 1];
+  }
+  if (grad && grad.from && grad.to) {
+    ct.style.background = 'linear-gradient(180deg, ' + grad.from + ', ' + grad.to + ')';
+    if (cp) cp.value = grad.from;
+  } else {
+    var solid = '#000';
+    if (zone === 'bg')        solid = S.bgColor;
+    else if (zone === 'pat')  solid = S.patColor;
+    else if (zone === 'name') solid = S.nameColor;
+    else if (zone === 'num')  solid = S.numColor;
+    if (ct) ct.style.background = solid;
+    if (cp) cp.value = solid;
+  }
 }
 
 function _applySurpriseSnapshot(snap){
@@ -1436,17 +1469,19 @@ function _applySurpriseSnapshot(snap){
   S.patColors = (snap.patColors || []).slice();
   S.nameColor = snap.nameColor;
   S.numColor  = snap.numColor;
+  // Restore gradients — deep-copy so mutating S.bgGradient later doesn't
+  // change the history entry.
+  S.bgGradient = snap.bgGradient ? { from: snap.bgGradient.from, to: snap.bgGradient.to } : null;
+  S.patGradients = (snap.patGradients || []).map(function(g){
+    return g && g.from && g.to ? { from: g.from, to: g.to } : null;
+  });
 
-  function syncSwatch(zone, colour){
-    var ct = document.getElementById('ct-' + zone);
-    var cp = document.getElementById('cp-' + zone);
-    if (ct) ct.style.background = colour;
-    if (cp) cp.value = colour;
-  }
-  syncSwatch('bg',   S.bgColor);
-  syncSwatch('pat',  S.patColor);
-  syncSwatch('name', S.nameColor);
-  syncSwatch('num',  S.numColor);
+  // Refresh swatches for every static picker tile (and any dynamic
+  // pattern rows that may exist for the active design).
+  _syncZoneSwatch('bg');
+  _syncZoneSwatch('pat');
+  _syncZoneSwatch('name');
+  _syncZoneSwatch('num');
 
   buildDesignScroll();
   updateDesignLayers();
@@ -1532,19 +1567,19 @@ function surpriseMe(){
   S.patColors  = patColors;
   S.nameColor  = palette.name;
   S.numColor   = palette.num;
+  // Curated palettes are solid-only — clear any stale gradients the
+  // customer set manually, otherwise the renderer would keep showing
+  // the gradient over the new solid colours and look wrong.
+  S.bgGradient   = null;
+  S.patGradients = [];
 
   // Sync the colour-picker swatches and input values so the UI reflects
   // the new state (the user will see all four picker tiles update too).
-  function syncSwatch(zone, colour){
-    var ct = document.getElementById('ct-' + zone);
-    var cp = document.getElementById('cp-' + zone);
-    if (ct) ct.style.background = colour;
-    if (cp) cp.value = colour;
-  }
-  syncSwatch('bg',   palette.bg);
-  syncSwatch('pat',  patColors[0]);
-  syncSwatch('name', palette.name);
-  syncSwatch('num',  palette.num);
+  // _syncZoneSwatch handles both solid + gradient modes.
+  _syncZoneSwatch('bg');
+  _syncZoneSwatch('pat');
+  _syncZoneSwatch('name');
+  _syncZoneSwatch('num');
   // Dynamic pattern rows (Pattern 2, Pattern 3, ...) — their swatches
   // get updated by rebuildPatternRows() which fires from the
   // updateDesignLayers hook below.
@@ -1842,6 +1877,21 @@ function bespokeAddToCart() {
     patCols.forEach(function(c, i){
       formData.append('bespoke_colour_pat_' + i, c || '');
     });
+
+    // Gradients — only sent when the customer actually picked one. PHP
+    // treats missing fields as solid colour for that zone (back-compat).
+    if (S.bgGradient && S.bgGradient.from && S.bgGradient.to) {
+      formData.append('bespoke_gradient_bg_from', S.bgGradient.from);
+      formData.append('bespoke_gradient_bg_to',   S.bgGradient.to);
+    }
+    if (S.patGradients && S.patGradients.length) {
+      S.patGradients.forEach(function(g, i){
+        if (g && g.from && g.to) {
+          formData.append('bespoke_gradient_pat_' + i + '_from', g.from);
+          formData.append('bespoke_gradient_pat_' + i + '_to',   g.to);
+        }
+      });
+    }
 
     // Fonts
     var nameFont = FONTS.find(function(f){return f.family===S.nameFontFamily;});

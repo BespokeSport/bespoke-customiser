@@ -243,6 +243,65 @@ function bespoke_render_admin_shinpads( $d, $item ) {
         );
     };
 
+    // Helper: render a gradient swatch (from → to) with both hex values
+    $gradient_swatch = function( $grad ) use ( $colour_swatch ) {
+        if ( empty( $grad['from'] ) || empty( $grad['to'] ) ) return '—';
+        $from = esc_attr( $grad['from'] );
+        $to   = esc_attr( $grad['to']   );
+        return sprintf(
+            '<span style="display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;">'
+            . '<span style="display:inline-block;width:36px;height:14px;border-radius:3px;background:linear-gradient(180deg,%1$s,%2$s);border:1px solid rgba(0,0,0,0.15);flex-shrink:0;" title="Gradient %1$s → %2$s"></span>'
+            . '<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#666;">'
+              . '<code>%1$s</code> → <code>%2$s</code>'
+            . '</span>'
+            . '<span style="font-size:10px;font-weight:700;color:#2E7D32;text-transform:uppercase;letter-spacing:.5px;background:#E8F5E9;padding:2px 6px;border-radius:3px;">Gradient</span>'
+            . '</span>',
+            $from,
+            $to
+        );
+    };
+
+    // Helper: render either a solid swatch or gradient swatch depending
+    // on whether the zone is in gradient mode.
+    $colour_or_gradient = function( $solid_hex, $grad ) use ( $colour_swatch, $gradient_swatch ) {
+        if ( is_array( $grad ) && ! empty( $grad['from'] ) && ! empty( $grad['to'] ) ) {
+            return $gradient_swatch( $grad );
+        }
+        return $colour_swatch( $solid_hex );
+    };
+
+    // Helper: pretty-print a font name. The customiser sends either a
+    // friendly label ('Villain') or a raw CSS font-family list ('"Arial
+    // Black", Arial, sans-serif'). For the CSS list case, take the first
+    // family and strip quotes so production doesn't see backslashes.
+    $clean_font = function( $raw ) {
+        $raw = trim( (string) $raw );
+        if ( $raw === '' ) return '—';
+        // Take first entry from a comma list (CSS font-family stacks)
+        $first = trim( explode( ',', $raw )[0] );
+        // Strip surrounding single/double quotes (and any escaped slashes)
+        $first = trim( $first, "\"' \t\n\r\0\x0B\\" );
+        return $first !== '' ? $first : $raw;
+    };
+
+    // Helper: look up the human-readable design name from its slug.
+    // Falls back to the slug ucfirst'd if no matching post is found.
+    $design_label = function( $slug ) {
+        $slug = trim( (string) $slug );
+        if ( $slug === '' ) return '—';
+        $posts = get_posts( [
+            'post_type'        => 'bespoke_design',
+            'name'             => $slug,
+            'posts_per_page'   => 1,
+            'post_status'      => 'any',
+            'suppress_filters' => true,
+        ] );
+        if ( ! empty( $posts ) ) {
+            return $posts[0]->post_title;
+        }
+        return ucfirst( $slug );
+    };
+
     // Helper: row in the spec table
     $row = function( $label, $value ) {
         if ( $value === '' || $value === null ) $value = '—';
@@ -292,7 +351,7 @@ function bespoke_render_admin_shinpads( $d, $item ) {
                 <?php
                 echo $section( 'Product',
                     $row( 'Size',   $d['size']   ?? '' ) .
-                    $row( 'Design', $d['design'] ?? '' )
+                    $row( 'Design', esc_html( $design_label( $d['design'] ?? '' ) ) )
                 );
                 echo $section( 'Left pad',
                     $row( 'Name',   $d['left']['name']   ?? '' ) .
@@ -309,14 +368,15 @@ function bespoke_render_admin_shinpads( $d, $item ) {
             <div>
                 <?php
                 echo $section( 'Fonts',
-                    $row( 'Name font',   $d['fonts']['name']   ?? '' ) .
-                    $row( 'Number font', $d['fonts']['number'] ?? '' )
+                    $row( 'Name font',   esc_html( $clean_font( $d['fonts']['name']   ?? '' ) ) ) .
+                    $row( 'Number font', esc_html( $clean_font( $d['fonts']['number'] ?? '' ) ) )
                 );
                 // Pattern colour rows. Multi-pattern designs (e.g. Tramline)
                 // send a 'patterns' array — show each layer as Pattern 1,
                 // Pattern 2, etc. Single-pattern designs (or older orders
                 // placed before the multi-pattern update) fall back to the
-                // legacy 'pattern' field.
+                // legacy 'pattern' field. If a per-pattern gradient is set
+                // for that layer, the gradient overrides the solid swatch.
                 $patterns_arr = $d['colours']['patterns'] ?? [];
                 if ( ! is_array( $patterns_arr ) ) {
                     $patterns_arr = [];
@@ -325,21 +385,36 @@ function bespoke_render_admin_shinpads( $d, $item ) {
                     $legacy = $d['colours']['pattern'] ?? '';
                     if ( $legacy ) $patterns_arr = [ $legacy ];
                 }
+                $pat_grads_arr = $d['colours']['pattern_gradients'] ?? [];
+                if ( ! is_array( $pat_grads_arr ) ) {
+                    $pat_grads_arr = [];
+                }
+
                 $pattern_rows = '';
                 if ( count( $patterns_arr ) <= 1 ) {
                     $first = $patterns_arr[0] ?? '';
-                    $pattern_rows = $row( 'Pattern', $colour_swatch( $first ) );
+                    $pattern_rows = $row(
+                        'Pattern',
+                        $colour_or_gradient( $first, $pat_grads_arr[0] ?? null )
+                    );
                 } else {
                     foreach ( $patterns_arr as $i => $hex ) {
                         $pattern_rows .= $row(
                             'Pattern ' . ( $i + 1 ),
-                            $colour_swatch( $hex )
+                            $colour_or_gradient( $hex, $pat_grads_arr[ $i ] ?? null )
                         );
                     }
                 }
 
+                // Pad background: show gradient if customer enabled one,
+                // else the solid swatch.
+                $bg_value = $colour_or_gradient(
+                    $d['colours']['background']  ?? '',
+                    $d['colours']['bg_gradient'] ?? null
+                );
+
                 echo $section( 'Colours',
-                    $row( 'Pad background', $colour_swatch( $d['colours']['background']  ?? '' ) ) .
+                    $row( 'Pad background', $bg_value ) .
                     $pattern_rows .
                     $row( 'Name text',      $colour_swatch( $d['colours']['name_text']   ?? '' ) ) .
                     $row( 'Number text',    $colour_swatch( $d['colours']['number_text'] ?? '' ) )

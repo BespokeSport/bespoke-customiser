@@ -61,6 +61,55 @@ function bespoke_collect_pattern_colours() {
     return $out;
 }
 
+/**
+ * Read a single gradient from POST.
+ *
+ * Expects two fields:
+ *   bespoke_gradient_{prefix}_from = '#rrggbb'
+ *   bespoke_gradient_{prefix}_to   = '#rrggbb'
+ *
+ * Returns [ 'from' => '#xxx', 'to' => '#xxx' ] when both are valid hex,
+ * or null when either is missing / invalid (= solid mode for that zone).
+ *
+ * @param string $prefix Field-name suffix, e.g. 'bg' or 'pat_0'.
+ * @return array{from:string,to:string}|null
+ */
+function bespoke_read_gradient( $prefix ) {
+    $from_raw = $_POST[ 'bespoke_gradient_' . $prefix . '_from' ] ?? '';
+    $to_raw   = $_POST[ 'bespoke_gradient_' . $prefix . '_to'   ] ?? '';
+    $from = sanitize_hex_color( wp_unslash( $from_raw ) );
+    $to   = sanitize_hex_color( wp_unslash( $to_raw ) );
+    if ( $from && $to ) {
+        return [ 'from' => $from, 'to' => $to ];
+    }
+    return null;
+}
+
+/**
+ * Read per-pattern-layer gradients, indexed numerically. Uses the same
+ * pattern count as bespoke_collect_pattern_colours() so indices line up.
+ * Trims trailing nulls so storage stays compact.
+ *
+ * @return array<int, array{from:string,to:string}|null>
+ */
+function bespoke_collect_pattern_gradients() {
+    $count = isset( $_POST['bespoke_colour_pat_count'] )
+        ? intval( $_POST['bespoke_colour_pat_count'] )
+        : 0;
+    $count = min( max( 0, $count ), 12 );
+
+    $out = [];
+    for ( $i = 0; $i < $count; $i++ ) {
+        $out[ $i ] = bespoke_read_gradient( 'pat_' . $i );
+    }
+    // Drop trailing nulls so [null, null, {...}] stays full but
+    // [{...}, null, null] becomes [{...}].
+    while ( count( $out ) > 0 && $out[ count( $out ) - 1 ] === null ) {
+        array_pop( $out );
+    }
+    return $out;
+}
+
 
 /* =========================================================================
    1. BADGE UPLOAD
@@ -361,26 +410,40 @@ function bespoke_handle_add_to_cart() {
 
             // ── Colours ───────────────────────────────────────────────────────
             //
-            // 'pattern'  — legacy single pattern colour (= layer 1).
-            //              Kept for backward compatibility with old code
-            //              that only knows about a single pattern colour.
-            // 'patterns' — full per-layer array. Index 0 = pattern layer 1,
-            //              index 1 = pattern layer 2, ... For multi-pattern
-            //              designs (e.g. Tramline) every layer the customer
-            //              tinted is stored here so production can reproduce
-            //              the exact colour scheme.
+            // 'pattern'           — legacy single pattern colour (= layer 1).
+            //                       Kept for backward compatibility with old
+            //                       code that only knows about a single
+            //                       pattern colour.
+            // 'patterns'          — full per-layer solid array. Index 0 =
+            //                       pattern layer 1, index 1 = layer 2, ...
+            //                       For multi-pattern designs (e.g. Tramline)
+            //                       every layer the customer tinted is stored
+            //                       here so production can reproduce the
+            //                       exact colour scheme.
+            // 'bg_gradient'       — null when the pad background is solid;
+            //                       { from, to } when the customer enabled
+            //                       gradient mode on Pad Background.
+            // 'pattern_gradients' — per-layer array (same indexing as
+            //                       patterns). null at each index = solid;
+            //                       { from, to } = gradient.
             'colours' => [
-                'background'  => sanitize_hex_color( $_POST['bespoke_colour_bg']   ?? '' ),
-                'pattern'     => sanitize_hex_color( $_POST['bespoke_colour_pat']  ?? '' ),
-                'patterns'    => bespoke_collect_pattern_colours(),
-                'name_text'   => sanitize_hex_color( $_POST['bespoke_colour_name'] ?? '' ),
-                'number_text' => sanitize_hex_color( $_POST['bespoke_colour_num']  ?? '' ),
+                'background'        => sanitize_hex_color( $_POST['bespoke_colour_bg']   ?? '' ),
+                'pattern'           => sanitize_hex_color( $_POST['bespoke_colour_pat']  ?? '' ),
+                'patterns'          => bespoke_collect_pattern_colours(),
+                'name_text'         => sanitize_hex_color( $_POST['bespoke_colour_name'] ?? '' ),
+                'number_text'       => sanitize_hex_color( $_POST['bespoke_colour_num']  ?? '' ),
+                'bg_gradient'       => bespoke_read_gradient( 'bg' ),
+                'pattern_gradients' => bespoke_collect_pattern_gradients(),
             ],
 
             // ── Fonts ─────────────────────────────────────────────────────────
+            // wp_unslash strips the backslashes WordPress adds to $_POST data,
+            // so font strings containing quotes (e.g. '"Arial Black", Arial,
+            // sans-serif') don't end up displayed as '\"Arial Black\"' in
+            // the admin spec.
             'fonts' => [
-                'name'   => sanitize_text_field( $_POST['bespoke_font_name']   ?? '' ),
-                'number' => sanitize_text_field( $_POST['bespoke_font_number'] ?? '' ),
+                'name'   => sanitize_text_field( wp_unslash( $_POST['bespoke_font_name']   ?? '' ) ),
+                'number' => sanitize_text_field( wp_unslash( $_POST['bespoke_font_number'] ?? '' ) ),
             ],
 
             // ── Club badge ────────────────────────────────────────────────────
