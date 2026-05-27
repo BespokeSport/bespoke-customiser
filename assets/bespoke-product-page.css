@@ -483,14 +483,39 @@ body.single-product .woocommerce-info::before {
     float: none !important;
   }
   body.single-product .related .product .woocommerce-loop-product__title,
-  body.single-product .up-sells .product .woocommerce-loop-product__title {
+  body.single-product .related .product h2.woocommerce-loop-product__title,
+  body.single-product .up-sells .product .woocommerce-loop-product__title,
+  body.single-product .up-sells .product h2.woocommerce-loop-product__title {
     font-size: 13px !important;
     padding: 10px 0 4px !important;
     line-height: 1.2 !important;
   }
+  /* Prices in the related grid — override the master .woocommerce-Price-amount
+     48px rule (sections 4) which otherwise wins specificity here and renders
+     each £xx.xx as huge display text. Cover .price, .amount, and the <bdi>
+     wrapper that WC drops around the value. */
   body.single-product .related .product .price,
-  body.single-product .up-sells .product .price {
-    font-size: 12px !important;
+  body.single-product .related .product .price .woocommerce-Price-amount,
+  body.single-product .related .product .price .woocommerce-Price-amount bdi,
+  body.single-product .related .product .woocommerce-Price-amount,
+  body.single-product .related .product .woocommerce-Price-amount bdi,
+  body.single-product .up-sells .product .price,
+  body.single-product .up-sells .product .price .woocommerce-Price-amount,
+  body.single-product .up-sells .product .price .woocommerce-Price-amount bdi,
+  body.single-product .up-sells .product .woocommerce-Price-amount,
+  body.single-product .up-sells .product .woocommerce-Price-amount bdi {
+    font-size: 13px !important;
+    line-height: 1.25 !important;
+    font-weight: 600 !important;
+  }
+  /* Constrain product image so the card stays compact */
+  body.single-product .related .product img,
+  body.single-product .up-sells .product img {
+    max-height: 140px !important;
+    height: auto !important;
+    width: 100% !important;
+    object-fit: cover !important;
+    border-radius: 4px !important;
   }
   body.single-product .related.products > h2,
   body.single-product .up-sells > h2 {
