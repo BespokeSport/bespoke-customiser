@@ -116,11 +116,15 @@ function bespoke_wc_hide_default_cart_for_customisable_products() {
  * card button. Falls back to the default WC text for non-customisable
  * products so we don't change unrelated buttons.
  *
+ * High priority (9999) so we run AFTER the Fancy Product Designer
+ * plugin's own filter — FPD sets the loop button text to "Customize"
+ * (US spelling) and would otherwise win the cascade.
+ *
  * The filter fires on every product card render in a loop (shop archive,
  * related products, up-sells, search results) — it returns the text the
  * card link displays.
  */
-add_filter( 'woocommerce_product_add_to_cart_text', 'bespoke_wc_customise_loop_text', 10, 2 );
+add_filter( 'woocommerce_product_add_to_cart_text', 'bespoke_wc_customise_loop_text', 9999, 2 );
 
 function bespoke_wc_customise_loop_text( $text, $product ) {
     if ( ! $product instanceof WC_Product ) {
@@ -131,6 +135,59 @@ function bespoke_wc_customise_loop_text( $text, $product ) {
         return 'Customise';
     }
     return $text;
+}
+
+/**
+ * Also filter the full loop add-to-cart LINK HTML at high priority,
+ * because FPD outputs the entire link itself (with its own classes
+ * and text) via woocommerce_loop_add_to_cart_link — replacing only
+ * the inner text isn't enough.
+ *
+ * We do a defensive string-replace on the button's visible label so
+ * we don't risk damaging any data-* attributes FPD relies on.
+ */
+add_filter( 'woocommerce_loop_add_to_cart_link', 'bespoke_wc_customise_loop_link', 9999, 2 );
+
+function bespoke_wc_customise_loop_link( $html, $product ) {
+    if ( ! $product instanceof WC_Product ) {
+        return $html;
+    }
+    $type = get_post_meta( $product->get_id(), '_bespoke_product_type', true );
+    if ( ! $type ) {
+        return $html;
+    }
+    // Swap any "Customize" / "Add to cart" label inside the link for the
+    // British "Customise". Preserves all surrounding tag attributes.
+    $html = preg_replace( '/>\s*Customize\s*</i',  '>Customise<', $html );
+    $html = preg_replace( '/>\s*Add to cart\s*</i', '>Customise<', $html );
+    return $html;
+}
+
+/**
+ * JS belt-and-braces — if any "Customize" text slipped through (e.g.
+ * because FPD rendered the button via a different path, or the page
+ * is server-cached pre-filter), rewrite the visible label client-side.
+ * Only fires on the front-end.
+ */
+add_action( 'wp_footer', 'bespoke_wc_customise_text_js', 99 );
+
+function bespoke_wc_customise_text_js() {
+    if ( is_admin() ) return;
+    ?>
+    <script>
+    (function(){
+      function fix(){
+        var sels = '.fpd-catalog-customize, .related .product a.button, .up-sells .product a.button';
+        document.querySelectorAll(sels).forEach(function(btn){
+          var t = (btn.textContent || '').trim();
+          if (/^customize$/i.test(t)) btn.textContent = 'Customise';
+        });
+      }
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fix);
+      else fix();
+    })();
+    </script>
+    <?php
 }
 
 /**

@@ -492,17 +492,22 @@ body.single-product .woocommerce-info::before {
 
   /* Related products — drop to 2 columns and shrink text so the cards
      actually fit. WC's default products grid uses inline-block + 22% widths
-     which look terrible on small viewports; force a real grid. */
+     which look terrible on small viewports; force a real grid.
+     grid-auto-flow: dense + align-self: stretch packs items into earlier
+     empty cells if their neighbour was shorter — eliminates the "card
+     stranded on the right with empty space to the left" effect. */
   body.single-product .related ul.products,
   body.single-product .up-sells ul.products,
   body.single-product .related .products,
   body.single-product .up-sells .products {
     display: grid !important;
     grid-template-columns: repeat(2, 1fr) !important;
+    grid-auto-flow: dense !important;
     gap: 12px !important;
     margin: 0 !important;
     padding: 0 !important;
     list-style: none !important;
+    align-items: stretch !important;
   }
   body.single-product .related .product,
   body.single-product .up-sells .product {
@@ -510,6 +515,9 @@ body.single-product .woocommerce-info::before {
     margin: 0 !important;
     padding: 12px !important;
     float: none !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-self: stretch !important;
   }
   body.single-product .related .product .woocommerce-loop-product__title,
   body.single-product .related .product h2.woocommerce-loop-product__title,
