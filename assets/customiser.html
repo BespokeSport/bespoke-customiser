@@ -62,11 +62,15 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
 .size-row label{font-size:12px;color:#888888;white-space:nowrap;}
 .size-row input[type=range]{flex:1;accent-color:#5DCAA5;}
 .size-val{font-size:12px;color:#F5F5F0;font-weight:600;min-width:36px;text-align:right;}
-.surprise-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px;margin-bottom:16px;border:none;border-radius:10px;background:linear-gradient(135deg,#FF6B9D 0%,#C06FF5 50%,#5DCAA5 100%);color:#fff;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;cursor:pointer;font-family:inherit;box-shadow:0 4px 14px rgba(192,111,245,.35);transition:transform .15s ease,box-shadow .15s ease;}
+.surprise-row{display:flex;gap:8px;margin-bottom:16px;align-items:stretch;}
+.surprise-btn{display:flex;align-items:center;justify-content:center;gap:8px;flex:1;padding:14px;border:none;border-radius:10px;background:linear-gradient(135deg,#FF6B9D 0%,#C06FF5 50%,#5DCAA5 100%);color:#fff;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;cursor:pointer;font-family:inherit;box-shadow:0 4px 14px rgba(192,111,245,.35);transition:transform .15s ease,box-shadow .15s ease;}
 .surprise-btn:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(192,111,245,.45);}
 .surprise-btn:active{transform:translateY(0);box-shadow:0 2px 8px rgba(192,111,245,.3);}
 .surprise-btn .sm-icon{font-size:18px;line-height:1;display:inline-block;animation:bcp-sparkle 2.4s ease-in-out infinite;}
 @keyframes bcp-sparkle{0%,100%{transform:rotate(-8deg) scale(1);}50%{transform:rotate(8deg) scale(1.15);}}
+.surprise-nav{flex:0 0 auto;width:48px;border:1.5px solid #2A2A2A;border-radius:10px;background:#161616;color:#888;font-size:20px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s ease;display:flex;align-items:center;justify-content:center;padding:0;}
+.surprise-nav:enabled:hover{background:#1F1F1F;border-color:#5DCAA5;color:#5DCAA5;}
+.surprise-nav:disabled{opacity:0.3;cursor:not-allowed;}
 .design-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:18px;}
 .design-card{border:2px solid #2A2A2A;border-radius:10px;overflow:hidden;cursor:pointer;background:#161616;transition:border-color .15s,transform .1s;}
 .design-card:hover{border-color:#5DCAA5;transform:scale(1.02);}
@@ -551,10 +555,14 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
 
   <div class="screen" id="s3">
     <div class="preview-box"><div id="pb3"></div></div>
-    <button type="button" class="surprise-btn" onclick="surpriseMe()" aria-label="Pick a random design and colour palette">
-      <span class="sm-icon">✨</span>
-      <span>Surprise Me!</span>
-    </button>
+    <div class="surprise-row">
+      <button type="button" class="surprise-nav" id="surprise-back" onclick="surpriseBack()" aria-label="Previous Surprise Me result" title="Previous" disabled>←</button>
+      <button type="button" class="surprise-btn" onclick="surpriseMe()" aria-label="Pick a random design and colour palette">
+        <span class="sm-icon">✨</span>
+        <span>Surprise Me!</span>
+      </button>
+      <button type="button" class="surprise-nav" id="surprise-fwd" onclick="surpriseForward()" aria-label="Next Surprise Me result" title="Next" disabled>→</button>
+    </div>
     <div class="sec-label">Choose your design</div>
     <div class="font-nav" style="margin-bottom:14px;">
       <button class="font-nav-btn" onclick="scrollDesigns(-1)">&#8592;</button>
@@ -1381,8 +1389,94 @@ var BESPOKE_PALETTES = [
   { bg:'#FF4081', patterns:['#FFFFFF','#3F51B5'], name:'#FFFFFF', num:'#FFFFFF' }, // Hot Pink
 ];
 
+/* ============================================================
+   SURPRISE HISTORY — back/forward through Surprise Me snapshots
+   ============================================================
+   _surpriseHistory : array of snapshots (design + colours only)
+   _surpriseIndex   : current position, -1 before any Surprise Me
+   - First click captures the pre-Surprise state at index 0 so
+     "Back" can always return the user to where they started.
+   - Each subsequent click appends a new snapshot.
+   - Clicking Surprise Me after using Back truncates any future
+     entries (same behaviour as browser history).
+   - Manual edits do NOT enter history — only Surprise Me does.
+*/
+var _surpriseHistory = [];
+var _surpriseIndex   = -1;
+var SURPRISE_HISTORY_MAX = 25; // cap to prevent memory bloat
+
+function _surpriseSnapshot(){
+  return {
+    design:    S.design,
+    bgColor:   S.bgColor,
+    patColor:  S.patColor,
+    patColors: (S.patColors || []).slice(),
+    nameColor: S.nameColor,
+    numColor:  S.numColor
+  };
+}
+
+function _applySurpriseSnapshot(snap){
+  if (!snap) return;
+  S.design    = snap.design;
+  S.bgColor   = snap.bgColor;
+  S.patColor  = snap.patColor;
+  S.patColors = (snap.patColors || []).slice();
+  S.nameColor = snap.nameColor;
+  S.numColor  = snap.numColor;
+
+  function syncSwatch(zone, colour){
+    var ct = document.getElementById('ct-' + zone);
+    var cp = document.getElementById('cp-' + zone);
+    if (ct) ct.style.background = colour;
+    if (cp) cp.value = colour;
+  }
+  syncSwatch('bg',   S.bgColor);
+  syncSwatch('pat',  S.patColor);
+  syncSwatch('name', S.nameColor);
+  syncSwatch('num',  S.numColor);
+
+  buildDesignScroll();
+  updateDesignLayers();
+  syncAll();
+  _updateSurpriseNav();
+}
+
+function _updateSurpriseNav(){
+  var back = document.getElementById('surprise-back');
+  var fwd  = document.getElementById('surprise-fwd');
+  if (back) back.disabled = _surpriseIndex <= 0;
+  if (fwd)  fwd.disabled  = _surpriseIndex >= _surpriseHistory.length - 1;
+}
+
+function surpriseBack(){
+  if (_surpriseIndex <= 0) return;
+  _surpriseIndex--;
+  _applySurpriseSnapshot(_surpriseHistory[_surpriseIndex]);
+}
+
+function surpriseForward(){
+  if (_surpriseIndex >= _surpriseHistory.length - 1) return;
+  _surpriseIndex++;
+  _applySurpriseSnapshot(_surpriseHistory[_surpriseIndex]);
+}
+
 function surpriseMe(){
   if (!window.ALL_DESIGNS || !window.ALL_DESIGNS.length) return;
+
+  // First-ever click: capture the pre-Surprise state at index 0 so
+  // the user can always undo back to where they started before they
+  // started rolling.
+  if (_surpriseHistory.length === 0) {
+    _surpriseHistory.push(_surpriseSnapshot());
+    _surpriseIndex = 0;
+  }
+
+  // If the user used Back and is now mid-history, truncate any future
+  // entries before pushing the new one — same as browser history.
+  if (_surpriseIndex < _surpriseHistory.length - 1) {
+    _surpriseHistory = _surpriseHistory.slice(0, _surpriseIndex + 1);
+  }
 
   // Pick a random design — biased AGAINST the current one so the user
   // always sees a change. With only 1 design available, no bias.
@@ -1443,10 +1537,18 @@ function surpriseMe(){
   // get updated by rebuildPatternRows() which fires from the
   // updateDesignLayers hook below.
 
+  // Push the new state onto the history stack
+  _surpriseHistory.push(_surpriseSnapshot());
+  if (_surpriseHistory.length > SURPRISE_HISTORY_MAX) {
+    _surpriseHistory.shift(); // drop oldest
+  }
+  _surpriseIndex = _surpriseHistory.length - 1;
+
   // Repaint everything
   buildDesignScroll();
   updateDesignLayers();
   syncAll();
+  _updateSurpriseNav();
 }
 
 function handleBadge(e){
