@@ -1345,6 +1345,26 @@ function bespoke_render_customiser( $atts ) {
             margin-bottom: 6px !important;
         }
 
+        /* Move the Back / Next buttons to sit directly under the step
+           tabs at the top of every screen. Implementation uses flex
+           order rather than moving HTML so we don't disturb existing
+           per-step layout rules — the buttons render visually first
+           while keeping their source-order position. */
+        #bespoke-customiser-root .screen.active {
+            display: flex !important;
+            flex-direction: column !important;
+        }
+        #bespoke-customiser-root .screen > .nav-row {
+            order: -1 !important;
+            position: relative !important;
+            bottom: auto !important;
+            margin-top: 0 !important;
+            margin-bottom: 14px !important;
+            border-top: none !important;
+            border-bottom: 1px solid #2A2A2A !important;
+            padding: 8px 0 12px !important;
+        }
+
         /* Custom HSV colour picker ─────────────────────────────────────── */
         #bcp-overlay { position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; background: transparent !important; display: none; align-items: center !important; justify-content: center !important; z-index: 2147483647 !important; font-family: 'Inter', sans-serif; }
         #bcp-overlay.open { display: flex; }

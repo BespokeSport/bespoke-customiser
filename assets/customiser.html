@@ -1630,8 +1630,23 @@ function fillSummary(){
   document.getElementById('sum-nR').textContent=S.nameR||'—';
   document.getElementById('sum-nuL').textContent=S.numL||'—';
   document.getElementById('sum-nuR').textContent=S.numR||'—';
-  var cols=[S.bgColor,S.patColor,S.nameColor,S.numColor];
-  ['bg','pat','nt','nu'].forEach(function(k,i){document.getElementById('sd-'+k).style.background=cols[i];document.getElementById('sh-'+k).textContent=cols[i];});
+  // Helper: paint a summary swatch + hex label as either a solid colour
+  // or a from→to gradient.
+  function setSumRow(swatchId, labelId, solid, grad){
+    var sd = document.getElementById(swatchId);
+    var sh = document.getElementById(labelId);
+    if (grad && grad.from && grad.to) {
+      if (sd) sd.style.background = 'linear-gradient(180deg,' + grad.from + ',' + grad.to + ')';
+      if (sh) sh.textContent = grad.from + ' → ' + grad.to;
+    } else {
+      if (sd) sd.style.background = solid;
+      if (sh) sh.textContent = solid;
+    }
+  }
+  setSumRow('sd-bg',  'sh-bg',  S.bgColor,   S.bgGradient);
+  setSumRow('sd-pat', 'sh-pat', S.patColor,  (S.patGradients || [])[0]);
+  setSumRow('sd-nt',  'sh-nt',  S.nameColor, null);
+  setSumRow('sd-nu',  'sh-nu',  S.numColor,  null);
 }
 function reset(){
   S={step:0,bgColor:'#feef00',patColor:'#211d33',patColors:[],bgGradient:null,patGradients:[],nameColor:'#FFFFFF',numColor:'#FFFFFF',nameL:'',nameR:'',numL:'',numR:'',sameName:true,sameNum:true,badge:null,badgeURL:null,design:'vanguard',padSize:"M",orderNotes:"",badgeSize:210,nameSize:90,numSize:155,nameFontFamily:'"Arial Black", Arial, sans-serif',numFontFamily:'"Arial Black", Arial, sans-serif',pos:JSON.parse(JSON.stringify(DEF))};
