@@ -677,12 +677,15 @@ function bespoke_render_customiser( $atts ) {
                 var container = staticPatRow.parentElement;
 
                 // Update the static Pattern row's label + input value to match
-                // the active design's layer 1.
+                // the active design's layer 1. When there are extra pattern
+                // layers, label this one "Pattern 1" so the row labels stay
+                // numbered consistently (Pattern 1, Pattern 2, ...) rather
+                // than the awkward "Pattern, Pattern 2".
                 var staticLbl = staticPatRow.querySelector('.zone-lbl');
                 if (staticLbl && layers[1] && layers[1].label) {
                     staticLbl.textContent = layers[1].label;
                 } else if (staticLbl) {
-                    staticLbl.textContent = 'Pattern';
+                    staticLbl.textContent = patLayerCount > 1 ? 'Pattern 1' : 'Pattern';
                 }
                 var staticInput = document.getElementById('cp-pat');
                 if (staticInput && window.S.patColors[0] &&
