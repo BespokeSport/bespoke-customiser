@@ -1207,34 +1207,18 @@ function bespoke_render_customiser( $atts ) {
             paint-order: normal !important;
         }
 
-        /* Stage label + helper text as BEspoke green pills, hint moved under label */
-        #dt-label, #dt-hint {
-            align-self: center !important;
-            background: #5DCAA5 !important;
-            color: #04342C !important;
-            border-radius: 999px !important;
-            font-family: 'Inter', sans-serif !important;
-            position: relative !important;
-            z-index: 5 !important;
-        }
-        #dt-label {
-            order: 0 !important;
-            font-size: 18px !important;
-            font-weight: 600 !important;
-            letter-spacing: 0.12em !important;
-            text-transform: uppercase !important;
-            padding: 10px 24px !important;
+        /* Cleaner preview area — drop the green step-label + hint pills
+           above the SVG (the sticky stepper at the top already shows the
+           current step) and the small "Drag … to reposition" mobile hint.
+           Tightens vertical space so the preview can breathe. */
+        #dt-label, #dt-hint, .drag-hint { display: none !important; }
+        #dt-svg-wrap { order: 2 !important; }
+
+        /* Tighter preview box on both mobile and desktop */
+        .preview-box {
+            padding: 4px !important;
             margin-bottom: 6px !important;
         }
-        #dt-hint {
-            order: 1 !important;
-            font-size: 12px !important;
-            font-weight: 500 !important;
-            letter-spacing: 0.02em !important;
-            padding: 6px 14px !important;
-            margin-bottom: 8px !important;
-        }
-        #dt-svg-wrap { order: 2 !important; }
 
         /* Custom HSV colour picker ─────────────────────────────────────── */
         #bcp-overlay { position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; background: transparent !important; display: none; align-items: center !important; justify-content: center !important; z-index: 2147483647 !important; font-family: 'Inter', sans-serif; }
