@@ -71,14 +71,32 @@ body.single-product .entry-content li {
   font-family: var(--bs-font-ui) !important;
 }
 
-/* Links inline */
-body.single-product .entry-content a {
-  color: #fff !important;
-  border-bottom: 1px solid var(--bs-mint) !important;
-  text-decoration: none !important;
-}
-body.single-product .entry-content a:hover {
+/* Hyperlinks — mint by default everywhere on the customisable product
+   page (not just inside .entry-content). Caveat-out the elements that
+   set their own colour (breadcrumb, related-product card link, the
+   customiser's own internal links). */
+body.single-product .bespoke-single-product a,
+body.single-product .entry-content a,
+body.single-product .woocommerce-product-details__short-description a,
+body.single-product .woocommerce-tabs a {
   color: var(--bs-mint) !important;
+  text-decoration: underline !important;
+  text-underline-offset: 3px !important;
+  text-decoration-thickness: 1px !important;
+  border-bottom: 0 !important;
+}
+body.single-product .bespoke-single-product a:hover,
+body.single-product .entry-content a:hover,
+body.single-product .woocommerce-product-details__short-description a:hover,
+body.single-product .woocommerce-tabs a:hover {
+  color: #fff !important;
+  text-decoration-color: var(--bs-mint) !important;
+}
+/* Don't underline the related-product card link (it's a whole card) */
+body.single-product .related .product a,
+body.single-product .up-sells .product a {
+  text-decoration: none !important;
+  color: inherit !important;
 }
 
 
@@ -442,6 +460,43 @@ body.single-product .woocommerce-info::before {
   body.single-product p.price { font-size: 36px !important; }
   body.single-product .woocommerce-tabs ul.tabs li a { padding: 14px 16px !important; font-size: 13px !important; }
   body.single-product .woocommerce-product-details__short-description { padding: 18px 20px !important; }
+
+  /* Related products — drop to 2 columns and shrink text so the cards
+     actually fit. WC's default products grid uses inline-block + 22% widths
+     which look terrible on small viewports; force a real grid. */
+  body.single-product .related ul.products,
+  body.single-product .up-sells ul.products,
+  body.single-product .related .products,
+  body.single-product .up-sells .products {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    list-style: none !important;
+  }
+  body.single-product .related .product,
+  body.single-product .up-sells .product {
+    width: auto !important;
+    margin: 0 !important;
+    padding: 12px !important;
+    float: none !important;
+  }
+  body.single-product .related .product .woocommerce-loop-product__title,
+  body.single-product .up-sells .product .woocommerce-loop-product__title {
+    font-size: 13px !important;
+    padding: 10px 0 4px !important;
+    line-height: 1.2 !important;
+  }
+  body.single-product .related .product .price,
+  body.single-product .up-sells .product .price {
+    font-size: 12px !important;
+  }
+  body.single-product .related.products > h2,
+  body.single-product .up-sells > h2 {
+    font-size: 24px !important;
+    margin: 0 0 18px !important;
+  }
 }
 
 
