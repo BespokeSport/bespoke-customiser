@@ -482,7 +482,7 @@ body.single-product .woocommerce-info::before {
 /* --------------------------------------------------------------------------
    12. MOBILE TUNING
    -------------------------------------------------------------------------- */
-@media (max-width: 768px) {
+@media (max-width: 900px) {
   body.single-product .product_title,
   body.single-product .entry-title { font-size: 36px !important; }
   body.single-product .summary .price,
@@ -490,34 +490,40 @@ body.single-product .woocommerce-info::before {
   body.single-product .woocommerce-tabs ul.tabs li a { padding: 14px 16px !important; font-size: 13px !important; }
   body.single-product .woocommerce-product-details__short-description { padding: 18px 20px !important; }
 
-  /* Related products — drop to 2 columns and shrink text so the cards
-     actually fit. WC's default products grid uses inline-block + 22% widths
-     which look terrible on small viewports; force a real grid.
-     grid-auto-flow: dense + align-self: stretch packs items into earlier
-     empty cells if their neighbour was shorter — eliminates the "card
-     stranded on the right with empty space to the left" effect. */
+  /* Related products — drop to 2 explicit-width flex columns. Grid was
+     leaving the first cell empty because Astra ships its own
+     :first-child / .product.first rules that don't translate cleanly
+     into grid placement. Flex with explicit calc(50% - 6px) widths
+     and a wrap parent can't produce empty cells regardless of what
+     Astra is doing underneath. */
   body.single-product .related ul.products,
   body.single-product .up-sells ul.products,
   body.single-product .related .products,
   body.single-product .up-sells .products {
-    display: grid !important;
-    grid-template-columns: repeat(2, 1fr) !important;
-    grid-auto-flow: dense !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
     gap: 12px !important;
     margin: 0 !important;
     padding: 0 !important;
     list-style: none !important;
     align-items: stretch !important;
+    justify-content: flex-start !important;
   }
+  body.single-product .related ul.products li.product,
+  body.single-product .up-sells ul.products li.product,
   body.single-product .related .product,
   body.single-product .up-sells .product {
-    width: auto !important;
+    flex: 0 1 calc(50% - 6px) !important;
+    width: calc(50% - 6px) !important;
+    max-width: calc(50% - 6px) !important;
+    min-width: 0 !important;
     margin: 0 !important;
     padding: 12px !important;
     float: none !important;
+    clear: none !important;
+    box-sizing: border-box !important;
     display: flex !important;
     flex-direction: column !important;
-    align-self: stretch !important;
   }
   body.single-product .related .product .woocommerce-loop-product__title,
   body.single-product .related .product h2.woocommerce-loop-product__title,
