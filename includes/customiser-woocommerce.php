@@ -21,6 +21,97 @@ defined( 'ABSPATH' ) || exit;
 
 
 /* =========================================================================
+   0. WC PRODUCT-LEVEL CUSTOMISER TYPE FIELD
+   ============================================================================
+   Adds a "Customiser type" dropdown to the General tab of every WooCommerce
+   product editor. Selecting a type wires the product to one of the
+   customisers registered in bespoke_get_product_types() (Shin Pads, Grip
+   Socks, etc.). Once set:
+     - The [bespoke_customiser] shortcode auto-detects product_id +
+       product_type when used on the product's page, so no per-product
+       shortcode parameters are needed.
+     - The default WC "Add to cart" button is removed from the single-
+       product page (the customiser provides its own).
+   ========================================================================= */
+
+add_action( 'woocommerce_product_options_general_product_data', 'bespoke_wc_add_customiser_type_field' );
+
+function bespoke_wc_add_customiser_type_field() {
+    $types = function_exists( 'bespoke_get_product_types' )
+        ? bespoke_get_product_types()
+        : [];
+
+    $options = [ '' => '— None (not customisable) —' ];
+    foreach ( $types as $key => $label ) {
+        $options[ $key ] = $label;
+    }
+
+    echo '<div class="options_group">';
+    woocommerce_wp_select( [
+        'id'          => '_bespoke_product_type',
+        'label'       => 'BEspoke customiser',
+        'description' => 'Pick which customiser this product uses. The [bespoke_customiser] shortcode will pick this up automatically — no per-product arguments needed. Set to None to disable.',
+        'desc_tip'    => false,
+        'options'     => $options,
+    ] );
+    echo '</div>';
+}
+
+add_action( 'woocommerce_process_product_meta', 'bespoke_wc_save_customiser_type_field' );
+
+function bespoke_wc_save_customiser_type_field( $post_id ) {
+    if ( ! isset( $_POST['_bespoke_product_type'] ) ) {
+        return;
+    }
+    $value = sanitize_key( wp_unslash( $_POST['_bespoke_product_type'] ) );
+
+    // Validate against the registered list.
+    $valid = function_exists( 'bespoke_get_product_types' )
+        ? array_keys( bespoke_get_product_types() )
+        : [];
+    if ( $value && ! in_array( $value, $valid, true ) ) {
+        $value = '';
+    }
+
+    if ( $value ) {
+        update_post_meta( $post_id, '_bespoke_product_type', $value );
+    } else {
+        delete_post_meta( $post_id, '_bespoke_product_type' );
+    }
+}
+
+/**
+ * Hide the default WC add-to-cart UI on any single-product page where the
+ * product has a customiser type set. The customer adds to cart via the
+ * customiser's own button at the end of the Review step, so the duplicate
+ * default form would only be confusing (and would let people skip the
+ * customiser entirely).
+ *
+ * Fires on `wp` (after the global $post is set) so we know what product
+ * the visitor is looking at before WC starts rendering.
+ */
+add_action( 'wp', 'bespoke_wc_hide_default_cart_for_customisable_products' );
+
+function bespoke_wc_hide_default_cart_for_customisable_products() {
+    if ( ! function_exists( 'is_product' ) || ! is_product() ) {
+        return;
+    }
+    global $post;
+    if ( ! $post ) {
+        return;
+    }
+    $type = get_post_meta( $post->ID, '_bespoke_product_type', true );
+    if ( ! $type ) {
+        return;
+    }
+    // Remove WooCommerce's default add-to-cart template from the
+    // single-product summary. The price + meta blocks stay; only the
+    // cart button + quantity + variations form goes.
+    remove_action( 'woocommerce_single_product_summary', 'woocommerce_template_single_add_to_cart', 30 );
+}
+
+
+/* =========================================================================
    1. PERSIST CUSTOMISATION DATA TO THE ORDER
    Fires when the customer completes checkout. Copies the customisation
    from the WooCommerce session into permanent order item meta.

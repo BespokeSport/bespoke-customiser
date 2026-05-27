@@ -16,12 +16,36 @@ add_shortcode( 'bespoke_customiser', 'bespoke_render_customiser' );
 
 function bespoke_render_customiser( $atts ) {
     $atts = shortcode_atts( [
-        'product_id'   => '1276',     // Default: Personalised Shin Pads
-        'product_type' => 'shinpads', // Default product type for design filtering
+        'product_id'   => '',  // Empty = auto-detect from current WC context
+        'product_type' => '',  // Empty = auto-detect from product meta
     ], $atts );
 
     $product_id   = intval( $atts['product_id'] );
     $product_type = sanitize_key( $atts['product_type'] );
+
+    // ── Auto-detect product_id from the current page if not supplied.
+    // Lets the same shortcode work on EVERY WC single-product page
+    // (e.g. dropped into single-product.php once) without per-product
+    // configuration.
+    if ( ! $product_id ) {
+        global $product, $post;
+        if ( $product instanceof WC_Product ) {
+            $product_id = $product->get_id();
+        } elseif ( $post instanceof WP_Post && $post->post_type === 'product' ) {
+            $product_id = $post->ID;
+        }
+    }
+
+    // ── Auto-detect product_type from the WC product's meta if not
+    // supplied. The "Customiser Type" field on the product edit screen
+    // writes _bespoke_product_type. Falls back to shinpads if blank.
+    if ( ! $product_type && $product_id ) {
+        $meta_type    = get_post_meta( $product_id, '_bespoke_product_type', true );
+        $product_type = sanitize_key( $meta_type );
+    }
+    if ( ! $product_type ) {
+        $product_type = 'shinpads';
+    }
 
     // Validate product_type against the registered list
     $valid_types = array_keys( bespoke_get_product_types() );
