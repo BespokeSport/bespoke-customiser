@@ -44,7 +44,11 @@ function bespoke_pdp_register_tab( $tabs ) {
     $tabs['bespoke_pdp'] = [
         'label'    => 'BEspoke Page',
         'target'   => 'bespoke_pdp_data',
-        'class'    => [],
+        // Show the tab for every product type. Without these classes
+        // WooCommerce's jQuery hides the tab on page load based on the
+        // selected product type (Simple / Variable / etc.) — the tab
+        // would flash up briefly and then vanish.
+        'class'    => [ 'show_if_simple', 'show_if_variable', 'show_if_grouped', 'show_if_external' ],
         'priority' => 25,
     ];
     return $tabs;
@@ -73,7 +77,7 @@ function bespoke_pdp_render_panel() {
     if ( ! is_array( $glance ) ) $glance = [];
 
     ?>
-    <div id="bespoke_pdp_data" class="panel woocommerce_options_panel">
+    <div id="bespoke_pdp_data" class="panel woocommerce_options_panel show_if_simple show_if_variable show_if_grouped show_if_external">
 
         <div class="options_group">
             <p style="padding:8px 12px;margin:0;background:#f0f6fc;border-left:3px solid #2271b1;">
