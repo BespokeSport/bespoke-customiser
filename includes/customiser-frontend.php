@@ -636,6 +636,36 @@ function bespoke_render_customiser( $atts ) {
                 ]).then(function(results){
                     var centerOffset = results[0] || {tx:0, ty:0};
                     var layers       = results[1];
+
+                    // Apply the centering offset to each non-background layer.
+                    // We can't put a `transform` on the wrap <g> because SVG
+                    // creates a fresh coordinate context at every nested <svg>
+                    // — a parent <g>'s transform doesn't propagate INTO the
+                    // nested SVG's content. (Verified: with translate(-96,+134)
+                    // on the wrap, the path's CTM was still (0,0) — un-shifted.)
+                    // Instead, set x/y on each layer's nested <svg> or <image>,
+                    // which moves the layer's own viewport in its parent's
+                    // coordinate space. The mask is cloned from the pad-base
+                    // layer's content, so it picks up the same offset and
+                    // pattern layers stay aligned with the pad shape.
+                    if (centerOffset.tx !== 0 || centerOffset.ty !== 0) {
+                        layers.forEach(function(layer, i){
+                            if (!layer) return;
+                            if (stack[i] && stack[i].label === 'background') return;
+                            var nested = layer.querySelector('svg');
+                            if (nested) {
+                                nested.setAttribute('x', centerOffset.tx);
+                                nested.setAttribute('y', centerOffset.ty);
+                                return;
+                            }
+                            var img = layer.querySelector('image');
+                            if (img) {
+                                img.setAttribute('x', centerOffset.tx);
+                                img.setAttribute('y', centerOffset.ty);
+                            }
+                        });
+                    }
+
                         var groups = document.querySelectorAll('[id^="bg-layer-"]');
                         groups.forEach(function(g, groupIdx){
                             // Remove old overlay if present
@@ -718,18 +748,9 @@ function bespoke_render_customiser( $atts ) {
                                 if (c) wrap.style.setProperty('--col-' + (idx + 1), c);
                             });
 
-                            // Auto-centre the pad shape on the canvas. The
-                            // designer may have exported the pad-base SVG with
-                            // the paths sitting in any quadrant of the 1200x1200
-                            // viewBox; translating the wrap shifts the pad —
-                            // and the mask + every pattern layered through it —
-                            // so the silhouette sits dead-centre regardless.
-                            if (centerOffset && (centerOffset.tx !== 0 || centerOffset.ty !== 0)) {
-                                wrap.setAttribute('transform',
-                                    'translate(' + centerOffset.tx.toFixed(2) + ',' + centerOffset.ty.toFixed(2) + ')'
-                                );
-                            }
-
+                            // Centring is applied per-layer above (we can't
+                            // put a transform on the wrap because parent
+                            // transforms don't propagate into a nested <svg>).
                             g.appendChild(wrap);
                         });
                     });
