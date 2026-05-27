@@ -845,6 +845,235 @@ function bespoke_design_column_content( $column, $post_id ) {
 
 
 /* =========================================================================
+   5b. ADMIN LIST — drag-to-reorder + Quick Edit Order
+   Two complementary ways to change a design's display order without having
+   to open the design itself:
+     - Drag handle in the leftmost column → drop to reposition rows
+     - Quick Edit panel exposes the Order field for inline edits
+   ========================================================================= */
+
+/**
+ * When viewing the designs list with no explicit sort, sort by display
+ * order ascending — otherwise drag-and-drop doesn't visually match what
+ * gets saved.
+ */
+add_action( 'pre_get_posts', function( $query ) {
+    if ( ! is_admin() || ! $query->is_main_query() ) {
+        return;
+    }
+    if ( $query->get( 'post_type' ) !== 'bespoke_design' ) {
+        return;
+    }
+    // Respect any user-selected column sort.
+    if ( $query->get( 'orderby' ) ) {
+        return;
+    }
+    $query->set( 'meta_key', '_bespoke_order' );
+    $query->set( 'orderby',  'meta_value_num' );
+    $query->set( 'order',    'ASC' );
+} );
+
+/**
+ * Prepend a tiny drag-handle column to the designs list. Earlier filter
+ * priority (5) so it lands at the very start, before the checkbox.
+ */
+add_filter( 'manage_bespoke_design_posts_columns', function( $columns ) {
+    return array_merge(
+        [ 'bespoke_drag' => '<span class="dashicons dashicons-menu" title="Drag to reorder" style="opacity:.6;"></span>' ],
+        $columns
+    );
+}, 5 );
+
+add_action( 'manage_bespoke_design_posts_custom_column', function( $column, $post_id ) {
+    if ( $column === 'bespoke_drag' ) {
+        echo '<span class="bespoke-drag-handle dashicons dashicons-menu" title="Drag to reorder"></span>';
+    }
+}, 10, 2 );
+
+/**
+ * Enqueue jQuery UI Sortable on the designs list page only.
+ */
+add_action( 'admin_enqueue_scripts', function( $hook ) {
+    global $typenow;
+    if ( $hook !== 'edit.php' || $typenow !== 'bespoke_design' ) {
+        return;
+    }
+    wp_enqueue_script( 'jquery-ui-sortable' );
+} );
+
+/**
+ * Drag-and-drop init + Quick Edit pre-fill script. Lives in the admin
+ * footer of the designs list page so it has the table to attach to.
+ */
+add_action( 'admin_footer-edit.php', function() {
+    global $typenow;
+    if ( $typenow !== 'bespoke_design' ) {
+        return;
+    }
+    $reorder_nonce = wp_create_nonce( 'bespoke_reorder_designs' );
+    ?>
+    <style>
+        /* Drag-handle column visuals */
+        .wp-list-table .column-bespoke_drag   { width: 32px; text-align: center; padding: 8px 4px !important; }
+        .bespoke-drag-handle                  { cursor: grab; color: #999; font-size: 18px; transition: color .15s; }
+        .bespoke-drag-handle:hover            { color: #2271b1; }
+        .ui-sortable-helper                   { background: #fff !important; box-shadow: 0 6px 18px rgba(0,0,0,.12); }
+        .ui-sortable-helper .bespoke-drag-handle { cursor: grabbing; color: #2271b1; }
+        .ui-sortable-placeholder              { visibility: visible !important; background: #f0f6fc !important; outline: 2px dashed #2271b1; }
+        .ui-sortable-placeholder td           { padding: 0 !important; }
+        /* Subtle highlight that fades after a save */
+        tr.bespoke-saved                      { background: #ecfff3 !important; transition: background 1.5s; }
+    </style>
+    <script>
+    jQuery( function( $ ) {
+
+        // ── 1. DRAG-TO-REORDER ─────────────────────────────────────────────
+        var $tbody = $( '#the-list' );
+        if ( $tbody.length ) {
+            $tbody.sortable( {
+                handle: '.bespoke-drag-handle',
+                placeholder: 'ui-sortable-placeholder',
+                axis: 'y',
+                // Keep cell widths during drag so the row doesn't collapse.
+                helper: function( e, tr ) {
+                    tr.children().each( function() { $( this ).width( $( this ).width() ); } );
+                    return tr;
+                },
+                update: function() {
+                    var ids = $tbody.find( '> tr' ).map( function() {
+                        var id = $( this ).attr( 'id' );
+                        return id ? id.replace( 'post-', '' ) : null;
+                    } ).get().filter( Boolean );
+                    if ( ! ids.length ) return;
+
+                    $tbody.css( 'opacity', 0.6 );
+
+                    $.post( ajaxurl, {
+                        action: 'bespoke_reorder_designs',
+                        _nonce: '<?php echo esc_js( $reorder_nonce ); ?>',
+                        order:  ids
+                    }, function( res ) {
+                        $tbody.css( 'opacity', 1 );
+                        if ( ! res || ! res.success ) {
+                            alert( 'Reorder failed: ' + ( res && res.data ? res.data : 'unknown error' ) );
+                            return;
+                        }
+                        // Update visible Order column values to match what
+                        // PHP just saved (so the column doesn't go stale
+                        // until the user refreshes).
+                        $tbody.find( '> tr' ).each( function( i ) {
+                            var newOrder = ( i + 1 ) * 10;
+                            $( this ).find( '.column-order' ).text( newOrder );
+                            $( this ).addClass( 'bespoke-saved' );
+                        } );
+                        setTimeout( function() {
+                            $tbody.find( '> tr' ).removeClass( 'bespoke-saved' );
+                        }, 1500 );
+                    } );
+                }
+            } );
+        }
+
+        // ── 2. QUICK EDIT — pre-fill the Order input ───────────────────────
+        // WordPress's inline-edit JS doesn't know about our custom field,
+        // so we wrap inlineEditPost.edit to copy the value from the row's
+        // Order column into the Quick Edit form on open.
+        if ( typeof inlineEditPost !== 'undefined' ) {
+            var origInlineEdit = inlineEditPost.edit;
+            inlineEditPost.edit = function( id ) {
+                origInlineEdit.apply( this, arguments );
+                var postId = ( typeof id === 'object' ) ? parseInt( this.getId( id ), 10 ) : id;
+                if ( ! postId ) return;
+                var current = ( $( '#post-' + postId + ' .column-order' ).text() || '' ).trim();
+                $( '#edit-' + postId + ' input.bespoke-quick-order' ).val( current );
+            };
+        }
+    } );
+    </script>
+    <?php
+} );
+
+/**
+ * AJAX endpoint that re-saves _bespoke_order for the dragged sequence.
+ * Each post in the visible list gets order = (index + 1) × 10 so the
+ * sequence stays human-friendly with gaps for future inserts.
+ */
+add_action( 'wp_ajax_bespoke_reorder_designs', function() {
+    if ( ! current_user_can( 'edit_posts' ) ) {
+        wp_send_json_error( 'Not authorised', 403 );
+    }
+    if ( ! check_ajax_referer( 'bespoke_reorder_designs', '_nonce', false ) ) {
+        wp_send_json_error( 'Invalid nonce', 403 );
+    }
+    $ids = isset( $_POST['order'] ) ? array_map( 'absint', (array) $_POST['order'] ) : [];
+    if ( empty( $ids ) ) {
+        wp_send_json_error( 'No order data received' );
+    }
+    foreach ( $ids as $i => $id ) {
+        if ( ! $id || get_post_type( $id ) !== 'bespoke_design' ) {
+            continue;
+        }
+        update_post_meta( $id, '_bespoke_order', ( $i + 1 ) * 10 );
+    }
+    wp_send_json_success();
+} );
+
+/**
+ * Render the Order field inside WordPress's Quick Edit panel. WordPress
+ * fires this for each custom column we registered — we only want the
+ * Order column.
+ */
+add_action( 'quick_edit_custom_box', function( $column_name, $post_type ) {
+    if ( $post_type !== 'bespoke_design' || $column_name !== 'order' ) {
+        return;
+    }
+    wp_nonce_field( 'bespoke_design_quick_edit', 'bespoke_quick_edit_nonce' );
+    ?>
+    <fieldset class="inline-edit-col-right">
+        <div class="inline-edit-col">
+            <label>
+                <span class="title">Display order</span>
+                <span class="input-text-wrap">
+                    <input type="number"
+                           name="bespoke_order"
+                           class="bespoke-quick-order"
+                           value=""
+                           min="1"
+                           max="999"
+                           style="width:80px;" />
+                </span>
+            </label>
+            <p class="description" style="margin-top:4px;">Lower numbers appear first.</p>
+        </div>
+    </fieldset>
+    <?php
+}, 10, 2 );
+
+/**
+ * Save handler for the Quick Edit Order field. Uses its own nonce so it
+ * doesn't conflict with the full-edit save handler (which expects a
+ * different set of POST keys).
+ */
+add_action( 'save_post_bespoke_design', function( $post_id ) {
+    if ( ! isset( $_POST['bespoke_quick_edit_nonce'] ) ) {
+        return; // Not a Quick Edit submission
+    }
+    if ( ! wp_verify_nonce( $_POST['bespoke_quick_edit_nonce'], 'bespoke_design_quick_edit' ) ) {
+        return;
+    }
+    if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
+        return;
+    }
+    if ( ! current_user_can( 'edit_post', $post_id ) ) {
+        return;
+    }
+    if ( isset( $_POST['bespoke_order'] ) ) {
+        update_post_meta( $post_id, '_bespoke_order', absint( $_POST['bespoke_order'] ) );
+    }
+} );
+
+
+/* =========================================================================
    6. AJAX ENDPOINT — bespoke_get_designs
    Called by customiser.html on page load to fetch the live design
    catalogue for the current product type.
