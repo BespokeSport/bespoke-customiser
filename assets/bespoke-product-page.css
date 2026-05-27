@@ -510,14 +510,29 @@ body.single-product .woocommerce-info::before {
     justify-content: flex-start !important;
   }
   body.single-product .related ul.products li.product,
+  body.single-product .related ul.products li.product.first,
+  body.single-product .related ul.products li.product:first-child,
+  body.single-product .related ul.products li.product:nth-child(2n+1),
+  body.single-product .related ul.products li.product:last-child,
   body.single-product .up-sells ul.products li.product,
+  body.single-product .up-sells ul.products li.product.first,
+  body.single-product .up-sells ul.products li.product:first-child,
+  body.single-product .up-sells ul.products li.product:nth-child(2n+1),
+  body.single-product .up-sells ul.products li.product:last-child,
   body.single-product .related .product,
   body.single-product .up-sells .product {
-    flex: 0 1 calc(50% - 6px) !important;
+    /* flex: 0 0 (no shrink) so the calculated width is honoured exactly —
+       prevents the row from over-flowing and pushing the 2nd item down */
+    flex: 0 0 calc(50% - 6px) !important;
     width: calc(50% - 6px) !important;
     max-width: calc(50% - 6px) !important;
     min-width: 0 !important;
+    /* Kill Astra's margin-right: 20px which otherwise adds to our 12px
+       gap and makes each item effectively wider than 50%, forcing item 2
+       onto a new row. */
     margin: 0 !important;
+    margin-right: 0 !important;
+    margin-left: 0 !important;
     padding: 12px !important;
     float: none !important;
     clear: none !important;
