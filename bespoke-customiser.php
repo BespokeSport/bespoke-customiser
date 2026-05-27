@@ -39,6 +39,7 @@ add_action( 'plugins_loaded', function() {
     require_once BESPOKE_PLUGIN_DIR . 'includes/customiser-frontend.php';
     require_once BESPOKE_PLUGIN_DIR . 'includes/customiser-woocommerce.php';
     require_once BESPOKE_PLUGIN_DIR . 'includes/customiser-ajax.php';
+    require_once BESPOKE_PLUGIN_DIR . 'includes/customiser-product-page.php'; // per-product PDP content (eyebrow / sizing / etc.)
 });
 
 // Create badge upload directory on activation
