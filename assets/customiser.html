@@ -657,6 +657,13 @@ var S = {
   // multi-pattern designs (e.g. Tramline has 2 pattern layers).
   // Populated by the registered-designs renderer when a design is selected.
   patColors: [],
+  // bgGradient and patGradients[]: optional gradients per zone. null /
+  // missing means solid colour (use bgColor / patColors[i]). Set to
+  // { from: '#...', to: '#...' } to render that zone as a vertical
+  // linear gradient instead. The picker overlay's "Use gradient" toggle
+  // sets / clears these fields.
+  bgGradient: null,
+  patGradients: [],
   nameColor:'#FFFFFF', numColor:'#FFFFFF',
   nameL:'', nameR:'', numL:'', numR:'',
   sameName:true, sameNum:true,
@@ -1592,7 +1599,7 @@ function fillSummary(){
   ['bg','pat','nt','nu'].forEach(function(k,i){document.getElementById('sd-'+k).style.background=cols[i];document.getElementById('sh-'+k).textContent=cols[i];});
 }
 function reset(){
-  S={step:0,bgColor:'#feef00',patColor:'#211d33',patColors:[],nameColor:'#FFFFFF',numColor:'#FFFFFF',nameL:'',nameR:'',numL:'',numR:'',sameName:true,sameNum:true,badge:null,badgeURL:null,design:'vanguard',padSize:"M",orderNotes:"",badgeSize:210,nameSize:90,numSize:155,nameFontFamily:'"Arial Black", Arial, sans-serif',numFontFamily:'"Arial Black", Arial, sans-serif',pos:JSON.parse(JSON.stringify(DEF))};
+  S={step:0,bgColor:'#feef00',patColor:'#211d33',patColors:[],bgGradient:null,patGradients:[],nameColor:'#FFFFFF',numColor:'#FFFFFF',nameL:'',nameR:'',numL:'',numR:'',sameName:true,sameNum:true,badge:null,badgeURL:null,design:'vanguard',padSize:"M",orderNotes:"",badgeSize:210,nameSize:90,numSize:155,nameFontFamily:'"Arial Black", Arial, sans-serif',numFontFamily:'"Arial Black", Arial, sans-serif',pos:JSON.parse(JSON.stringify(DEF))};
   previews={};
   for(var i=0;i<6;i++){var pb=document.getElementById('pb'+i);if(pb)pb.innerHTML='';}
   document.getElementById('s6').classList.remove('active');

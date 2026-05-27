@@ -383,17 +383,79 @@ function bespoke_render_customiser( $atts ) {
                 ];
             }
 
-            // Build a layer <g> from a URL (SVG or raster image), applying a tint colour.
+            // Build a layer <g> from a URL (SVG or raster image), applying a tint colour
+            // or gradient.
+            //   - gradient set  → render a <rect> filled with linearGradient through
+            //                     the image's alpha as a mask (raster) OR set the
+            //                     gradient as fill on the layer wrapper (vector).
             //   - tintColor null            → no tinting (background wallpaper)
-            //   - tintColor set + raster    → SVG filter (alpha-mask + solid tint, FPD-style)
+            //   - tintColor set + raster    → flatten-matrix tint filter
             //   - tintColor set + vector    → set fill on the wrapper (cascades to paths)
             //   - tintColor set + raster-in-SVG → feColorMatrix luminance + tint
             // Returns a promise that resolves to the layer element.
-            function buildLayer(url, tintColor, label){
+            function buildLayer(url, tintColor, label, gradient){
                 // PNG/JPG/GIF/WebP — wrap in an SVG <image> element (covers viewport).
                 if (isRasterUrl(url)) {
                     var imgLayer = document.createElementNS(NS, 'g');
                     imgLayer.setAttribute('data-layer', label);
+
+                    // ── Gradient branch (raster) ────────────────────────────
+                    // Use the image's alpha as a mask, then fill the visible
+                    // area with a vertical linear gradient. Works for ANY
+                    // source PNG colour — alpha shape only is what matters.
+                    if (gradient && gradient.from && gradient.to) {
+                        var rndId = Math.random().toString(36).slice(2, 8);
+                        var defs = document.createElementNS(NS, 'defs');
+
+                        var maskId = 'bcp-img-mask-' + rndId;
+                        var mask = document.createElementNS(NS, 'mask');
+                        mask.setAttribute('id', maskId);
+                        mask.setAttribute('maskUnits', 'userSpaceOnUse');
+                        mask.setAttribute('mask-type', 'alpha');
+                        mask.setAttribute('x', '0');
+                        mask.setAttribute('y', '0');
+                        mask.setAttribute('width', '1200');
+                        mask.setAttribute('height', '1200');
+                        var maskImg = document.createElementNS(NS, 'image');
+                        maskImg.setAttribute('x', '0');
+                        maskImg.setAttribute('y', '0');
+                        maskImg.setAttribute('width', '1200');
+                        maskImg.setAttribute('height', '1200');
+                        maskImg.setAttribute('preserveAspectRatio', 'xMidYMid slice');
+                        maskImg.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', url);
+                        maskImg.setAttribute('href', url);
+                        mask.appendChild(maskImg);
+                        defs.appendChild(mask);
+
+                        var gradId = 'bcp-grad-' + rndId;
+                        var lg = document.createElementNS(NS, 'linearGradient');
+                        lg.setAttribute('id', gradId);
+                        lg.setAttribute('x1', '0'); lg.setAttribute('y1', '0');
+                        lg.setAttribute('x2', '0'); lg.setAttribute('y2', '1');
+                        var st1 = document.createElementNS(NS, 'stop');
+                        st1.setAttribute('offset', '0%');
+                        st1.setAttribute('stop-color', gradient.from);
+                        var st2 = document.createElementNS(NS, 'stop');
+                        st2.setAttribute('offset', '100%');
+                        st2.setAttribute('stop-color', gradient.to);
+                        lg.appendChild(st1); lg.appendChild(st2);
+                        defs.appendChild(lg);
+
+                        imgLayer.appendChild(defs);
+
+                        var rect = document.createElementNS(NS, 'rect');
+                        rect.setAttribute('x', '0');
+                        rect.setAttribute('y', '0');
+                        rect.setAttribute('width', '1200');
+                        rect.setAttribute('height', '1200');
+                        rect.setAttribute('fill', 'url(#' + gradId + ')');
+                        rect.setAttribute('mask', 'url(#' + maskId + ')');
+                        imgLayer.appendChild(rect);
+
+                        return Promise.resolve(imgLayer);
+                    }
+
+                    // ── Solid tint branch (raster) ──────────────────────────
                     var img = document.createElementNS(NS, 'image');
                     img.setAttribute('x', '0');
                     img.setAttribute('y', '0');
@@ -485,6 +547,30 @@ function bespoke_render_customiser( $atts ) {
                     layer.setAttribute('data-layer', label);
                     layer.appendChild(nested);
 
+                    // ── Gradient branch (vector SVG) ────────────────────────
+                    // Define a <linearGradient> in defs and set fill="url(#grad)"
+                    // on the wrapper. Paths without their own fill inherit it.
+                    if (gradient && gradient.from && gradient.to) {
+                        var vGradId = 'bcp-vgrad-' + Math.random().toString(36).slice(2, 8);
+                        var vDefs = document.createElementNS(NS, 'defs');
+                        var vLg = document.createElementNS(NS, 'linearGradient');
+                        vLg.setAttribute('id', vGradId);
+                        vLg.setAttribute('x1', '0'); vLg.setAttribute('y1', '0');
+                        vLg.setAttribute('x2', '0'); vLg.setAttribute('y2', '1');
+                        vLg.setAttribute('gradientUnits', 'objectBoundingBox');
+                        var vSt1 = document.createElementNS(NS, 'stop');
+                        vSt1.setAttribute('offset', '0%');
+                        vSt1.setAttribute('stop-color', gradient.from);
+                        var vSt2 = document.createElementNS(NS, 'stop');
+                        vSt2.setAttribute('offset', '100%');
+                        vSt2.setAttribute('stop-color', gradient.to);
+                        vLg.appendChild(vSt1); vLg.appendChild(vSt2);
+                        vDefs.appendChild(vLg);
+                        layer.insertBefore(vDefs, layer.firstChild);
+                        layer.style.fill = 'url(#' + vGradId + ')';
+                        return layer;
+                    }
+
                     if (!tintColor) return layer;
 
                     if (svgHasRasterImages(parsed)) {
@@ -569,7 +655,12 @@ function bespoke_render_customiser( $atts ) {
                 // 2. Pad base — uses design's layer-1 file if set, else product pad base
                 var padBaseUrl  = (d.layers && d.layers[0] && d.layers[0].file_url) || PA.pad_base_url || null;
                 if (padBaseUrl) {
-                    stack.push({ url: padBaseUrl, tint: window.S.bgColor || '#feef00', label: 'pad-base' });
+                    stack.push({
+                        url:      padBaseUrl,
+                        tint:     window.S.bgColor || '#feef00',
+                        gradient: window.S.bgGradient || null,
+                        label:    'pad-base'
+                    });
                 }
 
                 // 3. Pattern layers (design.layers index 1+)
@@ -599,9 +690,10 @@ function bespoke_render_customiser( $atts ) {
                     // legacy "Pattern" row in the static HTML reflects state.
                     if (patIdx === 0) window.S.patColor = window.S.patColors[0];
                     stack.push({
-                        url: layer.file_url,
-                        tint: window.S.patColors[patIdx],
-                        label: 'pattern-' + idx
+                        url:      layer.file_url,
+                        tint:     window.S.patColors[patIdx],
+                        gradient: (window.S.patGradients && window.S.patGradients[patIdx]) || null,
+                        label:    'pattern-' + idx
                     });
                 });
 
@@ -620,7 +712,7 @@ function bespoke_render_customiser( $atts ) {
                 // viewport boundary.
                 Promise.all([
                     getPadCenteringOffset(padBaseUrl),
-                    Promise.all(stack.map(function(s){ return buildLayer(s.url, s.tint, s.label); }))
+                    Promise.all(stack.map(function(s){ return buildLayer(s.url, s.tint, s.label, s.gradient); }))
                 ]).then(function(results){
                     var centerOffset = results[0] || {tx:0, ty:0};
                     var layers       = results[1];
@@ -1247,6 +1339,15 @@ function bespoke_render_customiser( $atts ) {
         .bcp-badge-swatch { width: 25px; height: 25px; border-radius: 6px; border: 1px solid #2A2A2A; cursor: pointer; transition: transform 120ms ease, border-color 120ms ease; box-sizing: border-box; }
         .bcp-badge-swatch:hover { transform: scale(1.08); border-color: #5DCAA5; }
 
+        /* Gradient toggle + From/To tabs (shown only for bg / pattern zones) */
+        .bcp-grad-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+        .bcp-grad-label { display: flex; align-items: center; gap: 8px; font-size: 11px; color: rgba(255,255,255,0.85); cursor: pointer; user-select: none; }
+        .bcp-grad-label input[type="checkbox"] { width: 16px; height: 16px; accent-color: #5DCAA5; cursor: pointer; margin: 0; }
+        .bcp-grad-tabs { display: none; gap: 4px; background: #0E0E10; padding: 3px; border-radius: 7px; }
+        .bcp-grad-tab { background: transparent; border: none; color: rgba(255,255,255,0.5); font-family: 'Inter', sans-serif; font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; padding: 5px 12px; border-radius: 5px; cursor: pointer; transition: background 120ms ease, color 120ms ease; }
+        .bcp-grad-tab:hover { color: rgba(255,255,255,0.85); }
+        .bcp-grad-tab.sel { background: #5DCAA5; color: #04342C; }
+
         /* Desktop: picker left-aligned so preview stays visible on the right */
         @media (min-width: 900px) {
             #bcp-overlay { justify-content: flex-start !important; padding-left: 60px !important; box-sizing: border-box !important; }
@@ -1270,12 +1371,36 @@ function bespoke_render_customiser( $atts ) {
 
         var overlay = document.createElement('div');
         overlay.id = 'bcp-overlay';
-        overlay.innerHTML = '<div class="bcp-panel"><div class="bcp-row"><div class="bcp-title">Choose colour</div><input class="bcp-hex" id="bcp-hex" type="text" maxlength="7" /><button class="bcp-done" id="bcp-done">Done</button></div><div class="bcp-badge-row" id="bcp-badge-row" style="display:none;"><div class="bcp-badge-label">Badge Colours</div><div class="bcp-badge-swatches" id="bcp-badge-swatches"></div></div><div class="bcp-recent-row"><div class="bcp-recent-label">Recent Colours</div><div class="bcp-recent" id="bcp-recent"></div></div><div class="bcp-sv" id="bcp-sv"><div class="bcp-sv-cursor" id="bcp-sv-cursor"></div></div><div class="bcp-hue" id="bcp-hue"><div class="bcp-hue-cursor" id="bcp-hue-cursor"></div></div></div>';
+        overlay.innerHTML = '<div class="bcp-panel">'
+          + '<div class="bcp-row"><div class="bcp-title">Choose colour</div><input class="bcp-hex" id="bcp-hex" type="text" maxlength="7" /><button class="bcp-done" id="bcp-done">Done</button></div>'
+          + '<div class="bcp-grad-row" id="bcp-grad-row" style="display:none;">'
+          +   '<label class="bcp-grad-label"><input type="checkbox" id="bcp-grad-toggle" /> Use gradient</label>'
+          +   '<div class="bcp-grad-tabs" id="bcp-grad-tabs">'
+          +     '<button type="button" class="bcp-grad-tab sel" data-tab="from">From</button>'
+          +     '<button type="button" class="bcp-grad-tab" data-tab="to">To</button>'
+          +   '</div>'
+          + '</div>'
+          + '<div class="bcp-badge-row" id="bcp-badge-row" style="display:none;"><div class="bcp-badge-label">Badge Colours</div><div class="bcp-badge-swatches" id="bcp-badge-swatches"></div></div>'
+          + '<div class="bcp-recent-row"><div class="bcp-recent-label">Recent Colours</div><div class="bcp-recent" id="bcp-recent"></div></div>'
+          + '<div class="bcp-sv" id="bcp-sv"><div class="bcp-sv-cursor" id="bcp-sv-cursor"></div></div>'
+          + '<div class="bcp-hue" id="bcp-hue"><div class="bcp-hue-cursor" id="bcp-hue-cursor"></div></div>'
+          + '</div>';
         document.body.appendChild(overlay);
 
         var activeInput = null, h=0, s=1, v=1;
         var $ = function(id){ return document.getElementById(id); };
         var sv = $('bcp-sv'), svC = $('bcp-sv-cursor'), hue = $('bcp-hue'), hueC = $('bcp-hue-cursor'), hex = $('bcp-hex'), done = $('bcp-done');
+        var gradRow = $('bcp-grad-row'), gradToggle = $('bcp-grad-toggle'), gradTabs = $('bcp-grad-tabs');
+
+        // Gradient picker state — the zone being edited, whether gradient
+        // is on, the two stop colours, and which tab the HSV is currently
+        // controlling. Zones supporting gradients are 'bg' and any pattern
+        // ('pat', 'pat2', 'pat3', ...) — name/number text remain solid.
+        var pickerZone = null;
+        var gradientMode = false;
+        var gradientFrom = '#FFFFFF';
+        var gradientTo   = '#000000';
+        var gradientTab  = 'from';
 
         function hsv2rgb(h,s,v){var c=v*s,x=c*(1-Math.abs(((h/60)%2)-1)),m=v-c;var r=0,g=0,b=0;if(h<60){r=c;g=x}else if(h<120){r=x;g=c}else if(h<180){g=c;b=x}else if(h<240){g=x;b=c}else if(h<300){r=x;b=c}else{r=c;b=x}return[Math.round((r+m)*255),Math.round((g+m)*255),Math.round((b+m)*255)]}
         function rgb2hsv(r,g,b){r/=255;g/=255;b/=255;var mx=Math.max(r,g,b),mn=Math.min(r,g,b),d=mx-mn;var H=0;if(d){if(mx===r)H=((g-b)/d)%6;else if(mx===g)H=(b-r)/d+2;else H=(r-g)/d+4;H=Math.round(H*60);if(H<0)H+=360}return[H,mx===0?0:d/mx,mx]}
@@ -1284,8 +1409,90 @@ function bespoke_render_customiser( $atts ) {
         function paintSV(){sv.style.background='linear-gradient(to top,#000,transparent),linear-gradient(to right,#fff,hsl('+h+',100%,50%))'}
         function refresh(){paintSV();svC.style.left=(s*100)+'%';svC.style.top=((1-v)*100)+'%';hueC.style.left=(h/360*100)+'%';var rgb=hsv2rgb(h,s,v);if(document.activeElement!==hex)hex.value=rgb2hex(rgb[0],rgb[1],rgb[2]).toUpperCase();push()}
 
+        // ─── Gradient helpers ─────────────────────────────────────────────
+        // Lookup / mutate window.S for the zone currently being edited.
+        function isGradientZone(z){ return z === 'bg' || (z && z.indexOf('pat') === 0); }
+        function getStateGrad(z){
+          if (!window.S || !z) return null;
+          if (z === 'bg') return window.S.bgGradient || null;
+          if (z === 'pat') return (window.S.patGradients && window.S.patGradients[0]) || null;
+          var m = z.match(/^pat(\d+)$/);
+          if (m) return (window.S.patGradients && window.S.patGradients[parseInt(m[1],10)-1]) || null;
+          return null;
+        }
+        function setStateGrad(z, grad){
+          if (!window.S || !z) return;
+          if (z === 'bg') { window.S.bgGradient = grad; return; }
+          if (!window.S.patGradients) window.S.patGradients = [];
+          if (z === 'pat') { window.S.patGradients[0] = grad; return; }
+          var m = z.match(/^pat(\d+)$/);
+          if (m) window.S.patGradients[parseInt(m[1],10)-1] = grad;
+        }
+        function getStateSolid(z){
+          if (!window.S || !z) return '#000';
+          if (z === 'bg')   return window.S.bgColor || '#000';
+          if (z === 'pat')  return window.S.patColor || (window.S.patColors && window.S.patColors[0]) || '#000';
+          var m = z.match(/^pat(\d+)$/);
+          if (m) return (window.S.patColors && window.S.patColors[parseInt(m[1],10)-1]) || '#000';
+          if (z === 'name') return window.S.nameColor || '#fff';
+          if (z === 'num')  return window.S.numColor  || '#fff';
+          return '#000';
+        }
+        function applyZoneSwatch(z){
+          var ct = document.getElementById('ct-' + z);
+          if (!ct) return;
+          var grad = getStateGrad(z);
+          ct.style.background = grad
+            ? ('linear-gradient(180deg, ' + grad.from + ', ' + grad.to + ')')
+            : getStateSolid(z);
+        }
+        function defaultGradTo(fromHex){
+          var rgb = hex2rgb(fromHex);
+          return rgb2hex(
+            Math.max(0, Math.floor(rgb[0] * 0.3)),
+            Math.max(0, Math.floor(rgb[1] * 0.3)),
+            Math.max(0, Math.floor(rgb[2] * 0.3))
+          );
+        }
+        // Debounced repaint of the customiser previews after gradient edits.
+        var _renderTimer = null;
+        function triggerRender(){
+          clearTimeout(_renderTimer);
+          _renderTimer = setTimeout(function(){
+            if (typeof window.updateDesignLayers === 'function') window.updateDesignLayers();
+            if (typeof window.syncAll === 'function') window.syncAll();
+          }, 40);
+        }
+        function updateTabSelection(){
+          var tabs = gradTabs ? gradTabs.querySelectorAll('.bcp-grad-tab') : [];
+          for (var i = 0; i < tabs.length; i++){
+            if (tabs[i].getAttribute('data-tab') === gradientTab) tabs[i].classList.add('sel');
+            else tabs[i].classList.remove('sel');
+          }
+        }
+
         var _pushRaf=false;
-        function push(){if(!activeInput)return;if(_pushRaf)return;_pushRaf=true;requestAnimationFrame(function(){_pushRaf=false;if(!activeInput)return;var rgb=hsv2rgb(h,s,v);activeInput.value=rgb2hex(rgb[0],rgb[1],rgb[2]);activeInput.dispatchEvent(new Event('input',{bubbles:true}))})}
+        function push(){
+          if(_pushRaf)return;
+          _pushRaf=true;
+          requestAnimationFrame(function(){
+            _pushRaf=false;
+            var rgb = hsv2rgb(h, s, v);
+            var hexValue = rgb2hex(rgb[0], rgb[1], rgb[2]);
+            if (gradientMode && pickerZone){
+              // Save HSV → active gradient stop, update state + swatch + render
+              if (gradientTab === 'from') gradientFrom = hexValue;
+              else                        gradientTo   = hexValue;
+              setStateGrad(pickerZone, { from: gradientFrom, to: gradientTo });
+              applyZoneSwatch(pickerZone);
+              triggerRender();
+            } else if (activeInput){
+              // Solid mode — existing pipeline (input event → debouncedColor)
+              activeInput.value = hexValue;
+              activeInput.dispatchEvent(new Event('input',{bubbles:true}));
+            }
+          });
+        }
         function setHex(x){var rgb=hex2rgb(x);var hsv=rgb2hsv(rgb[0],rgb[1],rgb[2]);h=hsv[0];s=hsv[1];v=hsv[2];refresh()}
 
         function drag(el,fn){
@@ -1542,11 +1749,85 @@ function bespoke_render_customiser( $atts ) {
           if (!i) return;
           i.style.pointerEvents = 'none'; // safety for dynamic rows
           activeInput = i;
-          setHex(i.value || '#ff0000');
+
+          // Derive the zone code from the input's ID (e.g. cp-bg → 'bg',
+          // cp-pat2 → 'pat2'). Used by the gradient state helpers.
+          pickerZone = (i.id || '').replace(/^cp-/, '');
+
+          // Show or hide the gradient toggle row based on whether this
+          // zone supports gradients (bg + any pattern; not name/number).
+          if (gradRow) gradRow.style.display = isGradientZone(pickerZone) ? 'flex' : 'none';
+
+          // Load state — if this zone is already in gradient mode, set
+          // the picker into gradient mode and load both stops; otherwise
+          // solid mode.
+          var existingGrad = getStateGrad(pickerZone);
+          if (existingGrad && isGradientZone(pickerZone)) {
+            gradientMode = true;
+            gradientFrom = existingGrad.from;
+            gradientTo   = existingGrad.to;
+            gradientTab  = 'from';
+            if (gradToggle) gradToggle.checked = true;
+            if (gradTabs)   gradTabs.style.display = 'flex';
+            updateTabSelection();
+            setHex(gradientFrom);
+          } else {
+            gradientMode = false;
+            if (gradToggle) gradToggle.checked = false;
+            if (gradTabs)   gradTabs.style.display = 'none';
+            setHex(i.value || getStateSolid(pickerZone) || '#ff0000');
+          }
+
           overlay.classList.add('open');
           try { overlay.scrollIntoView({block:'center', inline:'center'}); } catch(_) {}
-          hex.value = (i.value || '#FF0000').toUpperCase();
+          hex.value = (gradientMode ? gradientFrom : (i.value || '#FF0000')).toUpperCase();
           maybeExtractBadgeColours();
+        }
+
+        // ── Gradient toggle: solid ↔ gradient for the active zone ───────
+        if (gradToggle) {
+          gradToggle.addEventListener('change', function(){
+            if (!pickerZone) return;
+            if (gradToggle.checked) {
+              // Switching ON: initialise gradient from current solid colour
+              // and a darker default for the "to" stop. User can edit both.
+              gradientMode = true;
+              var currentSolid = getStateSolid(pickerZone) || hex.value || '#FFFFFF';
+              gradientFrom = currentSolid;
+              gradientTo   = defaultGradTo(currentSolid);
+              gradientTab  = 'from';
+              setStateGrad(pickerZone, { from: gradientFrom, to: gradientTo });
+              if (gradTabs) gradTabs.style.display = 'flex';
+              updateTabSelection();
+              setHex(gradientFrom);
+              applyZoneSwatch(pickerZone);
+              triggerRender();
+            } else {
+              // Switching OFF: clear gradient, keep current "from" as solid.
+              gradientMode = false;
+              setStateGrad(pickerZone, null);
+              if (gradTabs) gradTabs.style.display = 'none';
+              var newSolid = gradientFrom || hex.value || '#FFFFFF';
+              if (activeInput) {
+                activeInput.value = newSolid;
+                activeInput.dispatchEvent(new Event('input', { bubbles: true }));
+              }
+              setHex(newSolid);
+              applyZoneSwatch(pickerZone);
+            }
+          });
+        }
+
+        // ── Tab switch (From ↔ To) — load that stop into HSV ────────────
+        if (gradTabs) {
+          gradTabs.addEventListener('click', function(e){
+            var tab = e.target && e.target.closest && e.target.closest('.bcp-grad-tab');
+            if (!tab) return;
+            e.preventDefault();
+            gradientTab = tab.getAttribute('data-tab');
+            updateTabSelection();
+            setHex(gradientTab === 'from' ? gradientFrom : gradientTo);
+          });
         }
 
         // Event delegation — any .ct inside the customiser opens the picker.
