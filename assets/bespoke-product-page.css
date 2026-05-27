@@ -445,6 +445,167 @@ body.single-product .woocommerce-info::before {
 }
 
 
+/* --------------------------------------------------------------------------
+   13. EYEBROW · SUBTITLE · PRICE SUFFIX  (content shortcodes)
+   -------------------------------------------------------------------------- */
+body.single-product .bs-eyebrow {
+  font-family: var(--bs-font-mono) !important;
+  font-size: 11px !important;
+  letter-spacing: 0.14em !important;
+  text-transform: uppercase !important;
+  color: var(--bs-mint) !important;
+  margin: 0 0 14px !important;
+}
+body.single-product .bs-subtitle {
+  font-family: var(--bs-font-ui) !important;
+  font-size: 17px !important;
+  line-height: 1.55 !important;
+  color: var(--bs-text) !important;
+  max-width: 640px !important;
+  margin: 12px 0 28px !important;
+}
+body.single-product .bs-price-suffix {
+  font-family: var(--bs-font-mono) !important;
+  font-size: 11px !important;
+  letter-spacing: 0.14em !important;
+  text-transform: uppercase !important;
+  color: var(--bs-muted) !important;
+  margin-top: 8px !important;
+}
+
+
+/* --------------------------------------------------------------------------
+   14. SIZING CHART  (the "How they measure up" block)
+   -------------------------------------------------------------------------- */
+body.single-product .bs-sizing-chart {
+  margin: 64px 0 !important;
+  padding: 40px 0 !important;
+  border-top: 1px solid var(--bs-line) !important;
+}
+body.single-product .bs-sizing-chart__head {
+  font-family: var(--bs-font-mono) !important;
+  font-size: 11px !important;
+  letter-spacing: 0.14em !important;
+  text-transform: uppercase !important;
+  color: var(--bs-mint) !important;
+  margin: 0 0 14px !important;
+}
+body.single-product .bs-sizing-chart__topline {
+  display: flex !important;
+  align-items: flex-end !important;
+  justify-content: space-between !important;
+  flex-wrap: wrap !important;
+  gap: 16px !important;
+  margin-bottom: 28px !important;
+}
+body.single-product .bs-sizing-chart__title {
+  font-family: var(--bs-font-ui) !important;
+  font-weight: 800 !important;
+  font-size: clamp(28px, 3vw, 44px) !important;
+  line-height: 1.05 !important;
+  letter-spacing: -0.01em !important;
+  color: #fff !important;
+  margin: 0 !important;
+}
+body.single-product .bs-sizing-chart__caption {
+  font-family: var(--bs-font-ui) !important;
+  font-size: 13px !important;
+  color: var(--bs-muted) !important;
+  max-width: 320px !important;
+  text-align: right !important;
+  margin: 0 !important;
+}
+body.single-product .bs-sizing-chart__table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  font-family: var(--bs-font-ui) !important;
+}
+body.single-product .bs-sizing-chart__table th {
+  font-family: var(--bs-font-mono) !important;
+  font-size: 11px !important;
+  letter-spacing: 0.14em !important;
+  text-transform: uppercase !important;
+  color: var(--bs-muted) !important;
+  text-align: left !important;
+  padding: 12px 16px !important;
+  border-bottom: 1px solid var(--bs-line) !important;
+  font-weight: 500 !important;
+}
+body.single-product .bs-sizing-chart__table th:last-child {
+  text-align: right !important;
+}
+body.single-product .bs-sizing-chart__table td {
+  padding: 22px 16px !important;
+  border-bottom: 1px solid var(--bs-line) !important;
+  color: var(--bs-text) !important;
+  font-size: 14px !important;
+  vertical-align: middle !important;
+}
+body.single-product .bs-sizing-chart__table td:last-child {
+  text-align: right !important;
+  font-family: var(--bs-font-mono) !important;
+  font-size: 14px !important;
+}
+body.single-product .bs-sizing-chart__table tr:last-child td {
+  border-bottom: 0 !important;
+}
+body.single-product .bs-size-pill {
+  display: inline-flex !important;
+  width: 48px !important;
+  height: 48px !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: var(--bs-panel) !important;
+  border: 1px solid var(--bs-line) !important;
+  border-radius: 6px !important;
+  font-family: var(--bs-font-ui) !important;
+  font-weight: 800 !important;
+  font-size: 18px !important;
+  color: #fff !important;
+}
+
+
+/* --------------------------------------------------------------------------
+   15. AT A GLANCE SIDEBAR  (renders inside the Description tab column)
+   -------------------------------------------------------------------------- */
+body.single-product .bs-sidebar {
+  background: var(--bs-panel) !important;
+  border-radius: 8px !important;
+  padding: 24px 28px !important;
+  border: 1px solid var(--bs-line) !important;
+  align-self: flex-start !important;
+}
+body.single-product .bs-sidebar__label {
+  font-family: var(--bs-font-mono) !important;
+  font-size: 10px !important;
+  letter-spacing: 0.14em !important;
+  text-transform: uppercase !important;
+  color: var(--bs-muted) !important;
+  margin-bottom: 16px !important;
+}
+body.single-product .bs-sidebar__row {
+  display: flex !important;
+  justify-content: space-between !important;
+  padding: 12px 0 !important;
+  border-top: 1px solid var(--bs-line) !important;
+  font-size: 13px !important;
+  font-family: var(--bs-font-ui) !important;
+  gap: 16px !important;
+}
+body.single-product .bs-sidebar__row:first-of-type {
+  border-top: 0 !important;
+  padding-top: 0 !important;
+}
+body.single-product .bs-sidebar__row .k {
+  color: var(--bs-muted) !important;
+}
+body.single-product .bs-sidebar__row .v {
+  color: #fff !important;
+  font-weight: 500 !important;
+  text-align: right !important;
+}
+
+
 /* ==========================================================================
    END · Bespoke Sport product styling
    ========================================================================== */
