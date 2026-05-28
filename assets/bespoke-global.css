@@ -14,24 +14,45 @@
 /* --------------------------------------------------------------------------
    MOBILE NAV DROPDOWN  (Elementor nav menu burger menu)
    --------------------------------------------------------------------------
-   The Elementor nav-menu widget's mobile dropdown renders with a light
-   grey background but the menu links inherit the WHITE desktop colour —
-   so the items were invisible (white text on near-white). Repaint the
-   dropdown as a brand-mint panel with dark text. */
+   Full-screen mint takeover with big black Anton menu items, centred
+   vertically. The Elementor dropdown defaulted to a small light-grey
+   panel with invisible white text; this turns it into a proper
+   mobile menu overlay.
+
+   The header (logo + burger/X) stays on its dark background ABOVE this
+   panel, so the green X stays visible and tappable to close. We use
+   min-height (not position:fixed) so we don't fight Elementor's
+   open/close display toggle or cover the close button. */
 
 .elementor-nav-menu--dropdown,
 nav.elementor-nav-menu--dropdown.elementor-nav-menu__container {
   background-color: var(--bs-mint) !important;
-  border-radius: 0 0 8px 8px !important;
+  min-height: calc(100vh - 80px) !important;
+  border-radius: 0 !important;
+  padding: 24px 0 48px !important;
 }
 
-/* Menu links */
+/* Centre the menu items vertically in the takeover panel */
+.elementor-nav-menu--dropdown ul.elementor-nav-menu {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  min-height: calc(100vh - 180px) !important;
+}
+
+/* Big black Anton menu links */
 .elementor-nav-menu--dropdown a.elementor-item,
 .elementor-nav-menu--dropdown .elementor-item {
-  color: var(--bs-ink) !important;
-  font-weight: 600 !important;
+  color: #000 !important;
+  font-family: 'Anton', sans-serif !important;
+  font-size: clamp(30px, 9vw, 40px) !important;
+  line-height: 1.1 !important;
+  font-weight: 400 !important;          /* Anton is a single-weight face */
+  text-align: center !important;
+  padding: 22px 24px !important;
   letter-spacing: 0.04em !important;
-  border-bottom: 1px solid rgba(4, 52, 44, 0.15) !important;
+  text-transform: uppercase !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12) !important;
 }
 
 /* Hover / active / focus */
@@ -40,19 +61,20 @@ nav.elementor-nav-menu--dropdown.elementor-nav-menu__container {
 .elementor-nav-menu--dropdown a.elementor-item.elementor-item-active,
 .elementor-nav-menu--dropdown a.elementor-item.highlighted {
   color: #000 !important;
-  background-color: rgba(0, 0, 0, 0.08) !important;
+  background-color: rgba(0, 0, 0, 0.06) !important;
 }
 
-/* Sub-menu items (dropdown arrows / nested links), if any */
+/* Sub-menu items (nested links), if any */
 .elementor-nav-menu--dropdown .elementor-sub-item {
-  color: var(--bs-ink) !important;
+  color: #000 !important;
+  font-family: 'Anton', sans-serif !important;
 }
 .elementor-nav-menu--dropdown .elementor-sub-item:hover {
-  color: #000 !important;
-  background-color: rgba(0, 0, 0, 0.08) !important;
+  background-color: rgba(0, 0, 0, 0.06) !important;
 }
 
-/* Dropdown toggle (burger / X) — keep it readable against the header */
+/* Burger / X toggle — mint so it reads on the dark header (which stays
+   visible above the mint takeover panel). */
 .elementor-menu-toggle {
   color: var(--bs-mint) !important;
 }
