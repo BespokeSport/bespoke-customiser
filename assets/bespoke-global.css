@@ -32,8 +32,16 @@ nav.elementor-nav-menu--dropdown.elementor-nav-menu__container {
   padding: 24px 0 48px !important;
 }
 
-/* Centre the menu items vertically in the takeover panel */
-.elementor-nav-menu--dropdown ul.elementor-nav-menu {
+/* Centre the menu items vertically in the takeover panel.
+   NB: we qualify every dropdown selector with BOTH classes
+   (.elementor-nav-menu--dropdown.elementor-nav-menu__container) on
+   purpose. The theme already ships a global rule
+       .elementor-nav-menu a.elementor-item { ...white, Inter, 11px... !important }
+   which has the SAME specificity (0,2,1) as a single-class selector and
+   loads after us, so it was winning the tie and forcing the menu text
+   white/small/non-Anton. Adding the second class lifts us to (0,3,1) so
+   our !important rules win cleanly on every page. */
+.elementor-nav-menu--dropdown.elementor-nav-menu__container ul.elementor-nav-menu {
   display: flex !important;
   flex-direction: column !important;
   justify-content: center !important;
@@ -41,8 +49,8 @@ nav.elementor-nav-menu--dropdown.elementor-nav-menu__container {
 }
 
 /* Big black Anton menu links */
-.elementor-nav-menu--dropdown a.elementor-item,
-.elementor-nav-menu--dropdown .elementor-item {
+.elementor-nav-menu--dropdown.elementor-nav-menu__container a.elementor-item,
+.elementor-nav-menu--dropdown.elementor-nav-menu__container .elementor-item {
   color: #000 !important;
   font-family: 'Anton', sans-serif !important;
   font-size: clamp(30px, 9vw, 40px) !important;
@@ -56,20 +64,20 @@ nav.elementor-nav-menu--dropdown.elementor-nav-menu__container {
 }
 
 /* Hover / active / focus */
-.elementor-nav-menu--dropdown a.elementor-item:hover,
-.elementor-nav-menu--dropdown a.elementor-item:focus,
-.elementor-nav-menu--dropdown a.elementor-item.elementor-item-active,
-.elementor-nav-menu--dropdown a.elementor-item.highlighted {
+.elementor-nav-menu--dropdown.elementor-nav-menu__container a.elementor-item:hover,
+.elementor-nav-menu--dropdown.elementor-nav-menu__container a.elementor-item:focus,
+.elementor-nav-menu--dropdown.elementor-nav-menu__container a.elementor-item.elementor-item-active,
+.elementor-nav-menu--dropdown.elementor-nav-menu__container a.elementor-item.highlighted {
   color: #000 !important;
   background-color: rgba(0, 0, 0, 0.06) !important;
 }
 
 /* Sub-menu items (nested links), if any */
-.elementor-nav-menu--dropdown .elementor-sub-item {
+.elementor-nav-menu--dropdown.elementor-nav-menu__container .elementor-sub-item {
   color: #000 !important;
   font-family: 'Anton', sans-serif !important;
 }
-.elementor-nav-menu--dropdown .elementor-sub-item:hover {
+.elementor-nav-menu--dropdown.elementor-nav-menu__container .elementor-sub-item:hover {
   background-color: rgba(0, 0, 0, 0.06) !important;
 }
 
