@@ -93,6 +93,19 @@ function bespoke_render_customiser( $atts ) {
     };
     </script>
 
+    <?php
+    // Preload the product background image so the preview fills in straight
+    // away on a cold first visit, instead of showing a blank frame while the
+    // image downloads (and the design overlay injects it asynchronously).
+    $bs_preload = function_exists( 'bespoke_get_product_assets' ) ? bespoke_get_product_assets( $product_type ) : [];
+    if ( ! empty( $bs_preload['background_url'] ) ) {
+        echo '<link rel="preload" as="image" href="' . esc_url( $bs_preload['background_url'] ) . '" fetchpriority="high">' . "\n";
+    }
+    if ( ! empty( $bs_preload['pad_base_url'] ) ) {
+        echo '<link rel="preload" as="image" href="' . esc_url( $bs_preload['pad_base_url'] ) . '">' . "\n";
+    }
+    ?>
+
     <div id="bespoke-customiser-root"
          data-product-id="<?php echo esc_attr( $product_id ); ?>"
          data-product-type="<?php echo esc_attr( $product_type ); ?>"

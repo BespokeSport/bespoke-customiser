@@ -2029,10 +2029,16 @@ function bespokeEnsurePreview(){
       if (wrap && !wrap.querySelector('svg')) {
         DT_SVG = buildDesktopSVG();
         if (DT_SVG) { updatePreview('dt'); updateDTLabels(); }
+      } else if (previews['dt'] && typeof updatePreview === 'function') {
+        // Frame exists — re-run updatePreview so the product image / design
+        // overlay is (re)drawn. The overlay applies asynchronously and can
+        // miss a passive first load, leaving the frame blank until then.
+        updatePreview('dt');
       }
     } else {
       var pb0 = document.getElementById('pb0');
       if (pb0 && !pb0.querySelector('svg') && typeof makeSVG === 'function') { makeSVG(0); }
+      else if (typeof updatePreview === 'function') { updatePreview(0); }
     }
   } catch (e) {}
 }
