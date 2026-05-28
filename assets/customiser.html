@@ -651,6 +651,27 @@ var DEF = {
   nameL:{x:330,y:700},  nameR:{x:880,y:700},
   numL:{x:330,y:820},   numR:{x:880,y:820}
 };
+// Built-in default SIZES (shin-pad values). Kept SEPARATE from DEF so that
+// the JSON deep-copy of DEF into S.pos stays positions-only.
+var DEFSZ = { badgeSize:210, nameSize:90, numSize:155 };
+
+// ── Per-product placement geometry (admin "Save placement" editor) ──
+// Merge any positions/sizes saved for THIS product over the shin-pad
+// defaults above. Positions feed S.pos via the JSON deep-copy in the state
+// object + reset(); sizes are read from DEFSZ in those same two places. A
+// product with no saved geometry keeps the shin-pad defaults, so existing
+// shin-pad behaviour is unchanged.
+(function(){
+  var GEO = (window.BespokeConfig && window.BespokeConfig.geometry) || {};
+  ['badgeL','badgeR','nameL','nameR','numL','numR'].forEach(function(k){
+    if (GEO[k] && typeof GEO[k].x === 'number' && typeof GEO[k].y === 'number') {
+      DEF[k] = { x: GEO[k].x, y: GEO[k].y };
+    }
+  });
+  if (typeof GEO.badgeSize === 'number') DEFSZ.badgeSize = GEO.badgeSize;
+  if (typeof GEO.nameSize  === 'number') DEFSZ.nameSize  = GEO.nameSize;
+  if (typeof GEO.numSize   === 'number') DEFSZ.numSize   = GEO.numSize;
+})();
 
 var S = {
   step:0,
@@ -672,7 +693,7 @@ var S = {
   nameL:'', nameR:'', numL:'', numR:'',
   sameName:true, sameNum:true,
   badge:null, badgeURL:null, design:'vanguard',
-  padSize:"M", orderNotes:"", badgeSize:210, nameSize:90, numSize:155, nameFontFamily:'"Arial Black", Arial, sans-serif', numFontFamily:'"Arial Black", Arial, sans-serif',
+  padSize:"M", orderNotes:"", badgeSize:DEFSZ.badgeSize, nameSize:DEFSZ.nameSize, numSize:DEFSZ.numSize, nameFontFamily:'"Arial Black", Arial, sans-serif', numFontFamily:'"Arial Black", Arial, sans-serif',
   pos: JSON.parse(JSON.stringify(DEF))
 };
 var PROG=[20,40,60,80,100,100,100];
@@ -1658,7 +1679,7 @@ function fillSummary(){
   setSumRow('sd-nu',  'sh-nu',  S.numColor,  null);
 }
 function reset(){
-  S={step:0,bgColor:'#feef00',patColor:'#211d33',patColors:[],bgGradient:null,patGradients:[],nameColor:'#FFFFFF',numColor:'#FFFFFF',nameL:'',nameR:'',numL:'',numR:'',sameName:true,sameNum:true,badge:null,badgeURL:null,design:'vanguard',padSize:"M",orderNotes:"",badgeSize:210,nameSize:90,numSize:155,nameFontFamily:'"Arial Black", Arial, sans-serif',numFontFamily:'"Arial Black", Arial, sans-serif',pos:JSON.parse(JSON.stringify(DEF))};
+  S={step:0,bgColor:'#feef00',patColor:'#211d33',patColors:[],bgGradient:null,patGradients:[],nameColor:'#FFFFFF',numColor:'#FFFFFF',nameL:'',nameR:'',numL:'',numR:'',sameName:true,sameNum:true,badge:null,badgeURL:null,design:'vanguard',padSize:"M",orderNotes:"",badgeSize:DEFSZ.badgeSize,nameSize:DEFSZ.nameSize,numSize:DEFSZ.numSize,nameFontFamily:'"Arial Black", Arial, sans-serif',numFontFamily:'"Arial Black", Arial, sans-serif',pos:JSON.parse(JSON.stringify(DEF))};
   previews={};
   for(var i=0;i<6;i++){var pb=document.getElementById('pb'+i);if(pb)pb.innerHTML='';}
   document.getElementById('s6').classList.remove('active');
@@ -1800,6 +1821,60 @@ buildDesignScroll();
 buildFontGrid("name");
 setupDesktop();
 applyStepConfig();
+
+// ── Admin-only "Save placement" editor ──────────────────────────────
+// When the logged-in user can manage options (an admin), show a fixed
+// bottom bar that captures the current badge / name / number positions
+// + sizes and stores them as THIS product type's default layout. The
+// live customiser IS the editor, so what the admin arranges is exactly
+// what customers will see. Completely invisible to normal customers
+// (canEditGeometry is false for them, server-side).
+function saveGeometry(statusEl){
+  var cfg = window.BespokeConfig || {};
+  if (!window.S || !S.pos) return;
+  var payload = {
+    badgeL: S.pos.badgeL, badgeR: S.pos.badgeR,
+    nameL:  S.pos.nameL,  nameR:  S.pos.nameR,
+    numL:   S.pos.numL,   numR:   S.pos.numR,
+    badgeSize: S.badgeSize, nameSize: S.nameSize, numSize: S.numSize
+  };
+  var fd = new FormData();
+  fd.append('action', 'bespoke_save_product_geometry');
+  fd.append('product_type', cfg.productType || '');
+  fd.append('_nonce', cfg.geometryNonce || '');
+  fd.append('geometry', JSON.stringify(payload));
+  if (statusEl){ statusEl.textContent = 'Saving…'; statusEl.style.color = '#aaa'; }
+  fetch(cfg.adminAjaxUrl, { method:'POST', credentials:'same-origin', body:fd })
+    .then(function(r){ return r.json(); })
+    .then(function(j){
+      if (j && j.success){
+        if (statusEl){ statusEl.textContent = 'Saved ✓ — default layout for ' + (cfg.productType||''); statusEl.style.color = '#5DCAA5'; }
+      } else {
+        if (statusEl){ statusEl.textContent = 'Error: ' + ((j && j.data) || 'could not save'); statusEl.style.color = '#ff6b6b'; }
+      }
+    })
+    .catch(function(){ if (statusEl){ statusEl.textContent = 'Network error'; statusEl.style.color = '#ff6b6b'; } });
+}
+
+function setupGeometryEditor(){
+  var cfg = window.BespokeConfig || {};
+  if (!cfg.canEditGeometry) return;
+  if (document.getElementById('bs-geo-bar')) return;
+  var bar = document.createElement('div');
+  bar.id = 'bs-geo-bar';
+  bar.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:2147483646;background:#11141a;border-top:2px solid #5DCAA5;color:#fff;font-family:Inter,sans-serif;font-size:13px;display:flex;align-items:center;gap:14px;padding:10px 16px;box-shadow:0 -4px 18px rgba(0,0,0,.45);box-sizing:border-box;';
+  bar.innerHTML =
+      '<strong style="color:#5DCAA5;white-space:nowrap;">ADMIN · Placement</strong>'
+    + '<span style="flex:1;color:#9aa6ad;line-height:1.3;">Upload a sample badge &amp; type a sample name/number, drag each into place on its step, then save them as the default for <b>' + (cfg.productType||'') + '</b>.</span>'
+    + '<span id="bs-geo-status" style="min-width:150px;text-align:right;color:#888;"></span>'
+    + '<button id="bs-geo-save" type="button" style="background:#5DCAA5;color:#04342C;border:none;border-radius:8px;padding:9px 18px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;">Save placement</button>';
+  document.body.appendChild(bar);
+  document.body.style.paddingBottom = (bar.offsetHeight + 8) + 'px';
+  document.getElementById('bs-geo-save').addEventListener('click', function(){
+    saveGeometry(document.getElementById('bs-geo-status'));
+  });
+}
+setupGeometryEditor();
 
 
 

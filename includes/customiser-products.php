@@ -134,6 +134,72 @@ add_action( 'wp_ajax_bespoke_upload_product_asset', function() {
 
 
 /* =========================================================================
+   3b. PLACEMENT GEOMETRY  (admin "Save placement" editor)
+   -------------------------------------------------------------------------
+   Per-product-type default positions + sizes for the badge, name and number,
+   set by an admin dragging them on the live customiser and clicking "Save
+   placement". The front-end customiser reads these as each product's starting
+   layout. Stored in option 'bespoke_customiser_product_geometry':
+       [ 'gripsocks' => [ 'badgeL' => ['x'=>.., 'y'=>..], ..., 'badgeSize'=>.. ] ]
+   ========================================================================= */
+
+function bespoke_get_product_geometry( $product_type ) {
+    $all = get_option( 'bespoke_customiser_product_geometry', [] );
+    return ( is_array( $all ) && isset( $all[ $product_type ] ) && is_array( $all[ $product_type ] ) )
+        ? $all[ $product_type ]
+        : [];
+}
+
+add_action( 'wp_ajax_bespoke_save_product_geometry', function() {
+    if ( ! current_user_can( 'manage_options' ) ) {
+        wp_send_json_error( 'Not authorised', 403 );
+    }
+    if ( ! check_ajax_referer( 'bespoke_save_geometry', '_nonce', false ) ) {
+        wp_send_json_error( 'Security check failed', 400 );
+    }
+    $product_type = isset( $_POST['product_type'] ) ? sanitize_key( $_POST['product_type'] ) : '';
+    if ( ! function_exists( 'bespoke_get_product_types' )
+         || ! array_key_exists( $product_type, bespoke_get_product_types() ) ) {
+        wp_send_json_error( 'Unknown product type' );
+    }
+
+    $data = json_decode( isset( $_POST['geometry'] ) ? wp_unslash( $_POST['geometry'] ) : '', true );
+    if ( ! is_array( $data ) ) {
+        wp_send_json_error( 'Invalid placement data' );
+    }
+
+    // Sanitise: clamp positions to a generous band around the 1200x1200
+    // canvas; clamp sizes to the same ranges the customiser sliders allow.
+    $clean = [];
+    foreach ( [ 'badgeL', 'badgeR', 'nameL', 'nameR', 'numL', 'numR' ] as $key ) {
+        if ( isset( $data[ $key ]['x'], $data[ $key ]['y'] ) ) {
+            $clean[ $key ] = [
+                'x' => max( -300, min( 1500, (float) $data[ $key ]['x'] ) ),
+                'y' => max( -300, min( 1500, (float) $data[ $key ]['y'] ) ),
+            ];
+        }
+    }
+    foreach ( [ 'badgeSize' => [ 80, 320 ], 'nameSize' => [ 40, 140 ], 'numSize' => [ 60, 220 ] ] as $key => $r ) {
+        if ( isset( $data[ $key ] ) ) {
+            $clean[ $key ] = max( $r[0], min( $r[1], (int) $data[ $key ] ) );
+        }
+    }
+    if ( empty( $clean ) ) {
+        wp_send_json_error( 'Nothing to save' );
+    }
+
+    $all = get_option( 'bespoke_customiser_product_geometry', [] );
+    if ( ! is_array( $all ) ) {
+        $all = [];
+    }
+    $all[ $product_type ] = $clean;
+    update_option( 'bespoke_customiser_product_geometry', $all );
+
+    wp_send_json_success( [ 'saved' => $clean ] );
+} );
+
+
+/* =========================================================================
    4. ADMIN PAGE RENDERER
    ========================================================================= */
 

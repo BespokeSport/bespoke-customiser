@@ -109,7 +109,12 @@ function bespoke_render_customiser( $atts ) {
         price:       '£<?php echo esc_js( number_format( $price, 2 ) ); ?>',
         ajaxUrl:     '<?php echo esc_js( $ajax_url ); ?>',
         nonce:       '<?php echo esc_js( $nonce ); ?>',
-        uploadUrl:   '<?php echo esc_js( BESPOKE_PLUGIN_URL . 'includes/customiser-ajax.php' ); ?>'
+        uploadUrl:   '<?php echo esc_js( BESPOKE_PLUGIN_URL . 'includes/customiser-ajax.php' ); ?>',
+        // Per-product placement geometry + admin "Save placement" editor wiring
+        geometry:        <?php echo wp_json_encode( function_exists( 'bespoke_get_product_geometry' ) ? bespoke_get_product_geometry( $product_type ) : [] ); ?>,
+        canEditGeometry: <?php echo current_user_can( 'manage_options' ) ? 'true' : 'false'; ?>,
+        adminAjaxUrl:    '<?php echo esc_js( admin_url( 'admin-ajax.php' ) ); ?>',
+        geometryNonce:   '<?php echo esc_js( wp_create_nonce( 'bespoke_save_geometry' ) ); ?>'
     };
     </script>
 
