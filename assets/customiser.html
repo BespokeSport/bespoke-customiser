@@ -1974,14 +1974,16 @@ function setupDesktop() {
   panel.style.display = IS_DESKTOP ? 'flex' : 'none';
 
   if(IS_DESKTOP && !DT_SVG) {
-    // Build after a short delay to ensure BG_INNER_TEMPLATE is parsed
-    setTimeout(function() {
-      DT_SVG = buildDesktopSVG(); // delayed to ensure BG_INNER_TEMPLATE is ready
-      if(DT_SVG) {
-        updatePreview('dt');
-        updateDTLabels();
-      }
-    }, 300);
+    // Build SYNCHRONOUSLY (no timer). The desktop bg-layer must exist before
+    // the design overlay's initial run, otherwise that run injects the product
+    // image into the mobile layers only and the desktop preview stays blank on
+    // fast/cached loads. BG_INNER_TEMPLATE is already in scope here —
+    // makeSVG(0) used it moments earlier in the same init sequence.
+    DT_SVG = buildDesktopSVG();
+    if(DT_SVG) {
+      updatePreview('dt');
+      updateDTLabels();
+    }
   } else if(IS_DESKTOP) {
     updatePreview('dt');
     updateDTLabels();
@@ -2029,16 +2031,39 @@ function bespokeEnsurePreview(){
       if (wrap && !wrap.querySelector('svg')) {
         DT_SVG = buildDesktopSVG();
         if (DT_SVG) { updatePreview('dt'); updateDTLabels(); }
-      } else if (previews['dt'] && typeof updatePreview === 'function') {
-        // Frame exists — re-run updatePreview so the product image / design
-        // overlay is (re)drawn. The overlay applies asynchronously and can
-        // miss a passive first load, leaving the frame blank until then.
-        updatePreview('dt');
+      }
+      // Backstop: the desktop preview is built separately from the mobile
+      // ones and can miss the design overlay's product image on a fast load.
+      // If its bg-layer has no image but a mobile bg-layer does, copy the
+      // rendered overlay across (same 1200x1200 coordinate space). IDs in the
+      // clone are re-suffixed so any masks/clips don't clash across SVGs.
+      var dtBg = document.getElementById('bg-layer-dt');
+      if (dtBg && !dtBg.querySelector('image')) {
+        var groups = document.querySelectorAll('[id^="bg-layer-"]'), src = null;
+        for (var i = 0; i < groups.length; i++) {
+          if (groups[i] !== dtBg && groups[i].querySelector('[data-bespoke-design-overlay] image')) { src = groups[i]; break; }
+        }
+        var srcOv = src && src.querySelector('[data-bespoke-design-overlay]');
+        if (srcOv) {
+          var oldOv = dtBg.querySelector('[data-bespoke-design-overlay]');
+          if (oldOv) oldOv.remove();
+          var clone = srcOv.cloneNode(true);
+          Array.prototype.forEach.call(clone.querySelectorAll('[id]'), function(el){
+            var oldId = el.id, newId = oldId + '-dt';
+            el.id = newId;
+            Array.prototype.forEach.call(clone.querySelectorAll('*'), function(r){
+              ['mask','clip-path','fill','filter'].forEach(function(a){
+                var v = r.getAttribute && r.getAttribute(a);
+                if (v && v.indexOf('#' + oldId) !== -1) r.setAttribute(a, v.replace('#' + oldId, '#' + newId));
+              });
+            });
+          });
+          dtBg.appendChild(clone);
+        }
       }
     } else {
       var pb0 = document.getElementById('pb0');
       if (pb0 && !pb0.querySelector('svg') && typeof makeSVG === 'function') { makeSVG(0); }
-      else if (typeof updatePreview === 'function') { updatePreview(0); }
     }
   } catch (e) {}
 }
