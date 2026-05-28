@@ -675,7 +675,58 @@ body.single-product .bs-hero__right .price {
 
 /* Customiser wrapper just adds some vertical breathing room */
 body.single-product .bs-customiser-wrap {
-  margin: 24px 0 32px !important;
+  margin: 24px 0 0 !important;
+}
+
+/* Ticker / marquee directly under the customiser. Mirrors the homepage
+   marquee styling but scoped to the product page + made full-bleed via
+   the 50vw break-out trick so the green strip spans edge-to-edge even
+   though it sits inside .bs-shell. */
+body.single-product #bespoke-marquee {
+  background: #5DCAA5 !important;
+  overflow: hidden !important;
+  padding: 22px 0 !important;
+  border-top: 1px solid rgba(255,255,255,0.18) !important;
+  border-bottom: 1px solid rgba(255,255,255,0.18) !important;
+  position: relative !important;
+  z-index: 5 !important;
+  margin-left: calc(-50vw + 50%) !important;
+  margin-right: calc(-50vw + 50%) !important;
+  width: 100vw !important;
+  display: block !important;
+}
+body.single-product #bespoke-marquee .bespoke-marquee-track {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  white-space: nowrap !important;
+  animation: bespoke-marquee-scroll 45s linear infinite !important;
+  width: max-content !important;
+}
+body.single-product #bespoke-marquee .bespoke-marquee-item {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 48px !important;
+  font-family: 'Anton', sans-serif !important;
+  font-size: 28px !important;
+  letter-spacing: 0.04em !important;
+  color: #04342C !important;
+  white-space: nowrap !important;
+  padding: 0 0 0 48px !important;
+  text-transform: uppercase !important;
+}
+body.single-product #bespoke-marquee .bespoke-marquee-dot {
+  display: inline-block !important;
+  width: 8px !important;
+  height: 8px !important;
+  background: #04342C !important;
+  border-radius: 50% !important;
+  opacity: 0.5 !important;
+  flex-shrink: 0 !important;
+  font-size: 0 !important;
+}
+@keyframes bespoke-marquee-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-33.333%); }
 }
 
 /* Tabs + at-a-glance side-by-side */

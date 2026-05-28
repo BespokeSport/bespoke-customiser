@@ -1354,7 +1354,34 @@ function bespoke_render_customiser( $atts ) {
             .bcp-badge-step > .badge-row                    { order: 6; }
             .bcp-badge-step > .sec-label[data-bcp="bsize"]  { order: 3; }
             .bcp-badge-step > .size-row                     { order: 3; }
+            .bcp-badge-step > .badge-note                   { order: 3; }
             .bcp-badge-step > .nav-row                      { order: 10; }
+        }
+
+        /* Badge transparency advice — green callout under the badge size
+           slider. Mint-tinted panel matching the customiser accent. Shows
+           on desktop (natural DOM order, after the slider) and mobile
+           (order:3 above keeps it directly below the slider). */
+        #bespoke-customiser-root .badge-note {
+            display: flex !important;
+            gap: 8px !important;
+            align-items: flex-start !important;
+            background: rgba(93,202,165,0.10) !important;
+            border: 1px solid rgba(93,202,165,0.40) !important;
+            border-radius: 10px !important;
+            padding: 11px 13px !important;
+            margin: 4px 0 16px !important;
+            font-size: 12px !important;
+            line-height: 1.5 !important;
+            color: #C7E2D8 !important;
+        }
+        #bespoke-customiser-root .badge-note strong {
+            color: #5DCAA5 !important;
+            font-weight: 700 !important;
+        }
+        #bespoke-customiser-root .badge-note svg {
+            flex-shrink: 0 !important;
+            margin-top: 1px !important;
         }
 
         /* Page-level: stop the homepage marquee bursting the body out to 4087px wide */

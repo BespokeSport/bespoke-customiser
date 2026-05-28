@@ -73,6 +73,28 @@ if ( ! $product ) {
         </section>
 
         <?php
+        /* ── Ticker / marquee ──
+           The site-wide marquee is normally injected by a JS snippet that
+           attaches to an Elementor section. This template bypasses Elementor,
+           so we render the marquee inline here (directly under the
+           customiser). The snippet bails when it sees an existing
+           #bespoke-marquee, so there's no duplicate on this page. */
+        $ticker_items = [
+            'NO MINIMUM ORDER', 'UK MADE', '5 DAY DISPATCH',
+            'YOUR CREST YOUR COLOURS', 'GRASSROOTS TO ELITE', 'EXPRESS PRINT AVAILABLE',
+        ];
+        // Tripled for a seamless -33.333% scroll loop (matches the homepage).
+        $ticker_loop = array_merge( $ticker_items, $ticker_items, $ticker_items );
+        ?>
+        <div id="bespoke-marquee">
+            <div class="bespoke-marquee-track">
+                <?php foreach ( $ticker_loop as $t ) : ?>
+                    <span class="bespoke-marquee-item"><?php echo esc_html( $t ); ?><span class="bespoke-marquee-dot"></span></span>
+                <?php endforeach; ?>
+            </div>
+        </div>
+
+        <?php
         /* ── Short description / lead-time notice ──
            Rendered through WC's standard markup so the CSS notice-card
            treatment (mint stripe + restyled red span) still applies. */
