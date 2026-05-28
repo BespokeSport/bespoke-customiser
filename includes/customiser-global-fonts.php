@@ -59,4 +59,16 @@ function bespoke_global_fonts_enqueue() {
         [],
         null   // no version query string → match Google's cache headers
     );
+
+    // Global brand styles (mobile nav dropdown, etc.) — loaded site-wide,
+    // not just on product pages. Cache-busted from the file's mtime.
+    if ( defined( 'BESPOKE_PLUGIN_URL' ) && defined( 'BESPOKE_PLUGIN_DIR' ) ) {
+        $global_css = BESPOKE_PLUGIN_DIR . 'assets/bespoke-global.css';
+        wp_enqueue_style(
+            'bespoke-global',
+            BESPOKE_PLUGIN_URL . 'assets/bespoke-global.css',
+            [],
+            file_exists( $global_css ) ? filemtime( $global_css ) : '1.0'
+        );
+    }
 }

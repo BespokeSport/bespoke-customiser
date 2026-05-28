@@ -1,0 +1,58 @@
+/* ==========================================================================
+   BESPOKE SPORT · Global site styles
+   --------------------------------------------------------------------------
+   Site-wide brand overrides that aren't specific to the product page.
+   Enqueued on every front-end page by customiser-global-fonts.php.
+   ========================================================================== */
+
+:root {
+  --bs-mint:  #5DCAA5;
+  --bs-ink:   #04342C;
+}
+
+
+/* --------------------------------------------------------------------------
+   MOBILE NAV DROPDOWN  (Elementor nav menu burger menu)
+   --------------------------------------------------------------------------
+   The Elementor nav-menu widget's mobile dropdown renders with a light
+   grey background but the menu links inherit the WHITE desktop colour —
+   so the items were invisible (white text on near-white). Repaint the
+   dropdown as a brand-mint panel with dark text. */
+
+.elementor-nav-menu--dropdown,
+nav.elementor-nav-menu--dropdown.elementor-nav-menu__container {
+  background-color: var(--bs-mint) !important;
+  border-radius: 0 0 8px 8px !important;
+}
+
+/* Menu links */
+.elementor-nav-menu--dropdown a.elementor-item,
+.elementor-nav-menu--dropdown .elementor-item {
+  color: var(--bs-ink) !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.04em !important;
+  border-bottom: 1px solid rgba(4, 52, 44, 0.15) !important;
+}
+
+/* Hover / active / focus */
+.elementor-nav-menu--dropdown a.elementor-item:hover,
+.elementor-nav-menu--dropdown a.elementor-item:focus,
+.elementor-nav-menu--dropdown a.elementor-item.elementor-item-active,
+.elementor-nav-menu--dropdown a.elementor-item.highlighted {
+  color: #000 !important;
+  background-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Sub-menu items (dropdown arrows / nested links), if any */
+.elementor-nav-menu--dropdown .elementor-sub-item {
+  color: var(--bs-ink) !important;
+}
+.elementor-nav-menu--dropdown .elementor-sub-item:hover {
+  color: #000 !important;
+  background-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Dropdown toggle (burger / X) — keep it readable against the header */
+.elementor-menu-toggle {
+  color: var(--bs-mint) !important;
+}
