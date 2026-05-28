@@ -2017,6 +2017,29 @@ window.addEventListener('resize', function() {
 
 setupDesktop();
 
+// Safety net: guarantee the preview is built when the page lands — even if
+// the timed desktop build above was pre-empted on a slow/first visit, or the
+// page is restored from the browser's back/forward (bfcache) cache, which
+// does NOT re-run this inline script. Idempotent: only builds when the
+// preview is actually missing, so it never double-renders.
+function bespokeEnsurePreview(){
+  try {
+    if (window.innerWidth >= 768) {
+      var wrap = document.getElementById('dt-svg-wrap');
+      if (wrap && !wrap.querySelector('svg')) {
+        DT_SVG = buildDesktopSVG();
+        if (DT_SVG) { updatePreview('dt'); updateDTLabels(); }
+      }
+    } else {
+      var pb0 = document.getElementById('pb0');
+      if (pb0 && !pb0.querySelector('svg') && typeof makeSVG === 'function') { makeSVG(0); }
+    }
+  } catch (e) {}
+}
+setTimeout(bespokeEnsurePreview, 700);            // backup shortly after the timed build
+window.addEventListener('load',     bespokeEnsurePreview);
+window.addEventListener('pageshow', bespokeEnsurePreview);  // covers back/forward (bfcache) restores
+
 // ============================================================
 // WOOCOMMERCE INTEGRATION
 // Reads config injected by WordPress (window.BespokeConfig)
