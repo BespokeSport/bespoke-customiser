@@ -1816,11 +1816,20 @@ goTo = function(n){
   return _origGoToForConfig.call(this, n);
 };
 
-makeSVG(0);
-buildDesignScroll();
-buildFontGrid("name");
-setupDesktop();
-applyStepConfig();
+// Run each init step in isolation so a failure in one can't prevent the
+// rest. Previously a single throw here left later steps (the per-product
+// step config AND the admin Save-placement bar) silently un-run — they
+// live further down this same top-level sequence. Each failure is logged
+// but does not halt the chain.
+function _bsInit(label, fn){
+  try { fn(); }
+  catch (e) { if (window.console && console.error) console.error('[BEspoke init] ' + label + ' failed:', e); }
+}
+_bsInit('makeSVG',      function(){ makeSVG(0); });
+_bsInit('designScroll', function(){ buildDesignScroll(); });
+_bsInit('fontGrid',     function(){ buildFontGrid("name"); });
+_bsInit('desktop',      function(){ setupDesktop(); });
+_bsInit('stepConfig',   function(){ applyStepConfig(); });
 
 // ── Admin-only "Save placement" editor ──────────────────────────────
 // When the logged-in user can manage options (an admin), show a fixed
@@ -1874,7 +1883,12 @@ function setupGeometryEditor(){
     saveGeometry(document.getElementById('bs-geo-status'));
   });
 }
-setupGeometryEditor();
+_bsInit('placementEditor', function(){ setupGeometryEditor(); });
+// Safety net: also try once the whole page has loaded, in case the inline
+// run above was pre-empted. setupGeometryEditor() no-ops if the bar exists.
+window.addEventListener('load', function(){
+  try { setupGeometryEditor(); } catch (e) {}
+});
 
 
 
