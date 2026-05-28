@@ -832,7 +832,7 @@ body.single-product .bs-sizing-chart__table {
 }
 body.single-product .bs-sizing-chart__table th {
   font-family: var(--bs-font-mono) !important;
-  font-size: 11px !important;
+  font-size: clamp(11px, 0.9vw, 14px) !important;
   letter-spacing: 0.14em !important;
   text-transform: uppercase !important;
   color: var(--bs-muted) !important;
@@ -848,7 +848,7 @@ body.single-product .bs-sizing-chart__table td {
   padding: 22px 16px !important;
   border-bottom: 1px solid var(--bs-line) !important;
   color: var(--bs-text) !important;
-  font-size: 14px !important;
+  font-size: clamp(14px, 1.5vw, 21px) !important;
   vertical-align: middle !important;
 }
 body.single-product .bs-sizing-chart__table td:last-child {
@@ -861,8 +861,8 @@ body.single-product .bs-sizing-chart__table tr:last-child td {
 }
 body.single-product .bs-size-pill {
   display: inline-flex !important;
-  width: 48px !important;
-  height: 48px !important;
+  width: clamp(48px, 5vw, 64px) !important;
+  height: clamp(48px, 5vw, 64px) !important;
   align-items: center !important;
   justify-content: center !important;
   background: var(--bs-panel) !important;
@@ -870,7 +870,7 @@ body.single-product .bs-size-pill {
   border-radius: 6px !important;
   font-family: var(--bs-font-ui) !important;
   font-weight: 800 !important;
-  font-size: 18px !important;
+  font-size: clamp(18px, 1.8vw, 26px) !important;
   color: #fff !important;
 }
 

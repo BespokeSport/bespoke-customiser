@@ -107,6 +107,15 @@ function bespoke_pdp_render_panel() {
     if ( ! is_array( $glance ) ) $glance = [];
     if ( ! is_array( $cust_sizes ) ) $cust_sizes = [];
 
+    // Sizing-chart column headings (blank = column hidden on the front end).
+    $sizing_headers = get_post_meta( $post->ID, '_bespoke_sizing_headers', true );
+    if ( ! is_array( $sizing_headers ) ) $sizing_headers = [];
+    $sh_defaults = [ 'size' => 'Size', 'age' => 'Age', 'height' => 'Height', 'dimensions' => 'Dimensions (W × H)' ];
+    $sh = [];
+    foreach ( $sh_defaults as $sh_k => $sh_def ) {
+        $sh[ $sh_k ] = array_key_exists( $sh_k, $sizing_headers ) ? $sizing_headers[ $sh_k ] : $sh_def;
+    }
+
     ?>
     <div id="bespoke_pdp_data" class="panel woocommerce_options_panel show_if_simple show_if_variable show_if_grouped show_if_external">
 
@@ -179,6 +188,14 @@ function bespoke_pdp_render_panel() {
         <div class="options_group">
             <p style="padding:0 12px;"><strong>Sizing chart</strong> — rows shown in the "How they measure up" table.
                 Shortcode: <code>[bespoke_sizing_chart]</code>. Leave empty rows to remove.</p>
+
+            <p style="padding:0 12px;margin-bottom:2px;"><strong>Column headings</strong> — labels for the columns on the front-end table. <em>Leave a heading blank to hide that whole column.</em> The four columns in the rows below fill these in order.</p>
+            <p style="padding:0 12px 4px;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+                <label style="flex:1;min-width:110px;font-size:11px;color:#666;">Column 1<br/><input type="text" style="width:100%;" name="_bespoke_sizing_headers[size]"       value="<?php echo esc_attr( $sh['size'] ); ?>"       placeholder="Size"/></label>
+                <label style="flex:1;min-width:110px;font-size:11px;color:#666;">Column 2<br/><input type="text" style="width:100%;" name="_bespoke_sizing_headers[age]"        value="<?php echo esc_attr( $sh['age'] ); ?>"        placeholder="Age"/></label>
+                <label style="flex:1;min-width:110px;font-size:11px;color:#666;">Column 3<br/><input type="text" style="width:100%;" name="_bespoke_sizing_headers[height]"     value="<?php echo esc_attr( $sh['height'] ); ?>"     placeholder="Height"/></label>
+                <label style="flex:1;min-width:130px;font-size:11px;color:#666;">Column 4<br/><input type="text" style="width:100%;" name="_bespoke_sizing_headers[dimensions]" value="<?php echo esc_attr( $sh['dimensions'] ); ?>" placeholder="Dimensions (W × H)"/></label>
+            </p>
 
             <table class="widefat striped bespoke-pdp-repeater" id="bespoke-pdp-sizing" style="margin:0 12px;width:calc(100% - 24px);">
                 <thead>
@@ -378,6 +395,14 @@ function bespoke_pdp_save_panel( $post_id ) {
     }
     update_post_meta( $post_id, '_bespoke_sizing_chart', $sizing );
 
+    // Sizing-chart column headings (blank heading = column hidden on the front end)
+    $sh_raw = isset( $_POST['_bespoke_sizing_headers'] ) ? (array) $_POST['_bespoke_sizing_headers'] : [];
+    $sizing_headers = [];
+    foreach ( [ 'size', 'age', 'height', 'dimensions' ] as $sh_k ) {
+        $sizing_headers[ $sh_k ] = sanitize_text_field( wp_unslash( $sh_raw[ $sh_k ] ?? '' ) );
+    }
+    update_post_meta( $post_id, '_bespoke_sizing_headers', $sizing_headers );
+
     // At a glance — same cleanup
     $glance_raw = isset( $_POST['_bespoke_at_a_glance'] ) ? (array) $_POST['_bespoke_at_a_glance'] : [];
     $glance = [];
@@ -481,6 +506,18 @@ add_shortcode( 'bespoke_sizing_chart', function( $atts ) {
     $rows = get_post_meta( $pid, '_bespoke_sizing_chart', true );
     if ( ! is_array( $rows ) || empty( $rows ) ) return '';
 
+    // Column headings (admin "Column headings" fields). A blank heading hides
+    // that whole column. Fall back to the shin-pad defaults when unset.
+    $headers = get_post_meta( $pid, '_bespoke_sizing_headers', true );
+    if ( ! is_array( $headers ) ) $headers = [];
+    $defaults = [ 'size' => 'Size', 'age' => 'Age', 'height' => 'Height', 'dimensions' => 'Dimensions (W × H)' ];
+    $cols = [];
+    foreach ( $defaults as $key => $def ) {
+        $label = array_key_exists( $key, $headers ) ? $headers[ $key ] : $def;
+        if ( $label !== '' ) $cols[ $key ] = $label;
+    }
+    if ( empty( $cols ) ) return '';
+
     ob_start();
     ?>
     <section class="bs-sizing-chart">
@@ -492,19 +529,17 @@ add_shortcode( 'bespoke_sizing_chart', function( $atts ) {
         <table class="bs-sizing-chart__table">
             <thead>
                 <tr>
-                    <th>Size</th>
-                    <th>Age</th>
-                    <th>Height</th>
-                    <th>Dimensions (W × H)</th>
+                    <?php foreach ( $cols as $col_key => $col_label ) : ?>
+                        <th><?php echo esc_html( $col_label ); ?></th>
+                    <?php endforeach; ?>
                 </tr>
             </thead>
             <tbody>
                 <?php foreach ( $rows as $row ) : ?>
                     <tr>
-                        <td><span class="bs-size-pill"><?php echo esc_html( $row['size'] ?? '' ); ?></span></td>
-                        <td><?php echo esc_html( $row['age'] ?? '' ); ?></td>
-                        <td><?php echo esc_html( $row['height'] ?? '' ); ?></td>
-                        <td><?php echo esc_html( $row['dimensions'] ?? '' ); ?></td>
+                        <?php foreach ( $cols as $col_key => $col_label ) : ?>
+                            <td><?php if ( $col_key === 'size' ) : ?><span class="bs-size-pill"><?php echo esc_html( $row['size'] ?? '' ); ?></span><?php else : ?><?php echo esc_html( $row[ $col_key ] ?? '' ); ?><?php endif; ?></td>
+                        <?php endforeach; ?>
                     </tr>
                 <?php endforeach; ?>
             </tbody>

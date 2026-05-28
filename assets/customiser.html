@@ -511,6 +511,10 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
       </div>
       <button class="font-nav-btn" onclick="scrollFonts(1)">&#8594;</button>
     </div>
+    <div class="sec-label">Name colour</div>
+    <div class="color-zones">
+      <div class="zone-row"><div class="zone-info"><div class="zone-lbl">Name text</div><div class="zone-sub">Player name colour</div></div><div class="ct" id="ct-name" style="background:#FFFFFF;"><input type="color" value="#FFFFFF" id="cp-name" oninput="debouncedColor('name',this.value)"/></div></div>
+    </div>
     <p class="hint">Leave blank for no name on your pads.</p>
     <div class="nav-row"><button class="btn-back" onclick="goTo(0)">←</button><button class="btn-next" onclick="goTo(2)">Next: add number →</button></div>
   </div>
@@ -540,6 +544,10 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
         <div class="font-scroll" id="num-font-grid"></div>
       </div>
       <button class="font-nav-btn" onclick="scrollFonts(1, 'num-font-grid')">&#8594;</button>
+    </div>
+    <div class="sec-label">Number colour</div>
+    <div class="color-zones">
+      <div class="zone-row"><div class="zone-info"><div class="zone-lbl">Number text</div><div class="zone-sub">Squad number colour</div></div><div class="ct" id="ct-num" style="background:#FFFFFF;"><input type="color" value="#FFFFFF" id="cp-num" oninput="debouncedColor('num',this.value)"/></div></div>
     </div>
     <p class="hint">Leave blank for no number on your pads.</p>
     <div class="nav-row"><button class="btn-back" onclick="goTo(1)">←</button><button class="btn-next" onclick="goTo(3)">Next: choose design →</button></div>
@@ -572,8 +580,6 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
     <div class="color-zones">
       <div class="zone-row"><div class="zone-info"><div class="zone-lbl">Pad background</div><div class="zone-sub">Main pad base colour</div></div><div class="ct" id="ct-bg" style="background:#feef00;"><input type="color" value="#feef00" id="cp-bg" oninput="debouncedColor('bg',this.value)"/></div></div>
       <div class="zone-row"><div class="zone-info"><div class="zone-lbl">Pattern</div><div class="zone-sub">Design overlay colour</div></div><div class="ct" id="ct-pat" style="background:#211d33;"><input type="color" value="#211d33" id="cp-pat" oninput="debouncedColor('pat',this.value)"/></div></div>
-      <div class="zone-row"><div class="zone-info"><div class="zone-lbl">Name text</div><div class="zone-sub">Player name colour</div></div><div class="ct" id="ct-name" style="background:#FFFFFF;"><input type="color" value="#FFFFFF" id="cp-name" oninput="debouncedColor('name',this.value)"/></div></div>
-      <div class="zone-row"><div class="zone-info"><div class="zone-lbl">Number text</div><div class="zone-sub">Squad number colour</div></div><div class="ct" id="ct-num" style="background:#FFFFFF;"><input type="color" value="#FFFFFF" id="cp-num" oninput="debouncedColor('num',this.value)"/></div></div>
     </div>
     <div class="nav-row"><button class="btn-back" onclick="goTo(3)">←</button><button class="btn-next" onclick="goTo(5)">Review my design →</button></div>
   </div>
