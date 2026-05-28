@@ -63,6 +63,10 @@ function bespoke_render_customiser( $atts ) {
     $ajax_url = admin_url( 'admin-ajax.php' );
     $nonce    = wp_create_nonce( 'bespoke_add_to_cart' );
 
+    // Per-product size buttons (admin "Customiser size buttons" field).
+    $cust_sizes = get_post_meta( $product_id, '_bespoke_customiser_sizes', true );
+    $cust_sizes = is_array( $cust_sizes ) ? array_values( $cust_sizes ) : [];
+
     ob_start();
     ?>
     <script>
@@ -79,6 +83,8 @@ function bespoke_render_customiser( $atts ) {
         ajaxUrl:     '<?php echo esc_js( $ajax_url ); ?>',
         nonce:       '<?php echo esc_js( $nonce ); ?>',
         uploadUrl:   '<?php echo esc_js( BESPOKE_PLUGIN_URL . 'includes/customiser-ajax.php' ); ?>',
+        // Per-product size buttons (admin "Customiser size buttons" field)
+        sizes:       <?php echo wp_json_encode( $cust_sizes ); ?>,
         // Per-product placement geometry + admin "Save placement" editor wiring
         geometry:        <?php echo wp_json_encode( function_exists( 'bespoke_get_product_geometry' ) ? bespoke_get_product_geometry( $product_type ) : [] ); ?>,
         canEditGeometry: <?php echo current_user_can( 'manage_options' ) ? 'true' : 'false'; ?>,

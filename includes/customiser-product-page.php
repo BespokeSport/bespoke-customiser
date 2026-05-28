@@ -102,8 +102,10 @@ function bespoke_pdp_render_panel() {
     $price_suffix = get_post_meta( $post->ID, '_bespoke_price_suffix', true );
     $sizing       = get_post_meta( $post->ID, '_bespoke_sizing_chart', true );
     $glance       = get_post_meta( $post->ID, '_bespoke_at_a_glance',  true );
+    $cust_sizes   = get_post_meta( $post->ID, '_bespoke_customiser_sizes', true );
     if ( ! is_array( $sizing ) ) $sizing = [];
     if ( ! is_array( $glance ) ) $glance = [];
+    if ( ! is_array( $cust_sizes ) ) $cust_sizes = [];
 
     ?>
     <div id="bespoke_pdp_data" class="panel woocommerce_options_panel show_if_simple show_if_variable show_if_grouped show_if_external">
@@ -144,6 +146,33 @@ function bespoke_pdp_render_panel() {
                 'value'       => $price_suffix,
             ] );
             ?>
+        </div>
+
+        <!-- ── Customiser size buttons repeater ───────────────────────────── -->
+        <div class="options_group">
+            <p style="padding:0 12px;"><strong>Customiser size buttons</strong> — the size options shown <em>inside the customiser</em> (the S / M / L selector on the Badge step). Each row is one button: a short <strong>Size</strong> label plus two optional description lines. Leave all rows empty to fall back to the default S / M / L.</p>
+
+            <table class="widefat striped bespoke-pdp-repeater" id="bespoke-pdp-sizes" style="margin:0 12px;width:calc(100% - 24px);">
+                <thead>
+                    <tr>
+                        <th style="width:90px;">Size</th>
+                        <th>Line 1</th>
+                        <th>Line 2</th>
+                        <th style="width:60px;"></th>
+                    </tr>
+                </thead>
+                <tbody class="bespoke-pdp-rows" data-prefix="_bespoke_customiser_sizes">
+                    <?php
+                    if ( empty( $cust_sizes ) ) $cust_sizes = [ [], [], [] ]; // empty starter rows
+                    foreach ( $cust_sizes as $i => $row ) {
+                        bespoke_pdp_render_size_button_row( $i, $row );
+                    }
+                    ?>
+                </tbody>
+            </table>
+            <p style="padding:6px 12px;">
+                <button type="button" class="button bespoke-pdp-add" data-target="#bespoke-pdp-sizes .bespoke-pdp-rows" data-template="sizes">+ Add size</button>
+            </p>
         </div>
 
         <!-- ── Sizing chart repeater ──────────────────────────────────────── -->
@@ -219,6 +248,9 @@ function bespoke_pdp_render_panel() {
         <script type="text/template" id="bespoke-pdp-tmpl-glance">
             <?php bespoke_pdp_render_glance_row( '__INDEX__', [] ); ?>
         </script>
+        <script type="text/template" id="bespoke-pdp-tmpl-sizes">
+            <?php bespoke_pdp_render_size_button_row( '__INDEX__', [] ); ?>
+        </script>
 
         <script>
         jQuery(function($){
@@ -293,6 +325,23 @@ function bespoke_pdp_render_glance_row( $i, $row ) {
     <?php
 }
 
+/**
+ * Render one row of the customiser size-buttons repeater.
+ */
+function bespoke_pdp_render_size_button_row( $i, $row ) {
+    $label = esc_attr( $row['label'] ?? '' );
+    $line1 = esc_attr( $row['line1'] ?? '' );
+    $line2 = esc_attr( $row['line2'] ?? '' );
+    ?>
+    <tr>
+        <td><input type="text" data-key="label" name="_bespoke_customiser_sizes[<?php echo esc_attr( $i ); ?>][label]" value="<?php echo $label; ?>" placeholder="S"/></td>
+        <td><input type="text" data-key="line1" name="_bespoke_customiser_sizes[<?php echo esc_attr( $i ); ?>][line1]" value="<?php echo $line1; ?>" placeholder="Age 5–8"/></td>
+        <td><input type="text" data-key="line2" name="_bespoke_customiser_sizes[<?php echo esc_attr( $i ); ?>][line2]" value="<?php echo $line2; ?>" placeholder='Up to 4&apos;5"'/></td>
+        <td><button type="button" class="button-link bespoke-pdp-remove" style="color:#a00;">Remove</button></td>
+    </tr>
+    <?php
+}
+
 
 /* =========================================================================
    3. SAVE
@@ -342,6 +391,21 @@ function bespoke_pdp_save_panel( $post_id ) {
         }
     }
     update_post_meta( $post_id, '_bespoke_at_a_glance', $glance );
+
+    // Customiser size buttons — keep only rows that have a Size label
+    $sizes_raw  = isset( $_POST['_bespoke_customiser_sizes'] ) ? (array) $_POST['_bespoke_customiser_sizes'] : [];
+    $cust_sizes = [];
+    foreach ( $sizes_raw as $row ) {
+        $entry = [
+            'label' => sanitize_text_field( wp_unslash( $row['label'] ?? '' ) ),
+            'line1' => sanitize_text_field( wp_unslash( $row['line1'] ?? '' ) ),
+            'line2' => sanitize_text_field( wp_unslash( $row['line2'] ?? '' ) ),
+        ];
+        if ( $entry['label'] !== '' ) {
+            $cust_sizes[] = $entry;
+        }
+    }
+    update_post_meta( $post_id, '_bespoke_customiser_sizes', $cust_sizes );
 }
 
 

@@ -460,24 +460,7 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
     <div class="preview-box"><div id="pb0"></div></div>
     <div class="drag-hint"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="#888" stroke-width="1.5"><circle cx="10" cy="10" r="7"/><path d="M10 6v8M6 10h8"/></svg> Drag badge to reposition · Pinch or scroll to resize</div>
     <div class="sec-label">Select size</div>
-    <div class="size-selector">
-      <button class="size-btn" id="size-S" onclick="selectSize('S')">
-        <div class="size-letter">S</div>
-        <div class="size-age">Age 5-8</div>
-        <div class="size-height">Up to 4'5"</div>
-      </button>
-      <button class="size-btn sel" id="size-M" onclick="selectSize('M')">
-        <div class="size-letter">M</div>
-        <div class="size-age">Age 9-13</div>
-        <div class="size-height">4'5" - 5'2"</div>
-      </button>
-      <button class="size-btn" id="size-L" onclick="selectSize('L')">
-        <div class="size-letter">L</div>
-        <div class="size-age">Age 14+</div>
-        <div class="size-height">5'2" and over</div>
-      </button>
-    </div>
-    <p style="font-size:11px;color:#666666;margin-bottom:16px;line-height:1.5;">All BEspoke Sport shin pads meet FA safety guidelines. We do not supply micro shin pads.</p>
+    <div class="size-selector" id="size-selector"></div>
     <div class="sec-label">Upload your club badge</div>
     <label class="upload-zone" id="upload-zone"><input type="file" accept="image/*" id="badge-file" onchange="handleBadge(event)"/>
       <div class="upload-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#5DCAA5" stroke-width="2" stroke-linecap="round"><path d="M10 3v10M6 7l4-4 4 4"/><path d="M4 15h12"/></svg></div>
@@ -673,6 +656,18 @@ var DEFSZ = { badgeSize:210, nameSize:90, numSize:155 };
   if (typeof GEO.numSize   === 'number') DEFSZ.numSize   = GEO.numSize;
 })();
 
+// Per-product size buttons (admin "Customiser size buttons" field), with a
+// shin-pad fallback when none are configured. Drives the in-customiser size
+// selector; the chosen label is what's stored on the order as "Size".
+var SIZES = (window.BespokeConfig && Array.isArray(window.BespokeConfig.sizes) && window.BespokeConfig.sizes.length)
+  ? window.BespokeConfig.sizes
+  : [
+      { label:'S', line1:'Age 5-8',  line2:'Up to 4\'5"' },
+      { label:'M', line1:'Age 9-13', line2:'4\'5" - 5\'2"' },
+      { label:'L', line1:'Age 14+',  line2:'5\'2" and over' }
+    ];
+function bespokeDefaultSize(){ return (SIZES[0] && SIZES[0].label) ? String(SIZES[0].label) : ''; }
+
 var S = {
   step:0,
   bgColor:'#feef00', patColor:'#211d33',
@@ -693,7 +688,7 @@ var S = {
   nameL:'', nameR:'', numL:'', numR:'',
   sameName:true, sameNum:true,
   badge:null, badgeURL:null, design:'vanguard',
-  padSize:"M", orderNotes:"", badgeSize:DEFSZ.badgeSize, nameSize:DEFSZ.nameSize, numSize:DEFSZ.numSize, nameFontFamily:'"Arial Black", Arial, sans-serif', numFontFamily:'"Arial Black", Arial, sans-serif',
+  padSize:bespokeDefaultSize(), orderNotes:"", badgeSize:DEFSZ.badgeSize, nameSize:DEFSZ.nameSize, numSize:DEFSZ.numSize, nameFontFamily:'"Arial Black", Arial, sans-serif', numFontFamily:'"Arial Black", Arial, sans-serif',
   pos: JSON.parse(JSON.stringify(DEF))
 };
 var PROG=[20,40,60,80,100,100,100];
@@ -755,9 +750,30 @@ var FONTS = [
 
 function selectSize(size) {
   S.padSize = size;
-  ['S','M','L'].forEach(function(s) {
-    var btn = document.getElementById('size-' + s);
-    if(btn) btn.className = 'size-btn' + (s === size ? ' sel' : '');
+  var btns = document.querySelectorAll('#size-selector .size-btn');
+  for (var i = 0; i < btns.length; i++) {
+    btns[i].className = 'size-btn' + (btns[i].getAttribute('data-size') === size ? ' sel' : '');
+  }
+}
+
+// Build the size buttons from the per-product SIZES list (shin-pad fallback).
+// Marks the button matching S.padSize as selected.
+function renderSizes() {
+  var wrap = document.getElementById('size-selector');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  SIZES.forEach(function(sz) {
+    var label = (sz && sz.label) ? String(sz.label) : '';
+    if (!label) return;
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'size-btn' + (S.padSize === label ? ' sel' : '');
+    btn.setAttribute('data-size', label);
+    var l = document.createElement('div'); l.className = 'size-letter'; l.textContent = label; btn.appendChild(l);
+    if (sz.line1) { var a = document.createElement('div'); a.className = 'size-age';    a.textContent = sz.line1; btn.appendChild(a); }
+    if (sz.line2) { var h = document.createElement('div'); h.className = 'size-height'; h.textContent = sz.line2; btn.appendChild(h); }
+    btn.addEventListener('click', function(){ selectSize(label); });
+    wrap.appendChild(btn);
   });
 }
 function scrollDesigns(dir) {
@@ -1641,10 +1657,11 @@ function removeBadge(){S.badge=null;S.badgeURL=null;document.getElementById('bad
 // buildDesignGrid replaced by buildDesignGallery
 function fillSummary(){
   var d=DESIGN_CATALOGUE.find(function(x){return x.id===S.design;});
-  var sizeLabels = {S:'S (Age 5-8)', M:'M (Age 9-13)', L:'L (Age 14+)'};
-  document.getElementById('sum-size').textContent = sizeLabels[S.padSize] || S.padSize;
-  var sizeLabels = {S:'S (Age 5-8)', M:'M (Age 9-13)', L:'L (Age 14+)'};
-  document.getElementById('sum-size').textContent = sizeLabels[S.padSize] || S.padSize;
+  var selSize = null;
+  for (var _si = 0; _si < SIZES.length; _si++) { if (SIZES[_si].label === S.padSize) { selSize = SIZES[_si]; break; } }
+  document.getElementById('sum-size').textContent = selSize
+    ? (selSize.label + (selSize.line1 ? ' (' + selSize.line1 + ')' : ''))
+    : (S.padSize || '—');
   document.getElementById('sum-design').textContent=d?d.label:'—';
   var nameFont = FONTS.find(function(f){return f.family===S.nameFontFamily;});
   var numFont  = FONTS.find(function(f){return f.family===S.numFontFamily;});
@@ -1679,10 +1696,11 @@ function fillSummary(){
   setSumRow('sd-nu',  'sh-nu',  S.numColor,  null);
 }
 function reset(){
-  S={step:0,bgColor:'#feef00',patColor:'#211d33',patColors:[],bgGradient:null,patGradients:[],nameColor:'#FFFFFF',numColor:'#FFFFFF',nameL:'',nameR:'',numL:'',numR:'',sameName:true,sameNum:true,badge:null,badgeURL:null,design:'vanguard',padSize:"M",orderNotes:"",badgeSize:DEFSZ.badgeSize,nameSize:DEFSZ.nameSize,numSize:DEFSZ.numSize,nameFontFamily:'"Arial Black", Arial, sans-serif',numFontFamily:'"Arial Black", Arial, sans-serif',pos:JSON.parse(JSON.stringify(DEF))};
+  S={step:0,bgColor:'#feef00',patColor:'#211d33',patColors:[],bgGradient:null,patGradients:[],nameColor:'#FFFFFF',numColor:'#FFFFFF',nameL:'',nameR:'',numL:'',numR:'',sameName:true,sameNum:true,badge:null,badgeURL:null,design:'vanguard',padSize:bespokeDefaultSize(),orderNotes:"",badgeSize:DEFSZ.badgeSize,nameSize:DEFSZ.nameSize,numSize:DEFSZ.numSize,nameFontFamily:'"Arial Black", Arial, sans-serif',numFontFamily:'"Arial Black", Arial, sans-serif',pos:JSON.parse(JSON.stringify(DEF))};
   previews={};
   for(var i=0;i<6;i++){var pb=document.getElementById('pb'+i);if(pb)pb.innerHTML='';}
   document.getElementById('s6').classList.remove('active');
+  renderSizes();
   goTo(0);
 }
 
@@ -1830,6 +1848,7 @@ _bsInit('designScroll', function(){ buildDesignScroll(); });
 _bsInit('fontGrid',     function(){ buildFontGrid("name"); });
 _bsInit('desktop',      function(){ setupDesktop(); });
 _bsInit('stepConfig',   function(){ applyStepConfig(); });
+_bsInit('sizes',        function(){ renderSizes(); });
 
 // ── Admin-only "Save placement" editor ──────────────────────────────
 // When the logged-in user can manage options (an admin), show a fixed
