@@ -65,6 +65,28 @@ function bespoke_render_customiser( $atts ) {
 
     ob_start();
     ?>
+    <script>
+    // Pass WordPress data into the customiser JavaScript. MUST be emitted
+    // BEFORE the customiser.html markup/script below: that script reads
+    // window.BespokeConfig at parse time (per-product placement geometry,
+    // product type for the step config, admin Save-placement gating). If
+    // this loaded after it, the customiser starts up blind and falls back
+    // to shin-pad defaults — wrong positions, all 5 step tabs, no bar.
+    window.BespokeConfig = {
+        productId:   <?php echo intval( $product_id ); ?>,
+        productType: '<?php echo esc_js( $product_type ); ?>',
+        price:       '£<?php echo esc_js( number_format( $price, 2 ) ); ?>',
+        ajaxUrl:     '<?php echo esc_js( $ajax_url ); ?>',
+        nonce:       '<?php echo esc_js( $nonce ); ?>',
+        uploadUrl:   '<?php echo esc_js( BESPOKE_PLUGIN_URL . 'includes/customiser-ajax.php' ); ?>',
+        // Per-product placement geometry + admin "Save placement" editor wiring
+        geometry:        <?php echo wp_json_encode( function_exists( 'bespoke_get_product_geometry' ) ? bespoke_get_product_geometry( $product_type ) : [] ); ?>,
+        canEditGeometry: <?php echo current_user_can( 'manage_options' ) ? 'true' : 'false'; ?>,
+        adminAjaxUrl:    '<?php echo esc_js( admin_url( 'admin-ajax.php' ) ); ?>',
+        geometryNonce:   '<?php echo esc_js( wp_create_nonce( 'bespoke_save_geometry' ) ); ?>'
+    };
+    </script>
+
     <div id="bespoke-customiser-root"
          data-product-id="<?php echo esc_attr( $product_id ); ?>"
          data-product-type="<?php echo esc_attr( $product_type ); ?>"
@@ -100,23 +122,6 @@ function bespoke_render_customiser( $atts ) {
         ?>
 
     </div>
-
-    <script>
-    // Pass WordPress data into the customiser JavaScript
-    window.BespokeConfig = {
-        productId:   <?php echo intval( $product_id ); ?>,
-        productType: '<?php echo esc_js( $product_type ); ?>',
-        price:       '£<?php echo esc_js( number_format( $price, 2 ) ); ?>',
-        ajaxUrl:     '<?php echo esc_js( $ajax_url ); ?>',
-        nonce:       '<?php echo esc_js( $nonce ); ?>',
-        uploadUrl:   '<?php echo esc_js( BESPOKE_PLUGIN_URL . 'includes/customiser-ajax.php' ); ?>',
-        // Per-product placement geometry + admin "Save placement" editor wiring
-        geometry:        <?php echo wp_json_encode( function_exists( 'bespoke_get_product_geometry' ) ? bespoke_get_product_geometry( $product_type ) : [] ); ?>,
-        canEditGeometry: <?php echo current_user_can( 'manage_options' ) ? 'true' : 'false'; ?>,
-        adminAjaxUrl:    '<?php echo esc_js( admin_url( 'admin-ajax.php' ) ); ?>',
-        geometryNonce:   '<?php echo esc_js( wp_create_nonce( 'bespoke_save_geometry' ) ); ?>'
-    };
-    </script>
 
     <?php
     // ─── Custom fonts integration ──────────────────────────────────────────
