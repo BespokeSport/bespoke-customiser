@@ -1316,9 +1316,15 @@ function setupDrag(svg, stepId) {
     var pt = svgPt(e.clientX, e.clientY);
     S.pos[dragging].x = Math.round(startPos.x + pt.x - startSVG.x);
     S.pos[dragging].y = Math.round(startPos.y + pt.y - startSVG.y);
+    // Fast in-place transform update — see note on touchmove below.
+    fastDragTransform(dragging);
+  });
+  window.addEventListener('mouseup', function(){
+    if (!dragging) return;
+    dragging=null;
+    // Final settle pass so the rebuilt nodes carry the new position.
     syncAll();
   });
-  window.addEventListener('mouseup', function(){ dragging=null; });
 
   // Touch drag
   svg.addEventListener('touchstart', function(e){
@@ -1346,12 +1352,23 @@ function setupDrag(svg, stepId) {
     // actually mid-drag or mid-pinch. Without this guard, every touch
     // over the preview SVG cancelled page scrolling on mobile — the
     // customer couldn't scroll past the customiser.
+    //
+    // We must NOT call syncAll() during a drag — it does
+    // `bl.innerHTML = ''` and rebuilds the badge group, which destroys
+    // the element the touch was captured to. On mobile, touch events
+    // are routed to their initial target; once that target is removed
+    // from the DOM, subsequent touchmove events have no path to bubble
+    // back up to this SVG listener, so the drag stalls after one tick.
+    // Mouse works on desktop because mousemove is bound to window.
+    //
+    // Instead we patch transforms (and sizes for pinch) in-place on the
+    // existing nodes and run one syncAll on touchend to settle.
     if(e.touches.length===1 && dragging){
       e.preventDefault();
       var pt = svgPt(e.touches[0].clientX, e.touches[0].clientY);
       S.pos[dragging].x = Math.round(startPos.x + pt.x - startSVG.x);
       S.pos[dragging].y = Math.round(startPos.y + pt.y - startSVG.y);
-      syncAll();
+      fastDragTransform(dragging);
     } else if(e.touches.length===2 && pinchStart && pinchKey){
       e.preventDefault();
       var dx = e.touches[0].clientX-e.touches[1].clientX;
@@ -1361,11 +1378,19 @@ function setupDrag(svg, stepId) {
       if(pinchKey==='badge'){ S.badgeSize=Math.round(Math.max(80,Math.min(320,pinchStartSize*ratio))); document.getElementById('badge-size-slider').value=S.badgeSize; document.getElementById('badge-size-val').textContent=S.badgeSize; }
       if(pinchKey==='name') { S.nameSize=Math.round(Math.max(40,Math.min(140,pinchStartSize*ratio))); document.getElementById('name-size-slider').value=S.nameSize; document.getElementById('name-size-val').textContent=S.nameSize; }
       if(pinchKey==='num')  { S.numSize=Math.round(Math.max(60,Math.min(220,pinchStartSize*ratio))); document.getElementById('num-size-slider').value=S.numSize; document.getElementById('num-size-val').textContent=S.numSize; }
-      syncAll();
+      fastPinchSize(pinchKey);
     }
   },{passive:false});
 
-  svg.addEventListener('touchend', function(){ dragging=null; pinchStart=null; });
+  function _endTouch(){
+    if (!dragging && !pinchKey) return;
+    dragging=null; pinchStart=null; pinchKey=null; pinchStartSize=null;
+    // One full syncAll at the end of the gesture so multi-line text hit
+    // rects, sliders and the summary screen all settle correctly.
+    syncAll();
+  }
+  svg.addEventListener('touchend',    _endTouch);
+  svg.addEventListener('touchcancel', _endTouch);
 
   // Scroll wheel to resize when hovering over draggable
   svg.addEventListener('wheel', function(e){
@@ -1381,6 +1406,77 @@ function setupDrag(svg, stepId) {
 }
 
 function syncAll(){ Object.keys(previews).forEach(function(k){updatePreview(parseInt(k));}); }
+
+/**
+ * Patch the transform on every .draggable that matches `key` (e.g. badgeL,
+ * nameR) across all preview SVGs, without rebuilding the layer. Used during
+ * mouse / touch drags so we never destroy the element the gesture is bound
+ * to — destruction breaks touch routing on mobile and makes drags stall
+ * after a couple of pixels.
+ */
+function fastDragTransform(key){
+  if (!key || !S.pos[key]) return;
+  var nodes = document.querySelectorAll('[data-drag="' + key + '"]');
+  var tx = S.pos[key].x, ty = S.pos[key].y;
+  for (var i = 0; i < nodes.length; i++) {
+    nodes[i].setAttribute('transform', 'translate(' + tx + ',' + ty + ')');
+  }
+}
+
+/**
+ * In-place size update for pinch-to-resize. Patches dimensions on the
+ * existing badge image / text node + the invisible hit rect without
+ * rebuilding the SVG, again so the touch-captured element stays in DOM.
+ * A full syncAll runs on touchend to settle.
+ */
+function fastPinchSize(kind){
+  var nodes = document.querySelectorAll('[data-drag^="' + kind + '"]');
+  if (kind === 'badge') {
+    var hs   = S.badgeSize / 2;
+    var hitW = Math.max(S.badgeSize + 60, 200);
+    var hh   = hitW / 2;
+    for (var i = 0; i < nodes.length; i++) {
+      var g   = nodes[i];
+      var img = g.querySelector('image');
+      if (img) {
+        img.setAttribute('x', -hs);
+        img.setAttribute('y', -hs);
+        img.setAttribute('width',  S.badgeSize);
+        img.setAttribute('height', S.badgeSize);
+      }
+      var rect = g.querySelector('rect');
+      if (rect) {
+        rect.setAttribute('x', -hh);
+        rect.setAttribute('y', -hh);
+        rect.setAttribute('width',  hitW);
+        rect.setAttribute('height', hitW);
+      }
+    }
+  } else if (kind === 'name' || kind === 'num') {
+    var newSize = (kind === 'name') ? S.nameSize : S.numSize;
+    var sw      = (kind === 'name') ? Math.max(8, newSize*0.12) : Math.max(10, newSize*0.1);
+    for (var j = 0; j < nodes.length; j++) {
+      var ng = nodes[j];
+      var t  = ng.querySelector('text');
+      if (t) {
+        t.setAttribute('font-size',    newSize);
+        t.setAttribute('stroke-width', sw);
+        // Re-centre stacked tspan lines around y=0 so multi-line text
+        // stays balanced while pinching.
+        var tspans = t.querySelectorAll('tspan');
+        if (tspans.length > 0) {
+          var lh    = newSize;
+          var start = -((tspans.length - 1) * lh) / 2;
+          for (var k = 0; k < tspans.length; k++) {
+            tspans[k].setAttribute('y', start + k * lh);
+          }
+        }
+      }
+      // Hit-rect is rebuilt on touchend's syncAll — leaving it at its
+      // pre-pinch size during the gesture is fine.
+    }
+  }
+}
 
 function goTo(n){
   document.getElementById('s'+S.step).classList.remove('active');
