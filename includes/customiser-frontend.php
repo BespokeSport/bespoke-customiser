@@ -104,6 +104,11 @@ function bespoke_render_customiser( $atts ) {
     if ( ! empty( $bs_preload['pad_base_url'] ) ) {
         echo '<link rel="preload" as="image" href="' . esc_url( $bs_preload['pad_base_url'] ) . '">' . "\n";
     }
+    foreach ( [ 'highlights_url', 'shadow_url' ] as $bs_pk ) {
+        if ( ! empty( $bs_preload[ $bs_pk ] ) ) {
+            echo '<link rel="preload" as="image" href="' . esc_url( $bs_preload[ $bs_pk ] ) . '">' . "\n";
+        }
+    }
     ?>
 
     <div id="bespoke-customiser-root"
@@ -762,6 +767,18 @@ function bespoke_render_customiser( $atts ) {
                         label:    'pattern-' + idx
                     });
                 });
+
+                // 4. Lighting overlays — optional highlight / shadow PNGs that
+                //    sit on TOP of the design (background + patterns) for depth
+                //    (curved shin pads, cylindrical trophies). Untinted and NOT
+                //    masked, and they live in the design layer so the badge /
+                //    name / number stay crisp above them.
+                if (PA.shadow_url) {
+                    stack.push({ url: PA.shadow_url, tint: null, label: 'shadow' });
+                }
+                if (PA.highlights_url) {
+                    stack.push({ url: PA.highlights_url, tint: null, label: 'highlight' });
+                }
 
                 if (!stack.length) return;
 
