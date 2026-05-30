@@ -1695,6 +1695,10 @@ function _applySurpriseSnapshot(snap){
   S.patGradients = (snap.patGradients || []).map(function(g){
     return g && g.from && g.to ? { from: g.from, to: g.to } : null;
   });
+  // Mark this design as already seeded so the layer-defaults seeding in
+  // customiser-frontend.php doesn't overwrite the snapshotted colours
+  // back to the admin's per-layer defaults when we re-render.
+  S._bcpSeededDesign = String(snap.design);
 
   // Refresh swatches for every static picker tile (and any dynamic
   // pattern rows that may exist for the active design).
@@ -1792,6 +1796,10 @@ function surpriseMe(){
   // the gradient over the new solid colours and look wrong.
   S.bgGradient   = null;
   S.patGradients = [];
+  // Mark this design as already seeded so the layer-defaults seeding in
+  // customiser-frontend.php's applyRegisteredDesignSVG doesn't wipe the
+  // palette colours we just set back to the admin's per-layer defaults.
+  S._bcpSeededDesign = String(design.id);
 
   // Sync the colour-picker swatches and input values so the UI reflects
   // the new state (the user will see all four picker tiles update too).
