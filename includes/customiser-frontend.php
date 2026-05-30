@@ -715,6 +715,47 @@ function bespoke_render_customiser( $atts ) {
                 // putting anything in its place.
                 if (!d && !PA.background_url && !PA.pad_base_url) return Promise.resolve();
 
+                // ─── Seed layer defaults on first paint of this design ─────
+                // Without this, the customer's bgColor / patColors stay at
+                // the hardcoded customiser defaults (#feef00 / #211d33) even
+                // when the admin sets a different Default colour on each
+                // layer in Customiser Designs. Tracked via S._bcpSeededDesign
+                // so we re-seed when the customer switches design but don't
+                // overwrite their colour picks within a session.
+                if (d && d.layers && d.layers.length) {
+                    var _designId = String(d.id || '');
+                    if (window.S._bcpSeededDesign !== _designId) {
+                        if (!window.S.patColors) window.S.patColors = [];
+                        d.layers.forEach(function(layer, idx){
+                            if (!layer || !layer.default) return;
+                            if (idx === 0) {
+                                // Layer 0 = pad-base ("Trophy Colour" /
+                                // "Pad background") → S.bgColor.
+                                window.S.bgColor = layer.default;
+                                var _cpBg = document.getElementById('cp-bg');
+                                if (_cpBg) _cpBg.value = layer.default;
+                                var _ctBg = document.getElementById('ct-bg');
+                                if (_ctBg) _ctBg.style.background = layer.default;
+                            } else {
+                                // Layer 1+ = pattern layers → S.patColors[idx-1].
+                                var _patIdx = idx - 1;
+                                window.S.patColors[_patIdx] = layer.default;
+                                if (_patIdx === 0) {
+                                    window.S.patColor = layer.default;
+                                    var _cpPat = document.getElementById('cp-pat');
+                                    if (_cpPat) _cpPat.value = layer.default;
+                                    var _ctPat = document.getElementById('ct-pat');
+                                    if (_ctPat) _ctPat.style.background = layer.default;
+                                }
+                                // Pattern 2+ swatches are rebuilt dynamically
+                                // by rebuildPatternRows() from the same
+                                // patColors values we just seeded.
+                            }
+                        });
+                        window.S._bcpSeededDesign = _designId;
+                    }
+                }
+
                 // Compose the layer stack (URLs + tint colours in render order)
                 var stack = [];
 
