@@ -1238,6 +1238,82 @@ function updatePreview(stepId) {
       g.setAttribute('class','draggable');
       g.setAttribute('data-drag',item.key);
       g.setAttribute('transform','translate('+item.x+','+item.y+')');
+
+      // ── Plate Trophy: bend name + number along an arc ───────────────
+      // The Plate Trophy is the only product that needs curved text (it
+      // sits around the rim of a round plate). We render the text along
+      // an SVG <path> via <textPath> rather than expose an admin slider,
+      // since this is product-specific. Multi-line is collapsed to the
+      // first line — an arc with multiple stacked lines looks wrong.
+      var _isPlateArc = (typeof bespokeProductType === 'function' &&
+                         bespokeProductType() === 'award_plate');
+      if (_isPlateArc) {
+        var _line = String(item.txt || '').split(/\r?\n/)[0];
+        if (!_line) return;
+
+        // Rough text-width estimate: heavy-weight character ≈ 0.65em
+        // works well for the bold customiser fonts.
+        var _charW  = item.size * 0.65;
+        var _textW  = Math.max(_line.length * _charW, item.size * 1.5);
+        var _halfPW = _textW * 0.55;
+        // Gentle bend, proportional to text width and capped against
+        // font-size so a short word with big letters doesn't go vertical.
+        var _arc    = Math.min(_textW * 0.20, item.size * 1.6);
+        // Path baseline sits at +size*0.30 so the visible glyphs settle
+        // around y=0, matching the flat dominant-baseline:middle look.
+        var _baseY  = item.size * 0.30;
+        // M (-W, y) Q (0, y - arc) (W, y) — quadratic Bezier that arches
+        // upward (negative y = up in SVG). Reads like a rainbow.
+        var _d = 'M ' + (-_halfPW) + ' ' + _baseY +
+                 ' Q 0 ' + (_baseY - _arc) +
+                 ' '   + _halfPW + ' ' + _baseY;
+
+        // Hit rect — covers the bowed text plus margin.
+        var _aHitW = Math.max(_textW + 80, 240);
+        var _aHitH = Math.max(item.size + _arc + 60, 140);
+        var _aHit  = document.createElementNS(ns,'rect');
+        _aHit.setAttribute('x', -_aHitW / 2);
+        _aHit.setAttribute('y', -_aHitH / 2);
+        _aHit.setAttribute('width',  _aHitW);
+        _aHit.setAttribute('height', _aHitH);
+        _aHit.setAttribute('fill', 'none');
+        _aHit.setAttribute('pointer-events', 'all');
+        g.appendChild(_aHit);
+
+        // Per-item path inside <defs> — id includes stepId so each
+        // preview SVG has its own copy.
+        var _pathId = 'bcp-arc-' + item.key + '-' + stepId;
+        var _defs   = document.createElementNS(ns,'defs');
+        var _path   = document.createElementNS(ns,'path');
+        _path.setAttribute('id', _pathId);
+        _path.setAttribute('d',  _d);
+        _path.setAttribute('fill', 'none');
+        _defs.appendChild(_path);
+        g.appendChild(_defs);
+
+        // Text + textPath. font-size / colour / stroke all match the
+        // flat render so toggling product type doesn't visually shift.
+        var _at = document.createElementNS(ns,'text');
+        _at.setAttribute('font-size',     item.size);
+        _at.setAttribute('font-weight',   '900');
+        _at.setAttribute('font-family',   item.font);
+        _at.setAttribute('fill',          item.col);
+        _at.setAttribute('stroke',        'rgba(0,0,0,0.65)');
+        _at.setAttribute('stroke-width',  item.sw);
+        _at.setAttribute('stroke-linejoin','round');
+        _at.setAttribute('paint-order',   'stroke');
+        var _tp = document.createElementNS(ns,'textPath');
+        _tp.setAttribute('href',        '#' + _pathId);
+        _tp.setAttribute('startOffset', '50%');
+        _tp.setAttribute('text-anchor', 'middle');
+        _tp.textContent = _line;
+        _at.appendChild(_tp);
+        g.appendChild(_at);
+
+        tl.appendChild(g);
+        return; // skip the flat render below
+      }
+
       // Pre-compute lines so we can size the hit area before building the
       // text node itself.
       var _lines = String(item.txt || '').split(/\r?\n/);
