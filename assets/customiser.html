@@ -142,7 +142,12 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
 .size-btn .size-age{font-size:11px;color:#666666;margin-top:4px;font-weight:500;}
 .size-btn .size-height{font-size:10px;color:#bbb;margin-top:2px;}
 .size-btn.sel .size-age{color:#3DA882;}
-.draggable{cursor:grab;}
+/* touch-action:none tells mobile browsers to keep their hands off the
+   draggable badge / name / number — JS owns the gesture, so the drag
+   no longer loses races to the native page-scroll heuristic. The SVG
+   background still defaults to touch-action:auto so scrolling past the
+   customiser works exactly as it did before. */
+.draggable{cursor:grab;touch-action:none;-ms-touch-action:none;-webkit-user-select:none;user-select:none;}
 .draggable:active{cursor:grabbing;}
 
 @media (min-width: 768px) {
@@ -1189,6 +1194,20 @@ function updatePreview(stepId) {
         g.setAttribute('class','draggable');
         g.setAttribute('data-drag',item.key);
         g.setAttribute('transform','translate('+item.x+','+item.y+')');
+        // Transparent finger-padding rect — sits behind the badge so the
+        // whole group has a comfortable hit area on mobile even when the
+        // badge itself is small. fill="none" + pointer-events="all" makes
+        // it invisible but still capture taps / touches.
+        var _hitW = Math.max(S.badgeSize + 60, 200);
+        var _hh   = _hitW / 2;
+        var _hit  = document.createElementNS(ns,'rect');
+        _hit.setAttribute('x', -_hh);
+        _hit.setAttribute('y', -_hh);
+        _hit.setAttribute('width',  _hitW);
+        _hit.setAttribute('height', _hitW);
+        _hit.setAttribute('fill', 'none');
+        _hit.setAttribute('pointer-events', 'all');
+        g.appendChild(_hit);
         var img = document.createElementNS(ns,'image');
         img.setAttribute('href',S.badgeURL);
         img.setAttribute('x',-hs); img.setAttribute('y',-hs);
@@ -1219,6 +1238,29 @@ function updatePreview(stepId) {
       g.setAttribute('class','draggable');
       g.setAttribute('data-drag',item.key);
       g.setAttribute('transform','translate('+item.x+','+item.y+')');
+      // Pre-compute lines so we can size the hit area before building the
+      // text node itself.
+      var _lines = String(item.txt || '').split(/\r?\n/);
+      // Transparent finger-padding rect — fills the gaps between letters
+      // (and the bowls of "O", "P" etc.) so a finger landing anywhere over
+      // the word grabs the text node instead of slipping through to the
+      // SVG background underneath. Rough bbox estimate based on character
+      // count × font-size × ~0.65 (typical wide-stroke ratio) plus the
+      // stroke half-width and a small margin.
+      var _maxLen = 1;
+      for (var _li = 0; _li < _lines.length; _li++) {
+        if (_lines[_li].length > _maxLen) _maxLen = _lines[_li].length;
+      }
+      var _hitW = Math.max(_maxLen * item.size * 0.7 + item.sw * 2 + 40, 220);
+      var _hitH = Math.max(_lines.length * item.size + item.sw * 2 + 30, 120);
+      var _hit  = document.createElementNS(ns,'rect');
+      _hit.setAttribute('x', -_hitW / 2);
+      _hit.setAttribute('y', -_hitH / 2);
+      _hit.setAttribute('width',  _hitW);
+      _hit.setAttribute('height', _hitH);
+      _hit.setAttribute('fill', 'none');
+      _hit.setAttribute('pointer-events', 'all');
+      g.appendChild(_hit);
       var t = document.createElementNS(ns,'text');
       t.setAttribute('text-anchor','middle');
       t.setAttribute('dominant-baseline','middle');
@@ -1233,7 +1275,6 @@ function updatePreview(stepId) {
       // Multi-line: split on Enter (\n) and render each line as a stacked
       // tspan centred around y=0 so the block stays vertically centred on
       // the drag position. Single-line uses textContent as before.
-      var _lines = String(item.txt || '').split(/\r?\n/);
       if (_lines.length > 1) {
         var _lh = item.size;
         var _start = -((_lines.length - 1) * _lh) / 2;
