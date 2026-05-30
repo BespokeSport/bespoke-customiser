@@ -662,16 +662,14 @@ var DEFSZ = { badgeSize:210, nameSize:90, numSize:155 };
   if (typeof GEO.numSize   === 'number') DEFSZ.numSize   = GEO.numSize;
 })();
 
-// Per-product size buttons (admin "Customiser size buttons" field), with a
-// shin-pad fallback when none are configured. Drives the in-customiser size
-// selector; the chosen label is what's stored on the order as "Size".
-var SIZES = (window.BespokeConfig && Array.isArray(window.BespokeConfig.sizes) && window.BespokeConfig.sizes.length)
+// Per-product size buttons (admin "Customiser size buttons" field). Drives
+// the in-customiser size selector; the chosen label is what's stored on the
+// order as "Size". An empty list = no sizes configured for this product, in
+// which case the whole "Select size" section is hidden by renderSizes()
+// (some products — e.g. the Gamechanger trophy — don't come in sizes).
+var SIZES = (window.BespokeConfig && Array.isArray(window.BespokeConfig.sizes))
   ? window.BespokeConfig.sizes
-  : [
-      { label:'S', line1:'Age 5-8',  line2:'Up to 4\'5"' },
-      { label:'M', line1:'Age 9-13', line2:'4\'5" - 5\'2"' },
-      { label:'L', line1:'Age 14+',  line2:'5\'2" and over' }
-    ];
+  : [];
 function bespokeDefaultSize(){ return (SIZES[0] && SIZES[0].label) ? String(SIZES[0].label) : ''; }
 
 var S = {
@@ -768,6 +766,16 @@ function renderSizes() {
   var wrap = document.getElementById('size-selector');
   if (!wrap) return;
   wrap.innerHTML = '';
+  // No sizes configured for this product → hide the entire "Select size"
+  // section (the label sits just before the selector in the markup).
+  var label = wrap.previousElementSibling;
+  if (!SIZES.length) {
+    wrap.style.display = 'none';
+    if (label && label.classList && label.classList.contains('sec-label')) label.style.display = 'none';
+    return;
+  }
+  wrap.style.display = '';
+  if (label && label.classList && label.classList.contains('sec-label')) label.style.display = '';
   SIZES.forEach(function(sz) {
     var label = (sz && sz.label) ? String(sz.label) : '';
     if (!label) return;
