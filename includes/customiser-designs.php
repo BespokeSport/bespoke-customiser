@@ -93,6 +93,8 @@ add_action( 'admin_enqueue_scripts', function( $hook ) {
     if ( ( $hook === 'post.php' || $hook === 'post-new.php' )
          && isset( $post->post_type ) && $post->post_type === 'bespoke_design' ) {
         wp_enqueue_media();
+        // Needed by the drag-to-reorder handle on the Colour Layers table.
+        wp_enqueue_script( 'jquery-ui-sortable' );
     }
 } );
 
@@ -488,9 +490,11 @@ function bespoke_design_layers_cb( $post ) {
     <table class="widefat" id="bespoke-layers-table" style="margin-bottom:12px;">
         <thead>
             <tr>
-                <th style="width:40px;">#</th>
-                <th style="width:24%;">Layer label <span style="font-weight:400;color:#888;">(shown to customer)</span></th>
+                <th style="width:32px;text-align:center;padding:8px 4px;"><span class="dashicons dashicons-menu" title="Drag to reorder" style="opacity:.6;"></span></th>
+                <th style="width:32px;">#</th>
+                <th style="width:22%;">Layer label <span style="font-weight:400;color:#888;">(shown to customer)</span></th>
                 <th style="width:140px;">Default colour</th>
+                <th style="width:120px;">Customer editable</th>
                 <th>Pattern file</th>
                 <th style="width:80px;">Remove</th>
             </tr>
@@ -500,8 +504,14 @@ function bespoke_design_layers_cb( $post ) {
                 $n         = $i + 1;
                 $file_url  = $layer['file_url']      ?? '';
                 $file_name = $layer['file_filename'] ?? '';
+                // Default to editable (=== '1') when key is missing — existing
+                // designs created before this feature should stay editable.
+                $editable  = ( ! isset( $layer['editable'] ) || $layer['editable'] === '1' ) ? '1' : '0';
             ?>
             <tr class="bespoke-layer-row" style="background:#fff;" data-layer-idx="<?php echo $i; ?>">
+                <td style="vertical-align:middle;text-align:center;padding:8px 4px;">
+                    <span class="bespoke-layer-drag-handle dashicons dashicons-menu" title="Drag to reorder"></span>
+                </td>
                 <td style="vertical-align:middle;font-weight:700;color:#888;"><?php echo $n; ?></td>
                 <td>
                     <input type="text"
@@ -509,7 +519,7 @@ function bespoke_design_layers_cb( $post ) {
                            value="<?php echo esc_attr( $layer['label'] ?? '' ); ?>"
                            placeholder="e.g. Pad background"
                            style="width:100%;" />
-                    <small style="color:#aaa;">CSS variable: <code>--col-<?php echo $n; ?></code></small>
+                    <small class="bespoke-css-var-hint" style="color:#aaa;">CSS variable: <code>--col-<?php echo $n; ?></code></small>
                 </td>
                 <td>
                     <div style="display:flex;align-items:center;gap:8px;">
@@ -528,7 +538,19 @@ function bespoke_design_layers_cb( $post ) {
                            value="<?php echo esc_attr( is_array( $layer['colours'] ?? null ) ? implode( ', ', $layer['colours'] ) : '' ); ?>"
                            placeholder="#feef00, #211d33 (leave blank for full picker)"
                            style="width:100%;margin-top:6px;font-family:monospace;font-size:11px;box-sizing:border-box;" />
-                    <small style="color:#888;display:block;margin-top:2px;line-height:1.3;font-size:11px;">Allowed colours (optional). Comma‑separated hex codes — if filled, the customer can only choose from these (no free colour picker).</small>
+                    <small style="color:#888;display:block;margin-top:2px;line-height:1.3;font-size:11px;">Comma‑separated hex codes</small>
+                </td>
+                <td style="vertical-align:middle;">
+                    <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;">
+                        <input type="hidden" name="bespoke_layers[<?php echo $i; ?>][editable]" value="0" />
+                        <input type="checkbox"
+                               class="bespoke-layer-editable"
+                               name="bespoke_layers[<?php echo $i; ?>][editable]"
+                               value="1"
+                               <?php checked( $editable, '1' ); ?> />
+                        <span>Editable</span>
+                    </label>
+                    <p style="margin:4px 0 0 0;color:#888;font-size:11px;line-height:1.3;">Off = paints on the pad but the customer can't change its colour.</p>
                 </td>
                 <td>
                     <div class="bespoke-layer-file-cell">
@@ -569,6 +591,16 @@ function bespoke_design_layers_cb( $post ) {
         + Add colour layer
     </button>
 
+    <style>
+        /* Drag-handle visuals on the colour-layers table */
+        .bespoke-layer-drag-handle           { cursor: grab; color: #999; font-size: 18px; transition: color .15s; }
+        .bespoke-layer-drag-handle:hover     { color: #2271b1; }
+        .ui-sortable-helper                  { background: #fff !important; box-shadow: 0 6px 18px rgba(0,0,0,.12); }
+        .ui-sortable-helper .bespoke-layer-drag-handle { cursor: grabbing; color: #2271b1; }
+        tr.bespoke-layer-placeholder         { visibility: visible !important; background: #f0f6fc !important; outline: 2px dashed #2271b1; height: 60px; }
+        tr.bespoke-layer-placeholder td      { padding: 0 !important; border: 0; }
+    </style>
+
     <script>
     jQuery( function( $ ) {
 
@@ -589,11 +621,14 @@ function bespoke_design_layers_cb( $post ) {
             var idx  = rows;
             var num  = rows + 1;
             var html = '<tr class="bespoke-layer-row" style="background:#fff;" data-layer-idx="' + idx + '">'
+                + '<td style="vertical-align:middle;text-align:center;padding:8px 4px;">'
+                + '<span class="bespoke-layer-drag-handle dashicons dashicons-menu" title="Drag to reorder"></span>'
+                + '</td>'
                 + '<td style="vertical-align:middle;font-weight:700;color:#888;">' + num + '</td>'
                 + '<td>'
                 + '<input type="text" name="bespoke_layers[' + idx + '][label]" value="" '
                 + 'placeholder="e.g. Pattern" style="width:100%;" />'
-                + '<small style="color:#aaa;">CSS variable: <code>--col-' + num + '</code></small>'
+                + '<small class="bespoke-css-var-hint" style="color:#aaa;">CSS variable: <code>--col-' + num + '</code></small>'
                 + '</td>'
                 + '<td>'
                 + '<div style="display:flex;align-items:center;gap:8px;">'
@@ -602,6 +637,18 @@ function bespoke_design_layers_cb( $post ) {
                 + '<input type="text" class="bespoke-hex-display" value="#000000" maxlength="7" '
                 + 'style="width:80px;font-family:monospace;" />'
                 + '</div>'
+                + '<input type="text" name="bespoke_layers[' + idx + '][colours]" value="" '
+                + 'placeholder="#feef00, #211d33 (leave blank for full picker)" '
+                + 'style="width:100%;margin-top:6px;font-family:monospace;font-size:11px;box-sizing:border-box;" />'
+                + '<small style="color:#888;display:block;margin-top:2px;line-height:1.3;font-size:11px;">Comma‑separated hex codes</small>'
+                + '</td>'
+                + '<td style="vertical-align:middle;">'
+                + '<label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;">'
+                + '<input type="hidden" name="bespoke_layers[' + idx + '][editable]" value="0" />'
+                + '<input type="checkbox" class="bespoke-layer-editable" name="bespoke_layers[' + idx + '][editable]" value="1" checked />'
+                + '<span>Editable</span>'
+                + '</label>'
+                + '<p style="margin:4px 0 0 0;color:#888;font-size:11px;line-height:1.3;">Off = paints on the pad but the customer can\'t change its colour.</p>'
                 + '</td>'
                 + '<td>'
                 + '<div class="bespoke-layer-file-cell">'
@@ -619,6 +666,26 @@ function bespoke_design_layers_cb( $post ) {
             $( '#bespoke-layers-body' ).append( html );
             renumberRows();
         } );
+
+        // ── Drag-to-reorder colour layers ─────────────────────────────────────
+        // Uses jQuery UI Sortable (already enqueued on this admin screen).
+        // After a drop, renumberRows re-writes the data-layer-idx, the visible
+        // #, the CSS-variable hint, and re-indexes every input's name="…[N]…"
+        // so the new order saves cleanly via the existing save_post handler.
+        if ( $.fn.sortable ) {
+            $( '#bespoke-layers-body' ).sortable( {
+                handle:      '.bespoke-layer-drag-handle',
+                placeholder: 'bespoke-layer-placeholder',
+                axis:        'y',
+                forcePlaceholderSize: true,
+                helper: function( e, tr ) {
+                    // Preserve cell widths during drag so the row doesn't collapse.
+                    tr.children().each( function() { $( this ).width( $( this ).width() ); } );
+                    return tr;
+                },
+                update: function() { renumberRows(); }
+            } );
+        }
 
         // ── Layer file upload ─────────────────────────────────────────────────
         var layerFileNonce = '<?php echo esc_js( wp_create_nonce( "bespoke_design_svg_upload" ) ); ?>';
@@ -701,14 +768,23 @@ function bespoke_design_layers_cb( $post ) {
             renumberRows();
         } );
 
-        // ── Renumber rows after add/remove ────────────────────────────────────
+        // ── Renumber rows after add / remove / drag-reorder ───────────────────
         function renumberRows() {
             $( '#bespoke-layers-body .bespoke-layer-row' ).each( function( i ) {
-                var n = i + 1;
-                $( this ).find( 'td:first' ).text( n );
-                $( this ).find( 'small' ).html( 'SVG variable: <code>--col-' + n + '</code>' );
-                // Re-index name attributes so POST data is a clean 0-based array
-                $( this ).find( 'input[name^="bespoke_layers"]' ).each( function() {
+                var n     = i + 1;
+                var $row  = $( this );
+                $row.attr( 'data-layer-idx', i );
+                // Visible "#" column is the second td now (first is the drag handle).
+                $row.find( 'td' ).eq( 1 ).text( n );
+                // Only update the CSS-variable hint, NOT the helper text below
+                // the Allowed colours field (which is also a <small> in the row).
+                $row.find( 'small.bespoke-css-var-hint' )
+                    .html( 'CSS variable: <code>--col-' + n + '</code>' );
+                // Re-index name attributes so POST data is a clean 0-based array.
+                // Covers <input type="color">, <input type="text">, hidden URL /
+                // filename inputs, the editable hidden + checkbox, and the
+                // colours list — anything starting bespoke_layers[N].
+                $row.find( 'input[name^="bespoke_layers"]' ).each( function() {
                     $( this ).attr( 'name', $( this ).attr( 'name' ).replace( /\[\d+\]/, '[' + i + ']' ) );
                 } );
             } );
@@ -768,6 +844,10 @@ function bespoke_design_save_meta( $post_id, $post ) {
         $default  = sanitize_hex_color(  $layer['default']       ?? '#000000' );
         $file_url = esc_url_raw(         $layer['file_url']      ?? '' );
         $file_fn  = sanitize_file_name(  $layer['file_filename'] ?? '' );
+        // The "Customer editable" checkbox ships with a paired hidden input
+        // (value="0") so that an unchecked box still posts a value. PHP keeps
+        // the LAST value when two POST keys collide → checked = "1", off = "0".
+        $editable = ( isset( $layer['editable'] ) && $layer['editable'] === '1' ) ? '1' : '0';
         // Parse the optional "Allowed colours" list — comma-separated hex
         // codes (#FEEF00, FF0000, etc.). Each entry is normalised to a
         // 6-digit uppercase hex with the # prefix. Invalid entries dropped.
@@ -795,6 +875,12 @@ function bespoke_design_save_meta( $post_id, $post ) {
             }
             if ( ! empty( $colours ) ) {
                 $entry['colours'] = $colours;
+            }
+            // Only persist the editable key when it's explicitly "off" —
+            // designs created before this feature shipped have no key and
+            // should continue to default to editable on the front end.
+            if ( $editable === '0' ) {
+                $entry['editable'] = '0';
             }
             $layers[] = $entry;
         }

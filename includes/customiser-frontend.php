@@ -973,17 +973,30 @@ function bespoke_render_customiser( $atts ) {
             //
             // Replaces the previous updateColourPickerLabels() which only
             // handled labels for the two static rows.
+            // Per-layer "Customer editable" check. Layers default to
+            // editable; the admin only stores the key when it's explicitly
+            // off (saved as '0'). Locked layers still paint on the pad via
+            // the SVG composer — they just don't get a colour-picker row
+            // on the front end.
+            function bcpIsLayerEditable(layer){
+                return !layer || layer.editable !== '0';
+            }
+
             function rebuildPatternRows(){
                 if (!window.S) return;
                 var d = byId[window.S.design];
                 if (!d || !d.layers || !d.layers.length) return;
                 var layers = d.layers;
                 // Pattern layers = layers[1..]. patLayerCount = number of
-                // pattern colour pickers we need (1 = just the static row,
-                // 2+ = static row + dynamic rows for the extras).
+                // pattern colour pickers we MIGHT need (1 = just the static
+                // row, 2+ = static row + dynamic rows for the extras).
                 var patLayerCount = Math.max(0, layers.length - 1);
 
                 // ── 1. Sync window.S.patColors[] with the active design ──
+                // We seed defaults for EVERY pattern index — including locked
+                // ones — so the SVG composer paints them with the admin's
+                // default colour even though we don't expose a picker for
+                // them.
                 if (!window.S.patColors) window.S.patColors = [];
                 for (var i = 0; i < patLayerCount; i++) {
                     if (window.S.patColors[i] === undefined ||
@@ -1001,7 +1014,14 @@ function bespoke_render_customiser( $atts ) {
                     window.S.patColor = window.S.patColors[0];
                 }
 
-                // ── 2. Update label on the static "Pad background" row ──
+                // ── 2. Static "Pad background" row — label + visibility ──
+                // Hide the row entirely when the admin has flagged layer 0
+                // as non-editable, so the customer can't open the picker.
+                var bgCT  = document.getElementById('ct-bg');
+                var bgRow = bgCT ? bgCT.closest('.zone-row') : null;
+                if (bgRow) {
+                    bgRow.style.display = bcpIsLayerEditable(layers[0]) ? '' : 'none';
+                }
                 var lbls = document.querySelectorAll(
                     '#bespoke-customiser-root .zone-row .zone-lbl'
                 );
@@ -1018,6 +1038,16 @@ function bespoke_render_customiser( $atts ) {
                 var staticPatRow = staticPatCT.closest('.zone-row');
                 if (!staticPatRow) return;
                 var container = staticPatRow.parentElement;
+
+                // Visibility for the static Pattern row mirrors layer 1's
+                // editable flag. Hidden rows still get their value synced
+                // below so re-enabling the layer (or switching designs) picks
+                // up the correct colour straight away.
+                if (layers[1]) {
+                    staticPatRow.style.display = bcpIsLayerEditable(layers[1]) ? '' : 'none';
+                } else {
+                    staticPatRow.style.display = 'none';
+                }
 
                 // Update the static Pattern row's label + input value to match
                 // the active design's layer 1. When there are extra pattern
@@ -1038,25 +1068,41 @@ function bespoke_render_customiser( $atts ) {
                 }
 
                 // ── 4. Add / update / remove dynamic Pattern N rows ──
+                // Locked layers (editable === '0') are skipped entirely —
+                // they still paint via the SVG composer, they just don't get
+                // a colour-picker row exposed to the customer.
                 var existing = container.querySelectorAll(
                     '.zone-row[data-bcp-dynamic-pat]'
                 );
-                var needExtra = Math.max(0, patLayerCount - 1); // patterns 2+
+
+                // Build the shortlist of pattern layers that should actually
+                // get a row: index 2+, has a file_url, and is editable.
+                var visiblePats = []; // { patIdx, patNum, layer }
+                for (var pi2 = 1; pi2 < patLayerCount; pi2++) {
+                    var lyr = layers[pi2 + 1];
+                    if (!lyr || !lyr.file_url) continue;
+                    if (!bcpIsLayerEditable(lyr)) continue;
+                    visiblePats.push({
+                        patIdx: pi2,
+                        patNum: pi2 + 1,
+                        layer:  lyr
+                    });
+                }
+                var needExtra = visiblePats.length;
 
                 if (existing.length === needExtra) {
                     // Same row count — just refresh labels + values in place
                     // so we don't churn the DOM (which would lose any focus
                     // / mid-drag state in the picker).
                     Array.prototype.forEach.call(existing, function(row, idx){
-                        var pi = idx + 1; // index into S.patColors (1, 2, ...)
-                        var srcLayer = layers[pi + 1];
-                        if (!srcLayer) return;
+                        var info = visiblePats[idx];
+                        if (!info) return;
                         var lbl = row.querySelector('.zone-lbl');
                         if (lbl) lbl.textContent =
-                            srcLayer.label || ('Pattern ' + (pi + 1));
+                            info.layer.label || ('Pattern ' + info.patNum);
                         var ct = row.querySelector('.ct');
                         var input = row.querySelector('input[type=color]');
-                        var colour = window.S.patColors[pi];
+                        var colour = window.S.patColors[info.patIdx];
                         if (colour && document.activeElement !== input) {
                             if (ct) ct.style.background = colour;
                             if (input) input.value = colour;
@@ -1072,12 +1118,12 @@ function bespoke_render_customiser( $atts ) {
                 // Pattern row, so they sit between "Pattern" and "Name text"
                 // rather than at the bottom of the container.
                 var insertAfter = staticPatRow;
-                for (var pi2 = 1; pi2 < patLayerCount; pi2++) {
-                    var lyr = layers[pi2 + 1];
-                    if (!lyr || !lyr.file_url) continue;
-                    var patNum = pi2 + 1; // 1-based for IDs (pat2, pat3, ...)
-                    var colourVal = window.S.patColors[pi2] || '#000000';
-                    var labelText = lyr.label || ('Pattern ' + patNum);
+                for (var v = 0; v < visiblePats.length; v++) {
+                    var info2     = visiblePats[v];
+                    var patNum    = info2.patNum;
+                    var lyr2      = info2.layer;
+                    var colourVal = window.S.patColors[info2.patIdx] || '#000000';
+                    var labelText = lyr2.label || ('Pattern ' + patNum);
 
                     var row = document.createElement('div');
                     row.className = 'zone-row';
@@ -2039,6 +2085,25 @@ function bespoke_render_customiser( $atts ) {
           // Derive the zone code from the input's ID (e.g. cp-bg → 'bg',
           // cp-pat2 → 'pat2'). Used by the gradient state helpers.
           pickerZone = (i.id || '').replace(/^cp-/, '');
+
+          // Locked layer guard — if the admin flagged this design layer as
+          // not editable, refuse to open the picker even if the row somehow
+          // got clicked. rebuildPatternRows already hides locked rows, this
+          // is a belt-and-braces second check.
+          var _bcpLocked = (function(){
+            if (!window.S) return false;
+            var idx = (typeof bcpZoneLayerIdx === 'function') ? bcpZoneLayerIdx(pickerZone) : null;
+            if (idx === null) return false;
+            var reg = window.BESPOKE_REGISTERED_DESIGNS || [];
+            var design = null;
+            for (var k = 0; k < reg.length; k++) {
+              if (reg[k].id === window.S.design) { design = reg[k]; break; }
+            }
+            if (!design || !design.layers) return false;
+            var layer = design.layers[idx];
+            return !!(layer && layer.editable === '0');
+          })();
+          if (_bcpLocked) { activeInput = null; return; }
 
           // Restricted palette? If this layer has an "Allowed colours" list
           // from the design admin, render just those swatches and hide the
