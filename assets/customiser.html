@@ -1256,21 +1256,32 @@ function updatePreview(stepId) {
         var _charW  = item.size * 0.65;
         var _textW  = Math.max(_line.length * _charW, item.size * 1.5);
         var _halfPW = _textW * 0.55;
-        // Gentle bend, proportional to text width and capped against
-        // font-size so a short word with big letters doesn't go vertical.
-        var _arc    = Math.min(_textW * 0.20, item.size * 1.6);
-        // Path baseline sits at +size*0.30 so the visible glyphs settle
-        // around y=0, matching the flat dominant-baseline:middle look.
-        var _baseY  = item.size * 0.30;
-        // M (-W, y) Q (0, y - arc) (W, y) — quadratic Bezier that arches
-        // upward (negative y = up in SVG). Reads like a rainbow.
+        // Use a real SVG circular arc (A command) rather than a quadratic
+        // Bezier — the user wants the bend to read as part of a circle,
+        // not a shallow parabolic dip. Radius is a multiple of the
+        // chord half-width; smaller multiplier = tighter curve, more
+        // "plate rim" feel.
+        var _arcRadiusFactor = 1.15;            // ≈ 120° arc, distinctly curved
+        var _R               = _halfPW * _arcRadiusFactor;
+        // Sagitta = R - √(R² - W²) — the maximum vertical bulge above
+        // the chord. Used for vertical centring and the hit rect.
+        var _sagitta = _R - Math.sqrt(Math.max(0, _R * _R - _halfPW * _halfPW));
+        // Place the chord low enough that the arc's centre line passes
+        // through roughly y=0 (the group's transform origin), so the
+        // bowed text sits where the customer dragged the handle to —
+        // matching the flat dominant-baseline:middle behaviour.
+        var _baseY = (_sagitta / 2) + item.size * 0.10;
+        // M (-W, baseY) A R R 0 0 0 (W, baseY) — sweep-flag 0 in SVG
+        // (Y-down) draws the arc above the chord. large-arc-flag 0 keeps
+        // us on the short (≤180°) side.
         var _d = 'M ' + (-_halfPW) + ' ' + _baseY +
-                 ' Q 0 ' + (_baseY - _arc) +
-                 ' '   + _halfPW + ' ' + _baseY;
+                 ' A ' + _R + ' ' + _R + ' 0 0 0 ' +
+                 _halfPW + ' ' + _baseY;
 
-        // Hit rect — covers the bowed text plus margin.
+        // Hit rect — covers the bowed text plus margin. Now the arc can
+        // be tall, so the height includes the full sagitta.
         var _aHitW = Math.max(_textW + 80, 240);
-        var _aHitH = Math.max(item.size + _arc + 60, 140);
+        var _aHitH = Math.max(item.size * 1.6 + _sagitta + 40, 160);
         var _aHit  = document.createElementNS(ns,'rect');
         _aHit.setAttribute('x', -_aHitW / 2);
         _aHit.setAttribute('y', -_aHitH / 2);
