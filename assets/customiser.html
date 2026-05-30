@@ -1264,10 +1264,11 @@ function updatePreview(stepId) {
         var _halfPW = _textW * 0.55;
         // Real SVG circular arc (A command) — radius is a multiple of
         // the chord half-width. Smaller multiplier = tighter curve.
-        // 1.02 puts us at ~158° of arc — almost a full semicircle, so
-        // the text really hugs the plate's rim. Must stay >=1 for the
-        // chord to fit inside the circle.
-        var _arcRadiusFactor = 1.02;
+        // 1.005 puts us at ~169° of arc, very near a full semicircle.
+        // Below 1.0 the chord can't fit inside the circle (SVG would
+        // silently rescale), so 1.005 is about as tight as this minor
+        // arc gets — to go further we'd switch to large-arc-flag=1.
+        var _arcRadiusFactor = 1.005;
         var _R               = _halfPW * _arcRadiusFactor;
         // Sagitta = R - √(R² - W²) — the maximum vertical bulge from
         // the chord. Used for vertical centring and the hit rect.
