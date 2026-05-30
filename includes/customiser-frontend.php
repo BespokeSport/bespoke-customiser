@@ -1527,6 +1527,23 @@ function bespoke_render_customiser( $atts ) {
             .bcp-panel { width: 100% !important; max-width: 100% !important; border-radius: 16px 16px 0 0 !important; padding: 16px !important; }
             .bcp-sv { height: 160px !important; }
         }
+        /* Restricted-palette mode — when the picker opens for a layer that
+           has an "Allowed colours" list configured in the Designs admin, the
+           overlay gets a .restricted class which hides the HSV / gradient /
+           recent / hex / done rows and only the bcp-allowed-row is visible. */
+        .bcp-allowed-row { margin-bottom: 12px; }
+        .bcp-allowed-label { font-size: 10px; letter-spacing: 0.10em; text-transform: uppercase; color: rgba(255,255,255,0.6); margin-bottom: 8px; }
+        .bcp-allowed-swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+        .bcp-allowed-swatch { width: 34px; height: 34px; border-radius: 6px; border: 2px solid #2A2A2A; cursor: pointer; transition: transform 120ms ease, border-color 120ms ease; box-sizing: border-box; }
+        .bcp-allowed-swatch:hover { transform: scale(1.08); border-color: #5DCAA5; }
+        .bcp-allowed-swatch.sel { border-color: #5DCAA5; box-shadow: inset 0 0 0 1px #5DCAA5; }
+        #bcp-overlay.restricted .bcp-sv,
+        #bcp-overlay.restricted .bcp-hue,
+        #bcp-overlay.restricted .bcp-grad-row,
+        #bcp-overlay.restricted .bcp-recent-row,
+        #bcp-overlay.restricted .bcp-badge-row,
+        #bcp-overlay.restricted .bcp-hex,
+        #bcp-overlay.restricted .bcp-done { display: none !important; }
     </style>
 
     <script>
@@ -1549,6 +1566,7 @@ function bespoke_render_customiser( $atts ) {
           +   '</div>'
           + '</div>'
           + '<div class="bcp-badge-row" id="bcp-badge-row" style="display:none;"><div class="bcp-badge-label">Badge Colours</div><div class="bcp-badge-swatches" id="bcp-badge-swatches"></div></div>'
+          + '<div class="bcp-allowed-row" id="bcp-allowed-row" style="display:none;"><div class="bcp-allowed-label">Choose a colour</div><div class="bcp-allowed-swatches" id="bcp-allowed-swatches"></div></div>'
           + '<div class="bcp-recent-row"><div class="bcp-recent-label">Recent Colours</div><div class="bcp-recent" id="bcp-recent"></div></div>'
           + '<div class="bcp-sv" id="bcp-sv"><div class="bcp-sv-cursor" id="bcp-sv-cursor"></div></div>'
           + '<div class="bcp-hue" id="bcp-hue"><div class="bcp-hue-cursor" id="bcp-hue-cursor"></div></div>'
@@ -1613,6 +1631,65 @@ function bespoke_render_customiser( $atts ) {
           ct.style.background = grad
             ? ('linear-gradient(180deg, ' + grad.from + ', ' + grad.to + ')')
             : getStateSolid(z);
+        }
+
+        // ─── Restricted palette helpers ──────────────────────────────────
+        // The Designs admin can set an "Allowed colours" list per layer.
+        // When present, the picker hides the HSV / gradient / recent rows
+        // and shows just those swatches for that layer. Maps the picker
+        // zone code back to the layer index (bg→0, pat→1, patN→N), looks
+        // up the active design's layer, and returns its colours array.
+        function bcpZoneLayerIdx(zone){
+          if (zone === 'bg')  return 0;
+          if (zone === 'pat') return 1;
+          var m = String(zone || '').match(/^pat(\d+)$/);
+          return m ? parseInt(m[1], 10) : null;
+        }
+        function bcpRestrictedColoursFor(zone){
+          if (!window.S) return null;
+          var idx = bcpZoneLayerIdx(zone);
+          if (idx === null) return null;
+          var reg = window.BESPOKE_REGISTERED_DESIGNS || [];
+          var design = null;
+          for (var i = 0; i < reg.length; i++) {
+            if (reg[i].id === window.S.design) { design = reg[i]; break; }
+          }
+          if (!design || !design.layers) return null;
+          var layer = design.layers[idx];
+          if (!layer || !layer.colours || !layer.colours.length) return null;
+          return layer.colours;
+        }
+        function bcpPaintAllowedSwatches(colours){
+          var container = $('bcp-allowed-swatches');
+          var row = $('bcp-allowed-row');
+          if (!container || !row) return;
+          row.style.display = '';
+          var current = (activeInput && activeInput.value || '').toUpperCase();
+          var html = '';
+          for (var i = 0; i < colours.length; i++) {
+            var c = String(colours[i] || '');
+            var sel = (c.toUpperCase() === current) ? ' sel' : '';
+            html += '<div class="bcp-allowed-swatch' + sel + '" data-c="' + c + '" style="background:' + c + '" title="' + c + '"></div>';
+          }
+          container.innerHTML = html;
+          var swatches = container.querySelectorAll('.bcp-allowed-swatch');
+          for (var j = 0; j < swatches.length; j++) {
+            swatches[j].addEventListener('click', function(){
+              var c = this.getAttribute('data-c');
+              if (activeInput) {
+                activeInput.value = c;
+                activeInput.dispatchEvent(new Event('input', { bubbles: true }));
+              }
+              for (var k = 0; k < swatches.length; k++) {
+                swatches[k].classList.toggle('sel', swatches[k] === this);
+              }
+              setTimeout(function(){
+                overlay.classList.remove('open');
+                overlay.classList.remove('restricted');
+                activeInput = null;
+              }, 100);
+            });
+          }
         }
         function defaultGradTo(fromHex){
           var rgb = hex2rgb(fromHex);
@@ -1921,6 +1998,20 @@ function bespoke_render_customiser( $atts ) {
           // Derive the zone code from the input's ID (e.g. cp-bg → 'bg',
           // cp-pat2 → 'pat2'). Used by the gradient state helpers.
           pickerZone = (i.id || '').replace(/^cp-/, '');
+
+          // Restricted palette? If this layer has an "Allowed colours" list
+          // from the design admin, render just those swatches and hide the
+          // HSV / gradient / recent UI (the '.restricted' class drives the
+          // CSS hiding). Click on a swatch sets the colour and auto-closes.
+          var _bcpAllowed = bcpRestrictedColoursFor(pickerZone);
+          if (_bcpAllowed) {
+            overlay.classList.add('restricted');
+            bcpPaintAllowedSwatches(_bcpAllowed);
+          } else {
+            overlay.classList.remove('restricted');
+            var _allowedRow = $('bcp-allowed-row');
+            if (_allowedRow) _allowedRow.style.display = 'none';
+          }
 
           // Show or hide the gradient toggle row based on whether this
           // zone supports gradients (bg + any pattern; not name/number).

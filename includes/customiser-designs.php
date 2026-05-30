@@ -523,6 +523,12 @@ function bespoke_design_layers_cb( $post ) {
                                maxlength="7"
                                style="width:80px;font-family:monospace;" />
                     </div>
+                    <input type="text"
+                           name="bespoke_layers[<?php echo $i; ?>][colours]"
+                           value="<?php echo esc_attr( is_array( $layer['colours'] ?? null ) ? implode( ', ', $layer['colours'] ) : '' ); ?>"
+                           placeholder="#feef00, #211d33 (leave blank for full picker)"
+                           style="width:100%;margin-top:6px;font-family:monospace;font-size:11px;box-sizing:border-box;" />
+                    <small style="color:#888;display:block;margin-top:2px;line-height:1.3;font-size:11px;">Allowed colours (optional). Comma‑separated hex codes — if filled, the customer can only choose from these (no free colour picker).</small>
                 </td>
                 <td>
                     <div class="bespoke-layer-file-cell">
@@ -762,6 +768,22 @@ function bespoke_design_save_meta( $post_id, $post ) {
         $default  = sanitize_hex_color(  $layer['default']       ?? '#000000' );
         $file_url = esc_url_raw(         $layer['file_url']      ?? '' );
         $file_fn  = sanitize_file_name(  $layer['file_filename'] ?? '' );
+        // Parse the optional "Allowed colours" list — comma-separated hex
+        // codes (#FEEF00, FF0000, etc.). Each entry is normalised to a
+        // 6-digit uppercase hex with the # prefix. Invalid entries dropped.
+        $colours_raw = sanitize_text_field( $layer['colours'] ?? '' );
+        $colours     = [];
+        foreach ( explode( ',', $colours_raw ) as $c ) {
+            $c = trim( $c );
+            if ( $c === '' ) continue;
+            if ( $c[0] !== '#' ) $c = '#' . $c;
+            if ( preg_match( '/^#[0-9a-fA-F]{3}$/', $c ) ) {
+                $c = '#' . $c[1] . $c[1] . $c[2] . $c[2] . $c[3] . $c[3];
+            }
+            if ( preg_match( '/^#[0-9a-fA-F]{6}$/', $c ) ) {
+                $colours[] = strtoupper( $c );
+            }
+        }
         if ( $label ) {
             $entry = [
                 'label'   => $label,
@@ -770,6 +792,9 @@ function bespoke_design_save_meta( $post_id, $post ) {
             if ( $file_url ) {
                 $entry['file_url']      = $file_url;
                 $entry['file_filename'] = $file_fn;
+            }
+            if ( ! empty( $colours ) ) {
+                $entry['colours'] = $colours;
             }
             $layers[] = $entry;
         }
