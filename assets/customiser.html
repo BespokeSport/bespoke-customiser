@@ -1172,9 +1172,10 @@ function updatePreview(stepId) {
     bl.innerHTML = '';
     if(S.badgeURL) {
       var hs = S.badgeSize/2;
-      [{key:'badgeL',x:S.pos.badgeL.x,y:S.pos.badgeL.y},
-       {key:'badgeR',x:S.pos.badgeR.x,y:S.pos.badgeR.y}
-      ].forEach(function(item){
+      var _badges = [{key:'badgeL',x:S.pos.badgeL.x,y:S.pos.badgeL.y},
+       {key:'badgeR',x:S.pos.badgeR.x,y:S.pos.badgeR.y}];
+      if (bespokeZoneCount() === 1) _badges = [_badges[0]];
+      _badges.forEach(function(item){
         var g = document.createElementNS(ns,'g');
         g.setAttribute('class','draggable');
         g.setAttribute('data-drag',item.key);
@@ -1200,6 +1201,9 @@ function updatePreview(stepId) {
       {key:'numL',  x:S.pos.numL.x,  y:S.pos.numL.y,  txt:S.numL,  size:S.numSize,  col:S.numColor,  sw:Math.max(10,S.numSize*0.1), font:S.numFontFamily},
       {key:'numR',  x:S.pos.numR.x,  y:S.pos.numR.y,  txt:S.numR,  size:S.numSize,  col:S.numColor,  sw:Math.max(10,S.numSize*0.1), font:S.numFontFamily}
     ];
+    if (bespokeZoneCount() === 1) {
+      items = items.filter(function(it){ return it.key === 'nameL' || it.key === 'numL'; });
+    }
     items.forEach(function(item){
       if(!item.txt) return;
       var g = document.createElementNS(ns,'g');
@@ -1726,11 +1730,44 @@ function reset(){
 var BESPOKE_STEP_CONFIG = {
   shinpads:           ['badge', 'name', 'number', 'design', 'colours'],
   gripsocks:          ['badge', 'name', 'number'],
+  // Awards / trophies — single item (no pair), no squad number.
+  award_gamechanger:  ['badge', 'name', 'design', 'colours'],
+  award_plate:        ['badge', 'name', 'design', 'colours'],
+  award_glassblock:   ['badge', 'name', 'design', 'colours'],
   // Future:
   // armbands:        ['badge', 'name', 'design', 'colours'],
   // shinpad_sleeves: ['badge', 'name', 'number', 'design', 'colours'],
   // etc.
 };
+// Per-product-type ZONES — how many copies of the badge / name / number
+// get rendered. Pad-style products (shin pads, grip socks) come in pairs
+// so they have 2 zones (Left + Right). Awards / trophies are a single
+// item, so they have 1 zone. 1-zone products skip the Right variants when
+// rendering and hide the "Same name / number on both pads" toggles.
+var BESPOKE_ZONES_CONFIG = {
+  shinpads:           2,
+  gripsocks:          2,
+  award_gamechanger:  1,
+  award_plate:        1,
+  award_glassblock:   1
+};
+function bespokeZoneCount(){
+  return BESPOKE_ZONES_CONFIG[bespokeProductType()] === 1 ? 1 : 2;
+}
+function applyZoneConfig(){
+  if (bespokeZoneCount() !== 1) return;
+  // Single-zone product: hide the "Same on both pads" toggles and force
+  // them ON so the existing same-mode UI shows a single combined input.
+  // The renderer skips the Right variants below.
+  ['name-tog','num-tog'].forEach(function(id){
+    var el = document.getElementById(id);
+    var row = el && el.closest && el.closest('.toggle-row');
+    if (row) row.style.display = 'none';
+  });
+  if (window.S) { S.sameName = true; S.sameNum = true; }
+  var ns = document.getElementById('name-split-block'); if (ns) ns.style.display = 'none';
+  var ms = document.getElementById('num-split-block');  if (ms) ms.style.display = 'none';
+}
 // Step name → step index. Steps 5 (Review) and 6 (Success) are flow
 // terminals, always active, not in this table.
 var BESPOKE_STEP_NAMES = ['badge', 'name', 'number', 'design', 'colours'];
@@ -1854,6 +1891,7 @@ _bsInit('designScroll', function(){ buildDesignScroll(); });
 _bsInit('fontGrid',     function(){ buildFontGrid("name"); });
 _bsInit('desktop',      function(){ setupDesktop(); });
 _bsInit('stepConfig',   function(){ applyStepConfig(); });
+_bsInit('zoneConfig',   function(){ applyZoneConfig(); });
 _bsInit('sizes',        function(){ renderSizes(); });
 
 // ── Admin-only "Save placement" editor ──────────────────────────────
