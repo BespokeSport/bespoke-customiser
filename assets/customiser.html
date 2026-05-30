@@ -1264,21 +1264,22 @@ function updatePreview(stepId) {
         var _halfPW = _textW * 0.55;
         // Real SVG circular arc (A command) — radius is a multiple of
         // the chord half-width. Smaller multiplier = tighter curve.
-        // 1.05 puts us at ~145° of arc, which reads strongly as "part
-        // of a circle" rather than "slightly bent text". Must stay >=1
-        // for the chord to fit inside the circle.
-        var _arcRadiusFactor = 1.05;
+        // 1.02 puts us at ~158° of arc — almost a full semicircle, so
+        // the text really hugs the plate's rim. Must stay >=1 for the
+        // chord to fit inside the circle.
+        var _arcRadiusFactor = 1.02;
         var _R               = _halfPW * _arcRadiusFactor;
         // Sagitta = R - √(R² - W²) — the maximum vertical bulge from
         // the chord. Used for vertical centring and the hit rect.
         var _sagitta = _R - Math.sqrt(Math.max(0, _R * _R - _halfPW * _halfPW));
         // Place the chord so the rendered text settles around y=0 (the
-        // group's drag-handle origin). The sign flips with direction:
+        // group's drag-handle origin). With a very tight arc the sagitta
+        // is large, so the offset is now ≈0.6·sagitta (the approximate
+        // centroid of the arc length) plus 0.3·size for the text body
+        // rising above the baseline.
         //   up   → chord low,  peak high  → baseY positive
         //   down → chord high, dip low    → baseY negative
-        // Plus a small font-size offset so the text body (which rises
-        // above the SVG baseline) centres on y=0.
-        var _baseY = _arcDir * (_sagitta / 2) + item.size * 0.10;
+        var _baseY = _arcDir * (_sagitta * 0.6) + item.size * 0.30;
         // sweep-flag 0 in SVG (Y-down) draws the arc ABOVE the chord
         // (rainbow). sweep-flag 1 draws the arc BELOW (frown).
         var _sweep = (_arcDir === 1) ? 0 : 1;
