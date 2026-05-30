@@ -1251,35 +1251,43 @@ function updatePreview(stepId) {
         var _line = String(item.txt || '').split(/\r?\n/)[0];
         if (!_line) return;
 
+        // Direction: names arc UPWARD (rainbow), numbers / secondary
+        // text arc DOWNWARD (frown). Both have their visual centroid at
+        // the handle's y, so the customer just drags name to the top of
+        // the plate and number to the bottom.
+        var _arcDir = (item.key.indexOf('num') === 0) ? -1 : 1; // -1 = down, +1 = up
+
         // Rough text-width estimate: heavy-weight character ≈ 0.65em
         // works well for the bold customiser fonts.
         var _charW  = item.size * 0.65;
         var _textW  = Math.max(_line.length * _charW, item.size * 1.5);
         var _halfPW = _textW * 0.55;
-        // Use a real SVG circular arc (A command) rather than a quadratic
-        // Bezier — the user wants the bend to read as part of a circle,
-        // not a shallow parabolic dip. Radius is a multiple of the
-        // chord half-width; smaller multiplier = tighter curve, more
-        // "plate rim" feel.
-        var _arcRadiusFactor = 1.15;            // ≈ 120° arc, distinctly curved
+        // Real SVG circular arc (A command) — radius is a multiple of
+        // the chord half-width. Smaller multiplier = tighter curve.
+        // 1.05 puts us at ~145° of arc, which reads strongly as "part
+        // of a circle" rather than "slightly bent text". Must stay >=1
+        // for the chord to fit inside the circle.
+        var _arcRadiusFactor = 1.05;
         var _R               = _halfPW * _arcRadiusFactor;
-        // Sagitta = R - √(R² - W²) — the maximum vertical bulge above
+        // Sagitta = R - √(R² - W²) — the maximum vertical bulge from
         // the chord. Used for vertical centring and the hit rect.
         var _sagitta = _R - Math.sqrt(Math.max(0, _R * _R - _halfPW * _halfPW));
-        // Place the chord low enough that the arc's centre line passes
-        // through roughly y=0 (the group's transform origin), so the
-        // bowed text sits where the customer dragged the handle to —
-        // matching the flat dominant-baseline:middle behaviour.
-        var _baseY = (_sagitta / 2) + item.size * 0.10;
-        // M (-W, baseY) A R R 0 0 0 (W, baseY) — sweep-flag 0 in SVG
-        // (Y-down) draws the arc above the chord. large-arc-flag 0 keeps
-        // us on the short (≤180°) side.
+        // Place the chord so the rendered text settles around y=0 (the
+        // group's drag-handle origin). The sign flips with direction:
+        //   up   → chord low,  peak high  → baseY positive
+        //   down → chord high, dip low    → baseY negative
+        // Plus a small font-size offset so the text body (which rises
+        // above the SVG baseline) centres on y=0.
+        var _baseY = _arcDir * (_sagitta / 2) + item.size * 0.10;
+        // sweep-flag 0 in SVG (Y-down) draws the arc ABOVE the chord
+        // (rainbow). sweep-flag 1 draws the arc BELOW (frown).
+        var _sweep = (_arcDir === 1) ? 0 : 1;
         var _d = 'M ' + (-_halfPW) + ' ' + _baseY +
-                 ' A ' + _R + ' ' + _R + ' 0 0 0 ' +
+                 ' A ' + _R + ' ' + _R + ' 0 0 ' + _sweep + ' ' +
                  _halfPW + ' ' + _baseY;
 
-        // Hit rect — covers the bowed text plus margin. Now the arc can
-        // be tall, so the height includes the full sagitta.
+        // Hit rect — covers the bowed text plus margin. The arc can be
+        // tall, so the height includes the full sagitta.
         var _aHitW = Math.max(_textW + 80, 240);
         var _aHitH = Math.max(item.size * 1.6 + _sagitta + 40, 160);
         var _aHit  = document.createElementNS(ns,'rect');
@@ -1991,7 +1999,11 @@ var BESPOKE_STEP_CONFIG = {
   gripsocks:          ['badge', 'name', 'number'],
   // Awards / trophies — single item (no pair), no squad number.
   award_gamechanger:  ['badge', 'name', 'design', 'colours'],
-  award_plate:        ['badge', 'name', 'design', 'colours'],
+  // Plate Trophy gets BOTH name and number steps — they render as two
+  // independent arcs (name curves upward across the top of the plate,
+  // number curves downward across the bottom) so the customer can put
+  // an award title on top and a year / runner-up note on the bottom.
+  award_plate:        ['badge', 'name', 'number', 'design', 'colours'],
   award_glassblock:   ['badge', 'name', 'design', 'colours'],
   // Future:
   // armbands:        ['badge', 'name', 'design', 'colours'],
@@ -2152,6 +2164,65 @@ _bsInit('desktop',      function(){ setupDesktop(); });
 _bsInit('stepConfig',   function(){ applyStepConfig(); });
 _bsInit('zoneConfig',   function(){ applyZoneConfig(); });
 _bsInit('sizes',        function(){ renderSizes(); });
+_bsInit('plateLabels',  function(){ relabelNumberStepForPlate(); });
+
+/**
+ * For Plate Trophy products only — repurpose the "Squad number" step as
+ * a second free-text input (max 24 chars, plate-trophy-appropriate
+ * placeholders). The data still flows through the same S.numL / S.numR
+ * pipeline; only the visible labels and the input maxlength change.
+ */
+function relabelNumberStepForPlate(){
+  if (typeof bespokeProductType !== 'function') return;
+  if (bespokeProductType() !== 'award_plate') return;
+
+  // Section header
+  var hdr = document.querySelector('#s2 .sec-label');
+  if (hdr) {
+    // Keep the optional tag if present
+    var opt = hdr.querySelector('.opt-tag');
+    hdr.firstChild && (hdr.firstChild.nodeValue = 'Bottom text ');
+    if (opt) hdr.appendChild(opt);
+  }
+  // Inputs — drop the squad-number maxlength + placeholders
+  ['num-both','num-L','num-R'].forEach(function(id){
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.setAttribute('maxlength', '24');
+    el.setAttribute('placeholder', 'e.g. 2024');
+  });
+  // Picker tile description
+  var pickLbl = document.querySelector('#ct-num');
+  if (pickLbl && pickLbl.closest('.zone-row')) {
+    var sub = pickLbl.closest('.zone-row').querySelector('.zone-sub');
+    if (sub) sub.textContent = 'Bottom text colour';
+    var lbl = pickLbl.closest('.zone-row').querySelector('.zone-lbl');
+    if (lbl) lbl.textContent = 'Bottom text';
+  }
+  // Summary row label
+  var sumK = document.querySelector('#sh-nu');
+  if (sumK && sumK.parentElement && sumK.parentElement.previousElementSibling) {
+    var k = sumK.closest('.sum-row');
+    if (k) {
+      var keyEl = k.querySelector('.sum-k');
+      if (keyEl) keyEl.textContent = 'Bottom text';
+    }
+  }
+  // Tab label at the top of the wizard
+  var tabLbl = document.getElementById('lbl-2');
+  if (tabLbl) tabLbl.textContent = tabLbl.textContent.replace(/number/ig, 'Bottom text');
+  // Replace "add number" wording in any Next-button label that ended up
+  // pointing at this step. applyStepConfig sets these via nextLabel().
+  document.querySelectorAll('.btn-next').forEach(function(btn){
+    if (btn.textContent && /add\s+number/i.test(btn.textContent)) {
+      btn.textContent = 'Next: add bottom text →';
+    }
+  });
+  // The "drag hint" caption above the number-step preview
+  document.querySelectorAll('#s2 .drag-hint').forEach(function(el){
+    el.innerHTML = el.innerHTML.replace(/number/ig, 'bottom text');
+  });
+}
 
 // ── Admin-only "Save placement" editor ──────────────────────────────
 // When the logged-in user can manage options (an admin), show a fixed
