@@ -489,6 +489,13 @@ function bespoke_handle_add_to_cart() {
             // ── Order notes ───────────────────────────────────────────────────
             'notes' => sanitize_textarea_field( $_POST['bespoke_notes'] ?? '' ),
 
+            // ── Background variant ────────────────────────────────────────────
+            // Customer's pick from the Pennant Frill / No Frill toggle (or
+            // any future per-product variant toggle). 'default' for the main
+            // Background, 'alt' for the Background (Alt). Production reads
+            // this to know which physical product to make.
+            'bg_variant' => ( ( $_POST['bespoke_bg_variant'] ?? '' ) === 'alt' ) ? 'alt' : 'default',
+
             // ── Cart thumbnail ────────────────────────────────────────────────
             // SVG preview uploaded just before add-to-cart. Shown in cart
             // instead of the default product image so the customer can see

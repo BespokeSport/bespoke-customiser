@@ -150,6 +150,16 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
 .draggable{cursor:grab;touch-action:none;-ms-touch-action:none;-webkit-user-select:none;user-select:none;}
 .draggable:active{cursor:grabbing;}
 
+/* Background variant toggle — currently only the Pennant uses this
+   (With Frill / No Frill). Init code reveals .bg-variant-row when the
+   conditions are met; the buttons are simple two-option pickers styled
+   to match the rest of the customiser controls. */
+.bg-variant-row{margin-bottom:14px;}
+.bg-variant-buttons{display:flex;gap:8px;margin-top:6px;}
+.bg-variant-btn{flex:1;padding:12px 14px;border:1.5px solid #2A2A2A;border-radius:8px;background:#161616;color:#888;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s ease;text-transform:uppercase;letter-spacing:.05em;}
+.bg-variant-btn:hover{border-color:#5DCAA5;color:#5DCAA5;}
+.bg-variant-btn.sel{border-color:#5DCAA5;background:#1A2A22;color:#5DCAA5;}
+
 @media (min-width: 768px) {
   body { padding: 0; min-height: 100vh; background: #0D0D0D; }
 
@@ -465,6 +475,16 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
   <div class="screen active" id="s0">
     <div class="preview-box"><div id="pb0"></div></div>
     <div class="drag-hint"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="#888" stroke-width="1.5"><circle cx="10" cy="10" r="7"/><path d="M10 6v8M6 10h8"/></svg> Drag badge to reposition · Pinch or scroll to resize</div>
+    <!-- Pennant Frill / No Frill toggle. Shown only for the Pennant product
+         AND only when the admin has uploaded a Background (Alt). Otherwise
+         this whole row stays display:none (set inline below + by JS init). -->
+    <div class="bg-variant-row" id="bg-variant-row" style="display:none;">
+      <div class="sec-label">Pennant style</div>
+      <div class="bg-variant-buttons">
+        <button type="button" class="bg-variant-btn sel" data-bg-alt="0" onclick="onBgVariant(false)">With Frill</button>
+        <button type="button" class="bg-variant-btn"     data-bg-alt="1" onclick="onBgVariant(true)">No Frill</button>
+      </div>
+    </div>
     <div class="sec-label">Select size</div>
     <div class="size-selector" id="size-selector"></div>
     <div class="sec-label">Upload your club badge</div>
@@ -698,7 +718,7 @@ var S = {
   nameL:'', nameR:'', numL:'', numR:'',
   sameName:true, sameNum:true,
   badge:null, badgeURL:null, design:'vanguard',
-  padSize:bespokeDefaultSize(), orderNotes:"", badgeSize:DEFSZ.badgeSize, nameSize:DEFSZ.nameSize, numSize:DEFSZ.numSize, nameFontFamily:'"Arial Black", Arial, sans-serif', numFontFamily:'"Arial Black", Arial, sans-serif',
+  padSize:bespokeDefaultSize(), orderNotes:"", badgeSize:DEFSZ.badgeSize, nameSize:DEFSZ.nameSize, numSize:DEFSZ.numSize, nameFontFamily:'"Arial Black", Arial, sans-serif', numFontFamily:'"Arial Black", Arial, sans-serif', useBgAlt:false,
   pos: JSON.parse(JSON.stringify(DEF))
 };
 var PROG=[20,40,60,80,100,100,100];
@@ -1975,7 +1995,7 @@ function fillSummary(){
   setSumRow('sd-nu',  'sh-nu',  S.numColor,  null);
 }
 function reset(){
-  S={step:0,bgColor:'#feef00',patColor:'#211d33',patColors:[],bgGradient:null,patGradients:[],nameColor:'#FFFFFF',numColor:'#FFFFFF',nameL:'',nameR:'',numL:'',numR:'',sameName:true,sameNum:true,badge:null,badgeURL:null,design:'vanguard',padSize:bespokeDefaultSize(),orderNotes:"",badgeSize:DEFSZ.badgeSize,nameSize:DEFSZ.nameSize,numSize:DEFSZ.numSize,nameFontFamily:'"Arial Black", Arial, sans-serif',numFontFamily:'"Arial Black", Arial, sans-serif',pos:JSON.parse(JSON.stringify(DEF))};
+  S={step:0,bgColor:'#feef00',patColor:'#211d33',patColors:[],bgGradient:null,patGradients:[],nameColor:'#FFFFFF',numColor:'#FFFFFF',nameL:'',nameR:'',numL:'',numR:'',sameName:true,sameNum:true,badge:null,badgeURL:null,design:'vanguard',padSize:bespokeDefaultSize(),orderNotes:"",badgeSize:DEFSZ.badgeSize,nameSize:DEFSZ.nameSize,numSize:DEFSZ.numSize,nameFontFamily:'"Arial Black", Arial, sans-serif',numFontFamily:'"Arial Black", Arial, sans-serif',useBgAlt:false,pos:JSON.parse(JSON.stringify(DEF))};
   previews={};
   for(var i=0;i<6;i++){var pb=document.getElementById('pb'+i);if(pb)pb.innerHTML='';}
   document.getElementById('s6').classList.remove('active');
@@ -2167,6 +2187,50 @@ _bsInit('stepConfig',   function(){ applyStepConfig(); });
 _bsInit('zoneConfig',   function(){ applyZoneConfig(); });
 _bsInit('sizes',        function(){ renderSizes(); });
 _bsInit('plateLabels',  function(){ relabelNumberStepForPlate(); });
+_bsInit('bgVariant',    function(){ initBgVariantToggle(); });
+
+/**
+ * Customer-facing Frill / No Frill toggle for the Pennant product.
+ *
+ * Reveals the .bg-variant-row in the badge step ONLY when:
+ *   - the product type is 'pennant'
+ *   - AND the admin has uploaded a Background (Alt) in Product Setup
+ *     (window.BESPOKE_PRODUCT_ASSETS.background_alt_url)
+ *
+ * Without both conditions the row stays hidden, so other products
+ * never see a stray toggle.
+ */
+function initBgVariantToggle(){
+  var row = document.getElementById('bg-variant-row');
+  if (!row) return;
+  if (typeof bespokeProductType !== 'function') return;
+  if (bespokeProductType() !== 'pennant') return;
+  var pa = window.BESPOKE_PRODUCT_ASSETS || {};
+  if (!pa.background_alt_url) return;
+  row.style.display = '';
+  // Sync the buttons' visual state with the current S.useBgAlt value
+  // (defaults to false → "With Frill" selected on first paint).
+  syncBgVariantButtons();
+}
+
+/**
+ * Toggle handler. Sets the state flag and forces a re-render so the
+ * background renderer in customiser-frontend.php picks up the new URL.
+ */
+function onBgVariant(useAlt){
+  S.useBgAlt = !!useAlt;
+  syncBgVariantButtons();
+  if (typeof window.updateDesignLayers === 'function') window.updateDesignLayers();
+  if (typeof syncAll === 'function') syncAll();
+}
+
+function syncBgVariantButtons(){
+  var on = !!(window.S && S.useBgAlt);
+  document.querySelectorAll('.bg-variant-btn').forEach(function(btn){
+    var isAlt = btn.getAttribute('data-bg-alt') === '1';
+    btn.classList.toggle('sel', isAlt === on);
+  });
+}
 
 /**
  * For Plate Trophy products only — repurpose the "Squad number" step as
@@ -2600,6 +2664,11 @@ function bespokeAddToCart() {
     // Badge
     formData.append('bespoke_badge_url',      badgeData.url      || '');
     formData.append('bespoke_badge_filename', badgeData.filename || '');
+
+    // Background variant choice — currently used by the Pennant (With
+    // Frill / No Frill). Sent for every product so production always
+    // sees a definitive answer; non-pennant products will read "default".
+    formData.append('bespoke_bg_variant', S.useBgAlt ? 'alt' : 'default');
 
     // Positions
     formData.append('bespoke_badge_x',       S.pos.badgeL.x);

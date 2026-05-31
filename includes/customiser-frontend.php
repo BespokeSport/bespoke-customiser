@@ -104,7 +104,7 @@ function bespoke_render_customiser( $atts ) {
     if ( ! empty( $bs_preload['pad_base_url'] ) ) {
         echo '<link rel="preload" as="image" href="' . esc_url( $bs_preload['pad_base_url'] ) . '">' . "\n";
     }
-    foreach ( [ 'highlights_url', 'shadow_url' ] as $bs_pk ) {
+    foreach ( [ 'highlights_url', 'shadow_url', 'background_alt_url' ] as $bs_pk ) {
         if ( ! empty( $bs_preload[ $bs_pk ] ) ) {
             echo '<link rel="preload" as="image" href="' . esc_url( $bs_preload[ $bs_pk ] ) . '">' . "\n";
         }
@@ -713,7 +713,7 @@ function bespoke_render_customiser( $atts ) {
                 // Bail only if no design AND no product assets — otherwise
                 // we'd remove the placeholder shin-pad template without
                 // putting anything in its place.
-                if (!d && !PA.background_url && !PA.pad_base_url) return Promise.resolve();
+                if (!d && !PA.background_url && !PA.background_alt_url && !PA.pad_base_url) return Promise.resolve();
 
                 // ─── Seed layer defaults on first paint of this design ─────
                 // Without this, the customer's bgColor / patColors stay at
@@ -759,9 +759,15 @@ function bespoke_render_customiser( $atts ) {
                 // Compose the layer stack (URLs + tint colours in render order)
                 var stack = [];
 
-                // 1. Background — static wallpaper, no tint
-                if (PA.background_url) {
-                    stack.push({ url: PA.background_url, tint: null, label: 'background' });
+                // 1. Background — static wallpaper, no tint.
+                //    If this product has a Background (Alt) uploaded AND the
+                //    customer has flipped the Frill toggle to its alt state,
+                //    render the alt instead. Falls back to the main background
+                //    if no alt URL exists, so non-pennant products never break.
+                var _bgUseAlt = !!(window.S && window.S.useBgAlt && PA.background_alt_url);
+                var _bgUrl    = _bgUseAlt ? PA.background_alt_url : PA.background_url;
+                if (_bgUrl) {
+                    stack.push({ url: _bgUrl, tint: null, label: 'background' });
                 }
 
                 // 2. Pad base — uses design's layer-1 file if set, else product pad base
@@ -826,7 +832,7 @@ function bespoke_render_customiser( $atts ) {
                 // If we have product-level background OR pad base, REPLACE the
                 // customiser's hardcoded yellow pad rectangles with our stack.
                 // Otherwise we'd be drawing on top of them which looks wrong.
-                var hasProductBase = !!(PA.background_url || PA.pad_base_url ||
+                var hasProductBase = !!(PA.background_url || PA.background_alt_url || PA.pad_base_url ||
                     (d && d.layers && d.layers[0] && d.layers[0].file_url));
 
                 // Build the pad-base centering offset + every layer in
