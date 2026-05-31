@@ -2027,6 +2027,8 @@ var BESPOKE_STEP_CONFIG = {
   // an award title on top and a year / runner-up note on the bottom.
   award_plate:        ['badge', 'name', 'number', 'design', 'colours'],
   award_glassblock:   ['badge', 'name', 'design', 'colours'],
+  // Pennant — single item with one text field (a slogan / club name).
+  pennant:            ['badge', 'name', 'design', 'colours'],
   // Future:
   // armbands:        ['badge', 'name', 'design', 'colours'],
   // shinpad_sleeves: ['badge', 'name', 'number', 'design', 'colours'],
@@ -2034,15 +2036,17 @@ var BESPOKE_STEP_CONFIG = {
 };
 // Per-product-type ZONES — how many copies of the badge / name / number
 // get rendered. Pad-style products (shin pads, grip socks) come in pairs
-// so they have 2 zones (Left + Right). Awards / trophies are a single
-// item, so they have 1 zone. 1-zone products skip the Right variants when
-// rendering and hide the "Same name / number on both pads" toggles.
+// so they have 2 zones (Left + Right). Awards / trophies and pennants
+// are a single item, so they have 1 zone. 1-zone products skip the Right
+// variants when rendering and hide the "Same name / number on both pads"
+// toggles.
 var BESPOKE_ZONES_CONFIG = {
   shinpads:           2,
   gripsocks:          2,
   award_gamechanger:  1,
   award_plate:        1,
-  award_glassblock:   1
+  award_glassblock:   1,
+  pennant:            1
 };
 function bespokeZoneCount(){
   return BESPOKE_ZONES_CONFIG[bespokeProductType()] === 1 ? 1 : 2;
