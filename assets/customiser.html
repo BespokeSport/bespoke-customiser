@@ -475,14 +475,16 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
   <div class="screen active" id="s0">
     <div class="preview-box"><div id="pb0"></div></div>
     <div class="drag-hint"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="#888" stroke-width="1.5"><circle cx="10" cy="10" r="7"/><path d="M10 6v8M6 10h8"/></svg> Drag badge to reposition · Pinch or scroll to resize</div>
-    <!-- Pennant Frill / No Frill toggle. Shown only for the Pennant product
-         AND only when the admin has uploaded a Background (Alt). Otherwise
-         this whole row stays display:none (set inline below + by JS init). -->
+    <!-- Background-variant toggle. Shown only when the admin has uploaded
+         a Background (Alt) for this product. The button labels and the
+         section header are filled in by initBgVariantToggle() based on
+         product_type (Pennant → "With Frill / No Frill"; Armband →
+         "5cm band / 8cm band"). -->
     <div class="bg-variant-row" id="bg-variant-row" style="display:none;">
-      <div class="sec-label">Pennant style</div>
+      <div class="sec-label" id="bg-variant-label">Style</div>
       <div class="bg-variant-buttons">
-        <button type="button" class="bg-variant-btn sel" data-bg-alt="0" onclick="onBgVariant(false)">With Frill</button>
-        <button type="button" class="bg-variant-btn"     data-bg-alt="1" onclick="onBgVariant(true)">No Frill</button>
+        <button type="button" class="bg-variant-btn sel" id="bg-variant-btn-default" data-bg-alt="0" onclick="onBgVariant(false)">Option A</button>
+        <button type="button" class="bg-variant-btn"     id="bg-variant-btn-alt"     data-bg-alt="1" onclick="onBgVariant(true)">Option B</button>
       </div>
     </div>
     <div class="sec-label">Select size</div>
@@ -784,6 +786,10 @@ function selectSize(size) {
   for (var i = 0; i < btns.length; i++) {
     btns[i].className = 'size-btn' + (btns[i].getAttribute('data-size') === size ? ' sel' : '');
   }
+  // Re-render the preview so size-driven visuals (e.g. the armband band
+  // width scaling for 16cm vs 36cm bands) pick up the new value.
+  // No-op for products that don't read S.padSize in their renderer.
+  if (typeof window.updateDesignLayers === 'function') window.updateDesignLayers();
 }
 
 // Build the size buttons from the per-product SIZES list (shin-pad fallback).
@@ -1208,7 +1214,7 @@ function updatePreview(stepId) {
       var hs = S.badgeSize/2;
       var _badges = [{key:'badgeL',x:S.pos.badgeL.x,y:S.pos.badgeL.y},
        {key:'badgeR',x:S.pos.badgeR.x,y:S.pos.badgeR.y}];
-      if (bespokeZoneCount() === 1) _badges = [_badges[0]];
+      if (bespokeBadgeZones() === 1) _badges = [_badges[0]];
       _badges.forEach(function(item){
         var g = document.createElementNS(ns,'g');
         g.setAttribute('class','draggable');
@@ -1249,7 +1255,7 @@ function updatePreview(stepId) {
       {key:'numL',  x:S.pos.numL.x,  y:S.pos.numL.y,  txt:S.numL,  size:S.numSize,  col:S.numColor,  sw:Math.max(10,S.numSize*0.1), font:S.numFontFamily},
       {key:'numR',  x:S.pos.numR.x,  y:S.pos.numR.y,  txt:S.numR,  size:S.numSize,  col:S.numColor,  sw:Math.max(10,S.numSize*0.1), font:S.numFontFamily}
     ];
-    if (bespokeZoneCount() === 1) {
+    if (bespokeTextZones() === 1) {
       items = items.filter(function(it){ return it.key === 'nameL' || it.key === 'numL'; });
     }
     items.forEach(function(item){
@@ -2029,41 +2035,67 @@ var BESPOKE_STEP_CONFIG = {
   award_glassblock:   ['badge', 'name', 'design', 'colours'],
   // Pennant — single item with one text field (a slogan / club name).
   pennant:            ['badge', 'name', 'design', 'colours'],
+  // Captain Armbands — two badge positions on the band but a single
+  // text field. Thickness (5cm / 8cm) flips via the bg-variant toggle
+  // shared with the Pennant; diameter (16-36cm) drives the band-width
+  // scaling. See initBgVariantToggle + bespokeArmbandBandScale().
+  armbands:           ['badge', 'name', 'design', 'colours'],
   // Future:
-  // armbands:        ['badge', 'name', 'design', 'colours'],
   // shinpad_sleeves: ['badge', 'name', 'number', 'design', 'colours'],
   // etc.
 };
 // Per-product-type ZONES — how many copies of the badge / name / number
 // get rendered. Pad-style products (shin pads, grip socks) come in pairs
-// so they have 2 zones (Left + Right). Awards / trophies and pennants
-// are a single item, so they have 1 zone. 1-zone products skip the Right
-// variants when rendering and hide the "Same name / number on both pads"
-// toggles.
+// so they have 2 zones (Left + Right) for both badge and text. Awards /
+// trophies and pennants are a single item — 1 zone for both. Armbands
+// are a hybrid: 2 badge positions (front + back, when wrapped) but only
+// 1 text field (a single slogan / name).
+//
+// Entries can be a plain number (applies to both badge and text) or a
+// { badge: N, text: N } object for hybrid products.
 var BESPOKE_ZONES_CONFIG = {
   shinpads:           2,
   gripsocks:          2,
   award_gamechanger:  1,
   award_plate:        1,
   award_glassblock:   1,
-  pennant:            1
+  pennant:            1,
+  armbands:           { badge: 2, text: 1 }
 };
+function _bespokeZonesEntry(){
+  return BESPOKE_ZONES_CONFIG[bespokeProductType()];
+}
+function bespokeBadgeZones(){
+  var v = _bespokeZonesEntry();
+  if (typeof v === 'object' && v) return v.badge === 1 ? 1 : 2;
+  return v === 1 ? 1 : 2;
+}
+function bespokeTextZones(){
+  var v = _bespokeZonesEntry();
+  if (typeof v === 'object' && v) return v.text === 1 ? 1 : 2;
+  return v === 1 ? 1 : 2;
+}
+// Legacy alias — returns the smaller of badge / text zones, which gives
+// the right answer for the historic "single-zone product" callers
+// (those used it to mean "no L/R distinction anywhere").
 function bespokeZoneCount(){
-  return BESPOKE_ZONES_CONFIG[bespokeProductType()] === 1 ? 1 : 2;
+  return Math.min(bespokeBadgeZones(), bespokeTextZones());
 }
 function applyZoneConfig(){
-  if (bespokeZoneCount() !== 1) return;
-  // Single-zone product: hide the "Same on both pads" toggles and force
-  // them ON so the existing same-mode UI shows a single combined input.
-  // The renderer skips the Right variants below.
-  ['name-tog','num-tog'].forEach(function(id){
-    var el = document.getElementById(id);
-    var row = el && el.closest && el.closest('.toggle-row');
-    if (row) row.style.display = 'none';
-  });
-  if (window.S) { S.sameName = true; S.sameNum = true; }
-  var ns = document.getElementById('name-split-block'); if (ns) ns.style.display = 'none';
-  var ms = document.getElementById('num-split-block');  if (ms) ms.style.display = 'none';
+  // Hide the "Same on both pads" toggles whenever the text is 1-zone.
+  // The armband (2-badge, 1-text) hits this branch too — its name input
+  // becomes a single combined field, while the badge step still shows
+  // two draggable badge positions.
+  if (bespokeTextZones() === 1) {
+    ['name-tog','num-tog'].forEach(function(id){
+      var el = document.getElementById(id);
+      var row = el && el.closest && el.closest('.toggle-row');
+      if (row) row.style.display = 'none';
+    });
+    if (window.S) { S.sameName = true; S.sameNum = true; }
+    var ns = document.getElementById('name-split-block'); if (ns) ns.style.display = 'none';
+    var ms = document.getElementById('num-split-block');  if (ms) ms.style.display = 'none';
+  }
 }
 // Step name → step index. Steps 5 (Review) and 6 (Success) are flow
 // terminals, always active, not in this table.
@@ -2194,26 +2226,35 @@ _bsInit('plateLabels',  function(){ relabelNumberStepForPlate(); });
 _bsInit('bgVariant',    function(){ initBgVariantToggle(); });
 
 /**
- * Customer-facing Frill / No Frill toggle for the Pennant product.
+ * Customer-facing variant toggle. Reveals .bg-variant-row in the badge
+ * step whenever the admin has uploaded a Background (Alt) for a product
+ * we have a known label-set for. Currently used by:
+ *   - Pennant  → "With Frill / No Frill"
+ *   - Armband  → "5cm band / 8cm band"
  *
- * Reveals the .bg-variant-row in the badge step ONLY when:
- *   - the product type is 'pennant'
- *   - AND the admin has uploaded a Background (Alt) in Product Setup
- *     (window.BESPOKE_PRODUCT_ASSETS.background_alt_url)
- *
- * Without both conditions the row stays hidden, so other products
- * never see a stray toggle.
+ * Adding another product is just a new entry in BG_VARIANT_LABELS.
  */
+var BG_VARIANT_LABELS = {
+  pennant:  { section: 'Pennant style',  primary: 'With Frill', alt: 'No Frill' },
+  armbands: { section: 'Band thickness', primary: '5cm band',   alt: '8cm band' }
+};
 function initBgVariantToggle(){
   var row = document.getElementById('bg-variant-row');
   if (!row) return;
   if (typeof bespokeProductType !== 'function') return;
-  if (bespokeProductType() !== 'pennant') return;
+  var labels = BG_VARIANT_LABELS[bespokeProductType()];
+  if (!labels) return;
   var pa = window.BESPOKE_PRODUCT_ASSETS || {};
   if (!pa.background_alt_url) return;
+  var lblEl  = document.getElementById('bg-variant-label');
+  var primEl = document.getElementById('bg-variant-btn-default');
+  var altEl  = document.getElementById('bg-variant-btn-alt');
+  if (lblEl)  lblEl.textContent  = labels.section;
+  if (primEl) primEl.textContent = labels.primary;
+  if (altEl)  altEl.textContent  = labels.alt;
   row.style.display = '';
   // Sync the buttons' visual state with the current S.useBgAlt value
-  // (defaults to false → "With Frill" selected on first paint).
+  // (defaults to false → primary option selected on first paint).
   syncBgVariantButtons();
 }
 
@@ -2670,9 +2711,14 @@ function bespokeAddToCart() {
     formData.append('bespoke_badge_filename', badgeData.filename || '');
 
     // Background variant choice — currently used by the Pennant (With
-    // Frill / No Frill). Sent for every product so production always
-    // sees a definitive answer; non-pennant products will read "default".
+    // Frill / No Frill) and Armbands (5cm band / 8cm band). Sent for
+    // every product so production always sees a definitive answer.
     formData.append('bespoke_bg_variant', S.useBgAlt ? 'alt' : 'default');
+    // Friendly label so the order screen / customer email show
+    // "5cm band" instead of "alt". Looked up from BG_VARIANT_LABELS.
+    var _bgVarLabels = (typeof BG_VARIANT_LABELS !== 'undefined') ? BG_VARIANT_LABELS[bespokeProductType()] : null;
+    formData.append('bespoke_bg_variant_label',
+      _bgVarLabels ? (S.useBgAlt ? _bgVarLabels.alt : _bgVarLabels.primary) : '');
 
     // Positions
     formData.append('bespoke_badge_x',       S.pos.badgeL.x);

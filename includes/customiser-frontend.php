@@ -707,6 +707,32 @@ function bespoke_render_customiser( $atts ) {
             // Returns a Promise that resolves once the overlay has been
             // applied to every bg-layer in the DOM. Lets callers (e.g.
             // capturePreviewSVG) await the render before cloning the SVG.
+            // Armband background-width scaling factor. Returns 1.0 for any
+            // product that isn't an armband (no scaling). For armbands, parses
+            // the diameter (16cm / 20cm / ... / 36cm) out of S.padSize and
+            // normalises against the largest configured diameter, so the
+            // biggest band fills the canvas and a smaller one shrinks
+            // proportionally. Hard floor at 0.40 stops the smallest band
+            // becoming invisible if a tiny diameter is configured.
+            function bcpProductBandScale(){
+                var cfg = window.BespokeConfig || {};
+                if (cfg.productType !== 'armbands') return 1.0;
+                var raw = String((window.S && window.S.padSize) || '');
+                var m   = raw.match(/(\d+(?:\.\d+)?)/);
+                var diameter = m ? parseFloat(m[1]) : 0;
+                if (!diameter) return 1.0;
+                // Detect the largest configured diameter from BespokeConfig.sizes
+                // so this still works if the admin adds a new larger size.
+                var sizes = Array.isArray(cfg.sizes) ? cfg.sizes : [];
+                var maxD = 36;
+                sizes.forEach(function(s){
+                    var sm = String((s && s.label) || '').match(/(\d+(?:\.\d+)?)/);
+                    var sv = sm ? parseFloat(sm[1]) : 0;
+                    if (sv > maxD) maxD = sv;
+                });
+                return Math.max(0.40, Math.min(1.0, diameter / maxD));
+            }
+
             function applyRegisteredDesignSVG(){
                 if (!window.S) return Promise.resolve();
                 var d = byId[window.S.design] || null;
@@ -949,6 +975,24 @@ function bespoke_render_customiser( $atts ) {
                                 // background or pad-base itself).
                                 if (padMaskId && stack[i] && stack[i].label && stack[i].label.indexOf('pattern-') === 0) {
                                     cloned.setAttribute('mask', 'url(#' + padMaskId + ')');
+                                }
+                                // Armband band-width scaling — when the
+                                // product is armbands and a diameter has
+                                // been picked, the background image gets
+                                // squeezed horizontally so a 16cm band looks
+                                // visibly shorter than a 36cm one. Affects
+                                // the wallpaper background only.
+                                if (stack[i] && stack[i].label === 'background') {
+                                    var _bandScale = bcpProductBandScale();
+                                    if (_bandScale < 1.0) {
+                                        var _imgEl = cloned.querySelector('image');
+                                        if (_imgEl) {
+                                            var _origW = parseFloat(_imgEl.getAttribute('width')) || 1200;
+                                            var _newW  = _origW * _bandScale;
+                                            _imgEl.setAttribute('width', _newW);
+                                            _imgEl.setAttribute('x', (1200 - _newW) / 2);
+                                        }
+                                    }
                                 }
                                 wrap.appendChild(cloned);
                             });

@@ -490,11 +490,14 @@ function bespoke_handle_add_to_cart() {
             'notes' => sanitize_textarea_field( $_POST['bespoke_notes'] ?? '' ),
 
             // ── Background variant ────────────────────────────────────────────
-            // Customer's pick from the Pennant Frill / No Frill toggle (or
-            // any future per-product variant toggle). 'default' for the main
-            // Background, 'alt' for the Background (Alt). Production reads
-            // this to know which physical product to make.
-            'bg_variant' => ( ( $_POST['bespoke_bg_variant'] ?? '' ) === 'alt' ) ? 'alt' : 'default',
+            // Customer's pick from a per-product variant toggle:
+            //   Pennant  → "With Frill" / "No Frill"
+            //   Armband  → "5cm band"   / "8cm band"
+            // 'default' = primary Background, 'alt' = Background (Alt). The
+            // _label is the human-readable string shown in the order email
+            // and admin order screen so production sees real units, not flags.
+            'bg_variant'       => ( ( $_POST['bespoke_bg_variant'] ?? '' ) === 'alt' ) ? 'alt' : 'default',
+            'bg_variant_label' => sanitize_text_field( $_POST['bespoke_bg_variant_label'] ?? '' ),
 
             // ── Cart thumbnail ────────────────────────────────────────────────
             // SVG preview uploaded just before add-to-cart. Shown in cart
