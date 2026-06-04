@@ -1503,25 +1503,27 @@ function bespoke_render_customiser( $atts ) {
             .entry-title { font-size: clamp(22px, 5vw, 30px) !important; padding: 8px 0 !important; }
 
             /* Reorder the Badge step on mobile:
-               Preview → Badge Size slider → Upload Badge → Select Size
+               Band thickness → Select size → Preview → Upload → Badge
+               size slider → For-cleanest-result note.
                Scoped to .active so we don't override the customiser's
                display:none on inactive steps (would cause duplicate previews). */
             #bespoke-customiser-root .screen.bcp-badge-step.active {
                 display: flex !important;
                 flex-direction: column !important;
             }
-            .bcp-badge-step > .preview-box                  { order: 1; }
-            .bcp-badge-step > .drag-hint                    { order: 2; }
-            .bcp-badge-step > .sec-label[data-bcp="size"]   { order: 7; }
-            .bcp-badge-step > .size-selector                { order: 8; }
-            .bcp-badge-step > p                             { order: 9; }
-            .bcp-badge-step > .sec-label[data-bcp="upload"] { order: 4; }
-            .bcp-badge-step > .upload-zone                  { order: 5; }
-            .bcp-badge-step > .badge-row                    { order: 6; }
-            .bcp-badge-step > .sec-label[data-bcp="bsize"]  { order: 3; }
-            .bcp-badge-step > .size-row                     { order: 3; }
-            .bcp-badge-step > .badge-note                   { order: 3; }
-            .bcp-badge-step > .nav-row                      { order: 10; }
+            .bcp-badge-step > .bg-variant-row               { order:  1; }
+            .bcp-badge-step > .sec-label[data-bcp="size"]   { order:  2; }
+            .bcp-badge-step > .size-selector                { order:  3; }
+            .bcp-badge-step > .preview-box                  { order:  4; }
+            .bcp-badge-step > .drag-hint                    { order:  5; }
+            .bcp-badge-step > .sec-label[data-bcp="upload"] { order:  6; }
+            .bcp-badge-step > .upload-zone                  { order:  7; }
+            .bcp-badge-step > .badge-row                    { order:  8; }
+            .bcp-badge-step > .sec-label[data-bcp="bsize"]  { order:  9; }
+            .bcp-badge-step > .size-row                     { order: 10; }
+            .bcp-badge-step > .badge-note                   { order: 11; }
+            .bcp-badge-step > p                             { order: 12; }
+            .bcp-badge-step > .nav-row                      { order: 13; }
         }
 
         /* Badge transparency advice — green callout under the badge size
