@@ -156,15 +156,18 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
 .draggable{cursor:grab;touch-action:none;-ms-touch-action:none;-webkit-user-select:none;user-select:none;}
 .draggable:active{cursor:grabbing;}
 
-/* Background variant toggle — currently only the Pennant uses this
-   (With Frill / No Frill). Init code reveals .bg-variant-row when the
-   conditions are met; the buttons are simple two-option pickers styled
-   to match the rest of the customiser controls. */
+/* Background variant toggle — currently used by the Pennant (Frill /
+   No Frill) and the Armband (5cm band / 8cm band). Init code reveals
+   .bg-variant-row when the conditions are met; the buttons render the
+   label across two stacked lines (e.g. "5cm" then "band") via the
+   .bg-variant-line1 / .bg-variant-line2 spans the JS injects. */
 .bg-variant-row{margin-bottom:14px;}
 .bg-variant-buttons{display:flex;gap:8px;margin-top:6px;}
-.bg-variant-btn{flex:1;padding:12px 14px;border:1.5px solid #2A2A2A;border-radius:8px;background:#161616;color:#888;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s ease;text-transform:uppercase;letter-spacing:.05em;}
+.bg-variant-btn{flex:1;padding:14px 12px;border:1.5px solid #2A2A2A;border-radius:10px;background:#161616;color:#888;cursor:pointer;font-family:inherit;font-weight:700;text-transform:uppercase;letter-spacing:.05em;transition:all .15s ease;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:64px;}
 .bg-variant-btn:hover{border-color:#5DCAA5;color:#5DCAA5;}
 .bg-variant-btn.sel{border-color:#5DCAA5;background:#1A2A22;color:#5DCAA5;}
+.bg-variant-line1{font-size:20px;line-height:1.1;}
+.bg-variant-line2{font-size:11px;line-height:1;opacity:.75;letter-spacing:.06em;}
 
 @media (min-width: 768px) {
   body { padding: 0; min-height: 100vh; background: #0D0D0D; }
@@ -2428,8 +2431,8 @@ function initBgVariantToggle(){
   var primEl = document.getElementById('bg-variant-btn-default');
   var altEl  = document.getElementById('bg-variant-btn-alt');
   if (lblEl)  lblEl.textContent  = labels.section;
-  if (primEl) primEl.textContent = labels.primary;
-  if (altEl)  altEl.textContent  = labels.alt;
+  if (primEl) _setVariantBtnLabel(primEl, labels.primary);
+  if (altEl)  _setVariantBtnLabel(altEl,  labels.alt);
   row.style.display = '';
   // Sync the buttons' visual state with the current S.useBgAlt value
   // (defaults to false → primary option selected on first paint).
@@ -2453,6 +2456,31 @@ function syncBgVariantButtons(){
     var isAlt = btn.getAttribute('data-bg-alt') === '1';
     btn.classList.toggle('sel', isAlt === on);
   });
+}
+
+/**
+ * Renders a variant-button label as two stacked lines — the number /
+ * primary word on top, the secondary word (band / Frill / etc.) below.
+ * "5cm band" → two spans, "With Frill" → two spans. Single-word labels
+ * fall through to plain textContent.
+ *
+ * Uses safe textContent on each span rather than innerHTML — the labels
+ * come from a hardcoded constant today, but this stops a future
+ * admin-supplied label from accidentally introducing markup.
+ */
+function _setVariantBtnLabel(btn, text){
+  if (!btn) return;
+  var i = String(text || '').indexOf(' ');
+  if (i <= 0) { btn.textContent = text || ''; return; }
+  btn.textContent = '';
+  var l1 = document.createElement('span');
+  l1.className = 'bg-variant-line1';
+  l1.textContent = text.substring(0, i);
+  var l2 = document.createElement('span');
+  l2.className = 'bg-variant-line2';
+  l2.textContent = text.substring(i + 1);
+  btn.appendChild(l1);
+  btn.appendChild(l2);
 }
 
 /**
