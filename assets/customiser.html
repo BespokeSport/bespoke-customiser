@@ -688,8 +688,8 @@ var DEFSZ = { badgeSize:210, nameSize:90, numSize:155 };
   if (pt === 'armbands') {
     DEF.badgeL = { x: 330, y: 290 };
     DEF.badgeR = { x: 870, y: 290 };
-    DEF.nameL  = { x: 600, y: 380 };
-    DEF.nameR  = { x: 600, y: 380 }; // single-zone text — same as L
+    DEF.nameL  = { x: 600, y: 290 };
+    DEF.nameR  = { x: 600, y: 290 }; // single-zone text — same as L
   }
 })();
 
@@ -2247,9 +2247,7 @@ var BAND_MIRRORS = {
     positions: {
       badgeL: { x: 270, y: 830 },
       badgeR: { x: 930, y: 830 },
-      // Text mirror lands roughly between the two badge mirrors,
-      // slightly below so it doesn't overlap. Tweak if it lands wrong.
-      nameL:  { x: 600, y: 880 }
+      nameL:  { x: 600, y: 850 }
     }
   }
 };
