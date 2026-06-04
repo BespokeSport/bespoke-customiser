@@ -104,7 +104,7 @@ function bespoke_render_customiser( $atts ) {
     if ( ! empty( $bs_preload['pad_base_url'] ) ) {
         echo '<link rel="preload" as="image" href="' . esc_url( $bs_preload['pad_base_url'] ) . '">' . "\n";
     }
-    foreach ( [ 'highlights_url', 'shadow_url', 'background_alt_url' ] as $bs_pk ) {
+    foreach ( [ 'highlights_url', 'shadow_url', 'background_alt_url', 'mask_url', 'mask_alt_url' ] as $bs_pk ) {
         if ( ! empty( $bs_preload[ $bs_pk ] ) ) {
             echo '<link rel="preload" as="image" href="' . esc_url( $bs_preload[ $bs_pk ] ) . '">' . "\n";
         }

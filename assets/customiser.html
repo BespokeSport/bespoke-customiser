@@ -1202,6 +1202,16 @@ function makeSVG(stepId) {
   textLayer.id = 'text-layer-'+stepId;
   svg.appendChild(textLayer);
 
+  // Mask layer — sits ABOVE badge + text so any artwork the customer
+  // drags outside the band silhouette gets covered by the mask PNG.
+  // The mask is uploaded in Product Setup and is the "background minus
+  // the product cut-out". pointer-events:none keeps the customer's
+  // drag/tap from being intercepted by the mask image.
+  var maskLayer = document.createElementNS(ns,'g');
+  maskLayer.id = 'mask-layer-'+stepId;
+  maskLayer.style.pointerEvents = 'none';
+  svg.appendChild(maskLayer);
+
   previews[stepId] = svg;
   document.getElementById('pb'+stepId).appendChild(svg);
   updatePreview(stepId);
@@ -1462,6 +1472,40 @@ function updatePreview(stepId) {
       g.appendChild(t);
       tl.appendChild(g);
     });
+    // ── Mask layer ────────────────────────────────────────────────────
+    // Sits ABOVE everything (badges + text + mirror clones). PA.mask_url
+    // is the "background minus product silhouette" PNG. Anything the
+    // customer drags off the band gets covered, giving the illusion the
+    // badge wraps behind the band. For products with a bg-variant
+    // (Pennant Frill, Armband thickness) the alt mask is used when the
+    // customer flips the toggle, matching the alt background's cut-out.
+    var ml = document.getElementById('mask-layer-'+stepId);
+    if (ml) {
+      ml.innerHTML = '';
+      var _PA      = window.BESPOKE_PRODUCT_ASSETS || {};
+      var _useAlt  = !!(window.S && window.S.useBgAlt && _PA.mask_alt_url);
+      var _maskUrl = _useAlt ? _PA.mask_alt_url : _PA.mask_url;
+      if (_maskUrl) {
+        var _mImg = document.createElementNS(ns, 'image');
+        _mImg.setAttribute('href', _maskUrl);
+        _mImg.setAttribute('y', 0);
+        _mImg.setAttribute('height', 1200);
+        _mImg.setAttribute('preserveAspectRatio', 'none');
+        _mImg.setAttribute('pointer-events', 'none');
+        // Armband diameter scaling — match the background image's
+        // horizontal squeeze so the mask cut-out stays aligned to the
+        // band shape when the customer picks a smaller size.
+        var _bandScale = (typeof bespokeProductType === 'function' &&
+                           bespokeProductType() === 'armbands')
+          ? _bcpReadArmbandBandScale()
+          : 1.0;
+        var _maskW = 1200 * _bandScale;
+        _mImg.setAttribute('width', _maskW);
+        _mImg.setAttribute('x', (1200 - _maskW) / 2);
+        ml.appendChild(_mImg);
+      }
+    }
+
     // ── Band-mirror clones (text layer) ────────────────────────────────
     // Per-key transform groups, same pattern as the badge layer.
     var _mirCfgT = bespokeBandMirror();
@@ -1613,6 +1657,32 @@ function setupDrag(svg, stepId) {
 }
 
 function syncAll(){ Object.keys(previews).forEach(function(k){updatePreview(parseInt(k));}); }
+
+/**
+ * Mirrors bcpProductBandScale() in customiser-frontend.php so the mask
+ * layer here in customiser.html can scale the same way as the background
+ * image when the armband customer picks a smaller diameter.
+ *
+ * Returns 1.0 for non-armband products. For armbands, parses the diameter
+ * (16cm / 20cm / … / 36cm) out of S.padSize, normalises against the largest
+ * configured size in BespokeConfig.sizes, and floors at 0.40.
+ */
+function _bcpReadArmbandBandScale(){
+  var cfg = window.BespokeConfig || {};
+  if (cfg.productType !== 'armbands') return 1.0;
+  var raw = String((window.S && window.S.padSize) || '');
+  var m   = raw.match(/(\d+(?:\.\d+)?)/);
+  var diameter = m ? parseFloat(m[1]) : 0;
+  if (!diameter) return 1.0;
+  var sizes = Array.isArray(cfg.sizes) ? cfg.sizes : [];
+  var maxD = 36;
+  for (var i = 0; i < sizes.length; i++) {
+    var sm = String((sizes[i] && sizes[i].label) || '').match(/(\d+(?:\.\d+)?)/);
+    var sv = sm ? parseFloat(sm[1]) : 0;
+    if (sv > maxD) maxD = sv;
+  }
+  return Math.max(0.40, Math.min(1.0, diameter / maxD));
+}
 
 /**
  * Patch the transform on every .draggable that matches `key` (e.g. badgeL,

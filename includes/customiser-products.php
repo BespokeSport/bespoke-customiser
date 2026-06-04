@@ -80,7 +80,7 @@ add_action( 'wp_ajax_bespoke_upload_product_asset', function() {
     $product_type = isset( $_POST['product_type'] ) ? sanitize_key( $_POST['product_type'] ) : '';
     $asset_type   = isset( $_POST['asset_type'] )   ? sanitize_key( $_POST['asset_type'] )   : '';
 
-    if ( ! in_array( $asset_type, [ 'background', 'background_alt', 'pad_base', 'highlights', 'shadow' ], true ) ) {
+    if ( ! in_array( $asset_type, [ 'background', 'background_alt', 'pad_base', 'highlights', 'shadow', 'mask', 'mask_alt' ], true ) ) {
         wp_send_json_error( 'Invalid asset type' );
     }
     if ( ! function_exists( 'bespoke_get_product_types' )
@@ -212,7 +212,7 @@ function bespoke_render_product_setup_page() {
     if ( isset( $_POST['bespoke_delete_asset'] ) && check_admin_referer( 'bespoke_delete_asset_action' ) ) {
         $pt = isset( $_POST['product_type'] ) ? sanitize_key( $_POST['product_type'] ) : '';
         $at = isset( $_POST['asset_type'] )   ? sanitize_key( $_POST['asset_type'] )   : '';
-        if ( $pt && in_array( $at, [ 'background', 'background_alt', 'pad_base', 'highlights', 'shadow' ], true ) ) {
+        if ( $pt && in_array( $at, [ 'background', 'background_alt', 'pad_base', 'highlights', 'shadow', 'mask', 'mask_alt' ], true ) ) {
             $assets = get_option( 'bespoke_customiser_product_assets', [] );
             if ( isset( $assets[ $pt ][ $at . '_filename' ] ) ) {
                 $file_path = BESPOKE_PRODUCT_ASSETS_DIR . $assets[ $pt ][ $at . '_filename' ];
@@ -239,16 +239,19 @@ function bespoke_render_product_setup_page() {
         <p>These apply to <em>all designs</em> for that product. <code>.svg</code> is preferred for the pad base (so it can be cleanly recoloured); <code>.svg</code>, <code>.png</code> or <code>.jpg</code> work for the background. Highlights &amp; Shadow should be <code>.png</code> with transparency.</p>
 
         <p style="color:#666;"><strong>Background (Alt)</strong> is optional — used for products that ship in two variants (e.g. the Pennant comes With Frill or No Frill). When this is set on the Pennant product specifically, the customiser shows a Frill / No Frill toggle to the customer and renders whichever background they pick. Leave blank for products that only have one background.</p>
+        <p style="color:#666;"><strong>Mask (on top, optional)</strong> sits ABOVE the badge and text layers. Use a PNG of "the background minus the product silhouette" — i.e. opaque everywhere except where the band / pad shape is. Anything the customer drags outside the band gets covered by the mask, creating the illusion that the badge wraps around the back. Provide a matching <strong>Mask (Alt)</strong> if you've set a Background (Alt) — otherwise the same mask is used for both variants and the cut-out won't match the alt band size.</p>
 
         <table class="widefat striped" style="margin-top: 16px;">
             <thead>
                 <tr>
-                    <th style="width: 12%;">Product</th>
-                    <th style="width: 18%;">Background (static)</th>
-                    <th style="width: 18%;">Background (Alt)</th>
-                    <th style="width: 18%;">Pad Base (tinted)</th>
-                    <th style="width: 17%;">Highlights (on top)</th>
-                    <th style="width: 17%;">Shadow (on top)</th>
+                    <th style="width: 10%;">Product</th>
+                    <th style="width: 13%;">Background (static)</th>
+                    <th style="width: 13%;">Background (Alt)</th>
+                    <th style="width: 13%;">Pad Base (tinted)</th>
+                    <th style="width: 13%;">Highlights (on top)</th>
+                    <th style="width: 13%;">Shadow (on top)</th>
+                    <th style="width: 13%;">Mask (on top)</th>
+                    <th style="width: 12%;">Mask (Alt)</th>
                 </tr>
             </thead>
             <tbody>
@@ -263,13 +266,17 @@ function bespoke_render_product_setup_page() {
                     $hl_filename = isset( $assets[ $key ]['highlights_filename'] )     ? $assets[ $key ]['highlights_filename']     : '';
                     $sd_url      = isset( $assets[ $key ]['shadow_url'] )              ? $assets[ $key ]['shadow_url']              : '';
                     $sd_filename = isset( $assets[ $key ]['shadow_filename'] )         ? $assets[ $key ]['shadow_filename']         : '';
+                    $mk_url      = isset( $assets[ $key ]['mask_url'] )                ? $assets[ $key ]['mask_url']                : '';
+                    $mk_filename = isset( $assets[ $key ]['mask_filename'] )           ? $assets[ $key ]['mask_filename']           : '';
+                    $ma_url      = isset( $assets[ $key ]['mask_alt_url'] )            ? $assets[ $key ]['mask_alt_url']            : '';
+                    $ma_filename = isset( $assets[ $key ]['mask_alt_filename'] )       ? $assets[ $key ]['mask_alt_filename']       : '';
                     ?>
                     <tr>
                         <td>
                             <strong><?php echo esc_html( $label ); ?></strong><br/>
                             <code style="font-size: 11px; color: #666;"><?php echo esc_html( $key ); ?></code>
                         </td>
-                        <?php foreach ( [ 'background' => [ $bg_url, $bg_filename ], 'background_alt' => [ $ba_url, $ba_filename ], 'pad_base' => [ $pb_url, $pb_filename ], 'highlights' => [ $hl_url, $hl_filename ], 'shadow' => [ $sd_url, $sd_filename ] ] as $atype => $info ) :
+                        <?php foreach ( [ 'background' => [ $bg_url, $bg_filename ], 'background_alt' => [ $ba_url, $ba_filename ], 'pad_base' => [ $pb_url, $pb_filename ], 'highlights' => [ $hl_url, $hl_filename ], 'shadow' => [ $sd_url, $sd_filename ], 'mask' => [ $mk_url, $mk_filename ], 'mask_alt' => [ $ma_url, $ma_filename ] ] as $atype => $info ) :
                             list( $url, $fn ) = $info;
                             ?>
                             <td>
