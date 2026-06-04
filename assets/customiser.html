@@ -482,13 +482,20 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
   <div id="dt-panel" style="display:none;"><div id="dt-label">Badge</div><div id="dt-svg-wrap" style="width:100%;max-width:660px;"></div><div id="dt-hint">Drag elements to reposition</div></div>
 
   <div class="screen active" id="s0">
-    <div class="preview-box"><div id="pb0"></div></div>
-    <div class="drag-hint"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="#888" stroke-width="1.5"><circle cx="10" cy="10" r="7"/><path d="M10 6v8M6 10h8"/></svg> Drag badge to reposition · Pinch or scroll to resize</div>
-    <!-- Background-variant toggle. Shown only when the admin has uploaded
-         a Background (Alt) for this product. The button labels and the
-         section header are filled in by initBgVariantToggle() based on
-         product_type (Pennant → "With Frill / No Frill"; Armband →
-         "5cm band / 8cm band"). -->
+    <!-- Badge step layout, top → bottom:
+           1. Band thickness toggle (armband 5/8cm, pennant frill)
+           2. Select size  (per-product diameter buttons)
+           3. Preview      (mobile only — desktop shows the right panel)
+           4. Upload your badge
+           5. Badge size slider
+           6. "For cleanest result…" note
+         The choice-up-front-then-preview-then-customise flow is the
+         one the brand wants the customer guided through. -->
+    <!-- 1. Background-variant toggle. Shown only when the admin has
+         uploaded a Background (Alt) for this product. The button labels
+         and the section header are filled in by initBgVariantToggle()
+         based on product_type (Pennant → "With Frill / No Frill";
+         Armband → "5cm band / 8cm band"). -->
     <div class="bg-variant-row" id="bg-variant-row" style="display:none;">
       <div class="sec-label" id="bg-variant-label">Style</div>
       <div class="bg-variant-buttons">
@@ -496,8 +503,13 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
         <button type="button" class="bg-variant-btn"     id="bg-variant-btn-alt"     data-bg-alt="1" onclick="onBgVariant(true)">Option B</button>
       </div>
     </div>
+    <!-- 2. Diameter / size buttons -->
     <div class="sec-label">Select size</div>
     <div class="size-selector" id="size-selector"></div>
+    <!-- 3. Preview + drag hint (mobile only — hidden by media query on desktop) -->
+    <div class="preview-box"><div id="pb0"></div></div>
+    <div class="drag-hint"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="#888" stroke-width="1.5"><circle cx="10" cy="10" r="7"/><path d="M10 6v8M6 10h8"/></svg> Drag badge to reposition · Pinch or scroll to resize</div>
+    <!-- 4. Upload zone -->
     <div class="sec-label">Upload your club badge</div>
     <label class="upload-zone" id="upload-zone"><input type="file" accept="image/*" id="badge-file" onchange="handleBadge(event)"/>
       <div class="upload-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#5DCAA5" stroke-width="2" stroke-linecap="round"><path d="M10 3v10M6 7l4-4 4 4"/><path d="M4 15h12"/></svg></div>
