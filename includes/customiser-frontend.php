@@ -707,31 +707,14 @@ function bespoke_render_customiser( $atts ) {
             // Returns a Promise that resolves once the overlay has been
             // applied to every bg-layer in the DOM. Lets callers (e.g.
             // capturePreviewSVG) await the render before cloning the SVG.
-            // Armband background-width scaling factor. Returns 1.0 for any
-            // product that isn't an armband (no scaling). For armbands, parses
-            // the diameter (16cm / 20cm / ... / 36cm) out of S.padSize and
-            // normalises against the largest configured diameter, so the
-            // biggest band fills the canvas and a smaller one shrinks
-            // proportionally. Hard floor at 0.40 stops the smallest band
-            // becoming invisible if a tiny diameter is configured.
-            function bcpProductBandScale(){
-                var cfg = window.BespokeConfig || {};
-                if (cfg.productType !== 'armbands') return 1.0;
-                var raw = String((window.S && window.S.padSize) || '');
-                var m   = raw.match(/(\d+(?:\.\d+)?)/);
-                var diameter = m ? parseFloat(m[1]) : 0;
-                if (!diameter) return 1.0;
-                // Detect the largest configured diameter from BespokeConfig.sizes
-                // so this still works if the admin adds a new larger size.
-                var sizes = Array.isArray(cfg.sizes) ? cfg.sizes : [];
-                var maxD = 36;
-                sizes.forEach(function(s){
-                    var sm = String((s && s.label) || '').match(/(\d+(?:\.\d+)?)/);
-                    var sv = sm ? parseFloat(sm[1]) : 0;
-                    if (sv > maxD) maxD = sv;
-                });
-                return Math.max(0.40, Math.min(1.0, diameter / maxD));
-            }
+            // Diameter-driven band-width scaling has been disabled —
+            // turned out to confuse the visual more than help. The
+            // customer's choice of diameter still gets recorded on the
+            // order; the preview just renders at full canvas width
+            // regardless. Function kept as a no-op so callers don't
+            // need refactoring; if we ever want it back, swap the
+            // body in for the historical logic.
+            function bcpProductBandScale(){ return 1.0; }
 
             function applyRegisteredDesignSVG(){
                 if (!window.S) return Promise.resolve();

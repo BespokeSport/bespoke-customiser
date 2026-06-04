@@ -133,8 +133,14 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
 .design-item svg{display:block;width:100%;}
 .design-item .di-label{font-size:11px;color:#888888;text-align:center;padding:5px 4px 7px;font-weight:700;}
 .design-item.sel .di-label{color:#3DA882;}
-.size-selector{display:flex;gap:8px;margin-bottom:18px;}
-.size-btn{flex:1;border:1.5px solid #2A2A2A;border-radius:12px;padding:14px 8px;background:#1F1F1F;cursor:pointer;text-align:center;transition:border-color .15s,background .15s;font-family:inherit;}
+/* Horizontal scroll when there are too many size buttons to fit (e.g. the
+   armband's six diameter buttons on a phone). flex-shrink:0 + min-width
+   stops the buttons collapsing into illegible slivers; overflow-x:auto
+   lets the customer swipe through to the larger sizes. */
+.size-selector{display:flex;gap:8px;margin-bottom:18px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:thin;padding-bottom:4px;scroll-snap-type:x proximity;}
+.size-selector::-webkit-scrollbar{height:6px;}
+.size-selector::-webkit-scrollbar-thumb{background:#2A2A2A;border-radius:3px;}
+.size-btn{flex:1 0 auto;min-width:84px;scroll-snap-align:center;border:1.5px solid #2A2A2A;border-radius:12px;padding:14px 8px;background:#1F1F1F;cursor:pointer;text-align:center;transition:border-color .15s,background .15s;font-family:inherit;}
 .size-btn:hover{border-color:#5DCAA5;}
 .size-btn.sel{border-color:#5DCAA5;background:#0A2A20;color:#5DCAA5;}
 .size-btn .size-letter{font-size:28px;font-weight:700;color:#F5F5F0;line-height:1;}
@@ -1659,30 +1665,13 @@ function setupDrag(svg, stepId) {
 function syncAll(){ Object.keys(previews).forEach(function(k){updatePreview(parseInt(k));}); }
 
 /**
- * Mirrors bcpProductBandScale() in customiser-frontend.php so the mask
- * layer here in customiser.html can scale the same way as the background
- * image when the armband customer picks a smaller diameter.
- *
- * Returns 1.0 for non-armband products. For armbands, parses the diameter
- * (16cm / 20cm / … / 36cm) out of S.padSize, normalises against the largest
- * configured size in BespokeConfig.sizes, and floors at 0.40.
+ * Diameter-driven band-width scaling has been disabled — see the
+ * matching no-op in customiser-frontend.php (bcpProductBandScale).
+ * Returning 1.0 means the background and the mask both render at full
+ * canvas width regardless of the size the customer picks. The customer's
+ * diameter choice still flows through to the order.
  */
-function _bcpReadArmbandBandScale(){
-  var cfg = window.BespokeConfig || {};
-  if (cfg.productType !== 'armbands') return 1.0;
-  var raw = String((window.S && window.S.padSize) || '');
-  var m   = raw.match(/(\d+(?:\.\d+)?)/);
-  var diameter = m ? parseFloat(m[1]) : 0;
-  if (!diameter) return 1.0;
-  var sizes = Array.isArray(cfg.sizes) ? cfg.sizes : [];
-  var maxD = 36;
-  for (var i = 0; i < sizes.length; i++) {
-    var sm = String((sizes[i] && sizes[i].label) || '').match(/(\d+(?:\.\d+)?)/);
-    var sv = sm ? parseFloat(sm[1]) : 0;
-    if (sv > maxD) maxD = sv;
-  }
-  return Math.max(0.40, Math.min(1.0, diameter / maxD));
-}
+function _bcpReadArmbandBandScale(){ return 1.0; }
 
 /**
  * Patch the transform on every .draggable that matches `key` (e.g. badgeL,
@@ -2418,9 +2407,13 @@ function _bsInit(label, fn){
  *
  * Adding another product is just a new entry in BG_VARIANT_LABELS.
  */
+// requireAlt: when true, the toggle only shows if an admin has uploaded
+// a Background (Alt). When false (armbands), the toggle is always shown
+// so the customer can still pick a thickness — the order records it even
+// if both visual assets are identical.
 var BG_VARIANT_LABELS = {
-  pennant:  { section: 'Pennant style',  primary: 'With Frill', alt: 'No Frill' },
-  armbands: { section: 'Band thickness', primary: '5cm band',   alt: '8cm band' }
+  pennant:  { section: 'Pennant style',  primary: 'With Frill', alt: 'No Frill', requireAlt: true  },
+  armbands: { section: 'Band thickness', primary: '5cm band',   alt: '8cm band', requireAlt: false }
 };
 function initBgVariantToggle(){
   var row = document.getElementById('bg-variant-row');
@@ -2429,7 +2422,10 @@ function initBgVariantToggle(){
   var labels = BG_VARIANT_LABELS[bespokeProductType()];
   if (!labels) return;
   var pa = window.BESPOKE_PRODUCT_ASSETS || {};
-  if (!pa.background_alt_url) return;
+  // Pennant only makes sense to expose if both bg images exist (the
+  // toggle would change nothing otherwise). Armband always shows so
+  // the customer can record their thickness choice.
+  if (labels.requireAlt && !pa.background_alt_url) return;
   var lblEl  = document.getElementById('bg-variant-label');
   var primEl = document.getElementById('bg-variant-btn-default');
   var altEl  = document.getElementById('bg-variant-btn-alt');
