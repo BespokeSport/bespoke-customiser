@@ -117,16 +117,25 @@ add_action( 'wp_ajax_bespoke_upload_product_asset', function() {
         wp_send_json_error( 'Could not save file (check folder permissions on /wp-content/uploads/bespoke-product-assets/)' );
     }
 
+    // Cache-buster query string. The filename pattern is fixed
+    // ({product}-{asset}.{ext}) so a replacement always overwrites at
+    // the same URL — and the customer's browser happily keeps serving
+    // the old image from its HTTP cache. Appending ?v=<mtime> gives the
+    // URL a fresh fingerprint per upload so the browser refetches.
+    $mtime  = @filemtime( $target );
+    $cb     = $mtime ? '?v=' . $mtime : '';
+    $url    = BESPOKE_PRODUCT_ASSETS_URL . $safe_name . $cb;
+
     $assets = get_option( 'bespoke_customiser_product_assets', [] );
     if ( ! isset( $assets[ $product_type ] ) || ! is_array( $assets[ $product_type ] ) ) {
         $assets[ $product_type ] = [];
     }
-    $assets[ $product_type ][ $asset_type . '_url' ]      = BESPOKE_PRODUCT_ASSETS_URL . $safe_name;
+    $assets[ $product_type ][ $asset_type . '_url' ]      = $url;
     $assets[ $product_type ][ $asset_type . '_filename' ] = $safe_name;
     update_option( 'bespoke_customiser_product_assets', $assets );
 
     wp_send_json_success( [
-        'url'      => BESPOKE_PRODUCT_ASSETS_URL . $safe_name,
+        'url'      => $url,
         'filename' => $safe_name,
         'size'     => filesize( $target ),
     ] );
