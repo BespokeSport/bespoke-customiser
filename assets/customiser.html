@@ -672,6 +672,21 @@ var DEF = {
 // the JSON deep-copy of DEF into S.pos stays positions-only.
 var DEFSZ = { badgeSize:210, nameSize:90, numSize:155 };
 
+// ── Per-product DEF overrides ─────────────────────────────────────────
+// Shin-pad defaults don't fit every product (the armband band sits in a
+// different part of the canvas). These overrides are applied BEFORE the
+// admin Save-placement merge below, so a saved-placement value still
+// wins — these are just better starting points.
+(function(){
+  var pt = (window.BespokeConfig && window.BespokeConfig.productType) || '';
+  if (pt === 'armbands') {
+    DEF.badgeL = { x: 330, y: 290 };
+    DEF.badgeR = { x: 870, y: 290 };
+    DEF.nameL  = { x: 600, y: 380 };
+    DEF.nameR  = { x: 600, y: 380 }; // single-zone text — same as L
+  }
+})();
+
 // ── Per-product placement geometry (admin "Save placement" editor) ──
 // Merge any positions/sizes saved for THIS product over the shin-pad
 // defaults above. Positions feed S.pos via the JSON deep-copy in the state
@@ -2169,7 +2184,7 @@ function bespokeZoneCount(){
 //             scale-proportional relationship.
 var BAND_MIRRORS = {
   armbands: {
-    scale: 1.25,
+    scale: 1.45,
     positions: {
       badgeL: { x: 270, y: 830 },
       badgeR: { x: 930, y: 830 },
