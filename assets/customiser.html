@@ -2401,15 +2401,13 @@ function _bsInit(label, fn){
   try { fn(); }
   catch (e) { if (window.console && console.error) console.error('[BEspoke init] ' + label + ' failed:', e); }
 }
-_bsInit('makeSVG',      function(){ makeSVG(0); });
-_bsInit('designScroll', function(){ buildDesignScroll(); });
-_bsInit('fontGrid',     function(){ buildFontGrid("name"); });
-_bsInit('desktop',      function(){ setupDesktop(); });
-_bsInit('stepConfig',   function(){ applyStepConfig(); });
-_bsInit('zoneConfig',   function(){ applyZoneConfig(); });
-_bsInit('sizes',        function(){ renderSizes(); });
-_bsInit('plateLabels',  function(){ relabelNumberStepForPlate(); });
-_bsInit('bgVariant',    function(){ initBgVariantToggle(); });
+// The actual _bsInit('…', …) call block was moved to the very bottom of
+// this script so that every `var` (DT_LABELS, BG_VARIANT_LABELS, …) is
+// already assigned by the time the callbacks fire. Otherwise the
+// callbacks reach those vars in their pre-assignment "undefined" state
+// and silently throw via the try/catch above, leaving entire features
+// (the desktop panel, the Pennant / Armband variant toggle, etc.)
+// broken with only console noise to show for it.
 
 /**
  * Customer-facing variant toggle. Reveals .bg-variant-row in the badge
@@ -2954,6 +2952,23 @@ document.addEventListener('DOMContentLoaded', function() {
     if(priceEl) priceEl.textContent = window.BespokeConfig.price;
   }
 });
+
+// ── Initialisation ────────────────────────────────────────────────────
+// These calls are intentionally at the BOTTOM of the script — running
+// them here guarantees every `var X = …` declaration above has executed,
+// so callbacks that reference DT_LABELS / DT_HINTS / BG_VARIANT_LABELS /
+// BAND_MIRRORS / etc. don't see them as undefined and silently fail.
+// _bsInit itself is a hoisted function declaration, so calling it here
+// works even though its source sits much higher up.
+_bsInit('makeSVG',      function(){ makeSVG(0); });
+_bsInit('designScroll', function(){ buildDesignScroll(); });
+_bsInit('fontGrid',     function(){ buildFontGrid("name"); });
+_bsInit('desktop',      function(){ setupDesktop(); });
+_bsInit('stepConfig',   function(){ applyStepConfig(); });
+_bsInit('zoneConfig',   function(){ applyZoneConfig(); });
+_bsInit('sizes',        function(){ renderSizes(); });
+_bsInit('plateLabels',  function(){ relabelNumberStepForPlate(); });
+_bsInit('bgVariant',    function(){ initBgVariantToggle(); });
 
 </script>
 </body>
