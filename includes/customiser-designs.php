@@ -966,7 +966,8 @@ function bespoke_design_column_content( $column, $post_id ) {
 /**
  * When viewing the designs list with no explicit sort, sort by display
  * order ascending — otherwise drag-and-drop doesn't visually match what
- * gets saved.
+ * gets saved. ALSO applies the "filter by product" dropdown below if
+ * the admin picked a product type from it.
  */
 add_action( 'pre_get_posts', function( $query ) {
     if ( ! is_admin() || ! $query->is_main_query() ) {
@@ -975,6 +976,27 @@ add_action( 'pre_get_posts', function( $query ) {
     if ( $query->get( 'post_type' ) !== 'bespoke_design' ) {
         return;
     }
+
+    // ── Product filter ────────────────────────────────────────────────
+    // Dropdown in the table top-bar (see restrict_manage_posts below).
+    // Matches designs whose _bespoke_products meta array contains the
+    // chosen product key. LIKE on the serialised array is the standard
+    // WP pattern for filtering a checkbox-multi field.
+    if ( ! empty( $_GET['bespoke_product_filter'] ) ) {
+        $pf = sanitize_key( wp_unslash( $_GET['bespoke_product_filter'] ) );
+        if ( function_exists( 'bespoke_get_product_types' )
+             && array_key_exists( $pf, bespoke_get_product_types() ) ) {
+            $mq = $query->get( 'meta_query' );
+            if ( ! is_array( $mq ) ) $mq = [];
+            $mq[] = [
+                'key'     => '_bespoke_products',
+                'value'   => '"' . $pf . '"',
+                'compare' => 'LIKE',
+            ];
+            $query->set( 'meta_query', $mq );
+        }
+    }
+
     // Respect any user-selected column sort.
     if ( $query->get( 'orderby' ) ) {
         return;
@@ -982,6 +1004,35 @@ add_action( 'pre_get_posts', function( $query ) {
     $query->set( 'meta_key', '_bespoke_order' );
     $query->set( 'orderby',  'meta_value_num' );
     $query->set( 'order',    'ASC' );
+} );
+
+/**
+ * "Filter by product" dropdown shown in the designs list top-bar (next
+ * to the Bulk-actions box). Submitting the form re-runs the listing
+ * with ?bespoke_product_filter=… in the URL, which the pre_get_posts
+ * hook above turns into a meta_query.
+ */
+add_action( 'restrict_manage_posts', function( $post_type ) {
+    if ( $post_type !== 'bespoke_design' ) {
+        return;
+    }
+    if ( ! function_exists( 'bespoke_get_product_types' ) ) {
+        return;
+    }
+    $types   = bespoke_get_product_types();
+    $current = isset( $_GET['bespoke_product_filter'] )
+        ? sanitize_key( wp_unslash( $_GET['bespoke_product_filter'] ) )
+        : '';
+    ?>
+    <select name="bespoke_product_filter" id="bespoke-product-filter" style="margin-right:6px;">
+        <option value="">All products</option>
+        <?php foreach ( $types as $key => $label ) : ?>
+            <option value="<?php echo esc_attr( $key ); ?>" <?php selected( $current, $key ); ?>>
+                <?php echo esc_html( $label ); ?>
+            </option>
+        <?php endforeach; ?>
+    </select>
+    <?php
 } );
 
 /**
