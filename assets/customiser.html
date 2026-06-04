@@ -533,7 +533,7 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
     <div class="sec-label">Name size</div>
     <div class="size-row">
       <label>Small</label>
-      <input type="range" id="name-size-slider" min="40" max="160" value="90" oninput="onNameSize(this.value)">
+      <input type="range" id="name-size-slider" min="40" max="250" value="90" oninput="onNameSize(this.value)">
       <label>Large</label>
       <span class="size-val" id="name-size-val">90</span>
     </div>
@@ -1633,7 +1633,7 @@ function setupDrag(svg, stepId) {
       var dist = Math.sqrt(dx*dx+dy*dy);
       var ratio = dist/pinchStart;
       if(pinchKey==='badge'){ S.badgeSize=Math.round(Math.max(1,Math.min(500,pinchStartSize*ratio))); document.getElementById('badge-size-slider').value=S.badgeSize; document.getElementById('badge-size-val').textContent=S.badgeSize; }
-      if(pinchKey==='name') { S.nameSize=Math.round(Math.max(40,Math.min(140,pinchStartSize*ratio))); document.getElementById('name-size-slider').value=S.nameSize; document.getElementById('name-size-val').textContent=S.nameSize; }
+      if(pinchKey==='name') { S.nameSize=Math.round(Math.max(40,Math.min(250,pinchStartSize*ratio))); document.getElementById('name-size-slider').value=S.nameSize; document.getElementById('name-size-val').textContent=S.nameSize; }
       if(pinchKey==='num')  { S.numSize=Math.round(Math.max(60,Math.min(220,pinchStartSize*ratio))); document.getElementById('num-size-slider').value=S.numSize; document.getElementById('num-size-val').textContent=S.numSize; }
       fastPinchSize(pinchKey);
     }
@@ -1656,7 +1656,7 @@ function setupDrag(svg, stepId) {
     var key = t.getAttribute('data-drag');
     var delta = e.deltaY > 0 ? -5 : 5;
     if(key.startsWith('badge')){ S.badgeSize=Math.max(1,Math.min(500,S.badgeSize+delta*4)); document.getElementById('badge-size-slider').value=S.badgeSize; document.getElementById('badge-size-val').textContent=S.badgeSize; }
-    if(key.startsWith('name')) { S.nameSize=Math.max(40,Math.min(140,S.nameSize+delta*2)); document.getElementById('name-size-slider').value=S.nameSize; document.getElementById('name-size-val').textContent=S.nameSize; }
+    if(key.startsWith('name')) { S.nameSize=Math.max(40,Math.min(250,S.nameSize+delta*2)); document.getElementById('name-size-slider').value=S.nameSize; document.getElementById('name-size-val').textContent=S.nameSize; }
     if(key.startsWith('num'))  { S.numSize=Math.max(60,Math.min(220,S.numSize+delta*3)); document.getElementById('num-size-slider').value=S.numSize; document.getElementById('num-size-val').textContent=S.numSize; }
     syncAll();
   },{passive:false});
