@@ -2614,10 +2614,12 @@ function buildDesktopSVG() {
   bgG.innerHTML = prefixSVGIds(BG_INNER_TEMPLATE, 'sdt');
   svg.appendChild(bgG);
 
-  // Other layers
-  ['overlay-layer-dt','badge-layer-dt','text-layer-dt'].forEach(function(layerId) {
+  // Other layers — mask-layer-dt must be LAST so it renders above
+  // badge + text. pointer-events:none keeps it from intercepting drags.
+  ['overlay-layer-dt','badge-layer-dt','text-layer-dt','mask-layer-dt'].forEach(function(layerId) {
     var g = document.createElementNS(ns, 'g');
     g.id = layerId;
+    if (layerId === 'mask-layer-dt') g.style.pointerEvents = 'none';
     svg.appendChild(g);
   });
 
