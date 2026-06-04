@@ -1244,23 +1244,34 @@ function updatePreview(stepId) {
       });
       // ── Band-mirror clones ──────────────────────────────────────────
       // For products with a band-mirror config (armband currently), each
-      // flat draggable gets a cloned copy inside a transform group so it
-      // also appears on the 3D portion of the background. data-drag-scale
-      // tells setupDrag how to invert the SVG group scale when the
-      // customer drags the mirror copy.
+      // flat draggable gets a cloned copy inside its OWN parent transform
+      // group, with the parent's translate back-solved from the per-badge
+      // mirror_pos so the mirror lands exactly at the configured spot
+      // when the flat is at its default. data-drag-scale tells setupDrag
+      // how to invert the SVG group scale when the customer drags the
+      // mirror.
       var _mirCfg = bespokeBandMirror();
-      if (_mirCfg) {
-        var _mirror = document.createElementNS(ns, 'g');
-        _mirror.setAttribute('transform',
-          'translate(' + _mirCfg.offsetX + ',' + _mirCfg.offsetY + ') scale(' + _mirCfg.scale + ')');
-        _mirror.setAttribute('class', 'bcp-band-mirror');
-        var _inv = String(1 / _mirCfg.scale);
+      if (_mirCfg && _mirCfg.positions) {
+        var _mScale = _mirCfg.scale || 1;
+        var _inv    = String(1 / _mScale);
         Array.prototype.forEach.call(bl.querySelectorAll('.draggable'), function(node){
-          var clone = node.cloneNode(true);
-          clone.setAttribute('data-drag-scale', _inv);
-          _mirror.appendChild(clone);
+          var _key = node.getAttribute('data-drag');
+          var _mp  = _mirCfg.positions[_key];
+          var _def = (window.DEF || {})[_key];
+          if (!_mp || !_def) return; // not configured for this key
+          // mirror_visible = parent_translate + scale × flat_pos
+          // parent_translate = mirror_pos − scale × flat_default
+          var _ox = _mp.x - _mScale * _def.x;
+          var _oy = _mp.y - _mScale * _def.y;
+          var _wrap = document.createElementNS(ns, 'g');
+          _wrap.setAttribute('transform',
+            'translate(' + _ox + ',' + _oy + ') scale(' + _mScale + ')');
+          _wrap.setAttribute('class', 'bcp-band-mirror');
+          var _clone = node.cloneNode(true);
+          _clone.setAttribute('data-drag-scale', _inv);
+          _wrap.appendChild(_clone);
+          bl.appendChild(_wrap);
         });
-        bl.appendChild(_mirror);
       }
     }
   }
@@ -1437,22 +1448,27 @@ function updatePreview(stepId) {
       tl.appendChild(g);
     });
     // ── Band-mirror clones (text layer) ────────────────────────────────
-    // Same pattern as the badge layer — clone each flat .draggable into
-    // a transformed mirror group so the text also appears on the 3D
-    // portion of the background and stays in sync.
+    // Per-key transform groups, same pattern as the badge layer.
     var _mirCfgT = bespokeBandMirror();
-    if (_mirCfgT) {
-      var _mirrorT = document.createElementNS(ns, 'g');
-      _mirrorT.setAttribute('transform',
-        'translate(' + _mirCfgT.offsetX + ',' + _mirCfgT.offsetY + ') scale(' + _mirCfgT.scale + ')');
-      _mirrorT.setAttribute('class', 'bcp-band-mirror');
-      var _invT = String(1 / _mirCfgT.scale);
+    if (_mirCfgT && _mirCfgT.positions) {
+      var _mScaleT = _mirCfgT.scale || 1;
+      var _invT    = String(1 / _mScaleT);
       Array.prototype.forEach.call(tl.querySelectorAll('.draggable'), function(node){
-        var clone = node.cloneNode(true);
-        clone.setAttribute('data-drag-scale', _invT);
-        _mirrorT.appendChild(clone);
+        var _key = node.getAttribute('data-drag');
+        var _mp  = _mirCfgT.positions[_key];
+        var _def = (window.DEF || {})[_key];
+        if (!_mp || !_def) return;
+        var _ox = _mp.x - _mScaleT * _def.x;
+        var _oy = _mp.y - _mScaleT * _def.y;
+        var _wrap = document.createElementNS(ns, 'g');
+        _wrap.setAttribute('transform',
+          'translate(' + _ox + ',' + _oy + ') scale(' + _mScaleT + ')');
+        _wrap.setAttribute('class', 'bcp-band-mirror');
+        var _clone = node.cloneNode(true);
+        _clone.setAttribute('data-drag-scale', _invT);
+        _wrap.appendChild(_clone);
+        tl.appendChild(_wrap);
       });
-      tl.appendChild(_mirrorT);
     }
   }
 }
@@ -2136,21 +2152,32 @@ function bespokeZoneCount(){
 }
 // Some products show their design twice in the preview: a flat unrolled
 // view AND a 3D-wrapped view. The 3D view is a mirror — same badge /
-// text / colours as the flat — rendered inside an SVG group with a
-// uniform scale + translate transform applied. Editing on EITHER view
-// drags the underlying state (S.pos.*) and both views stay in sync,
-// thanks to the data-drag-scale attribute on the mirror copies, which
+// text / colours as the flat — rendered inside per-badge SVG groups
+// each with their own translate + uniform scale transform. Editing on
+// EITHER view updates the underlying state (S.pos.*) and both views
+// stay in sync, thanks to data-drag-scale on the mirror clones which
 // the drag handler uses to convert mirror-space deltas back to flat
 // coordinates.
 //
-// The numbers below are tuned to the West Ham mockup layout — flat band
-// in the top half of the 1200×1200 canvas centred around y≈300, 3D band
-// in the bottom half centred around y≈900. Scale 0.6 matches the
-// foreshortening seen in the supplied PNG examples. These are safe
-// defaults; we can lift them into the admin if you ever need to override
-// per-product.
+// scale     — visual size multiplier applied to the mirror copies
+//             (1.25 = mirror badges 25% LARGER than flat).
+// positions — per-key absolute mirror position in the 1200×1200 canvas.
+//             At render time the parent translate is back-solved from
+//             this position + the flat default so the mirror lands
+//             exactly here when the flat is at its saved/default spot.
+//             Tracks the flat as the customer drags, preserving the
+//             scale-proportional relationship.
 var BAND_MIRRORS = {
-  armbands: { scale: 0.6, offsetX: 240, offsetY: 720 }
+  armbands: {
+    scale: 1.25,
+    positions: {
+      badgeL: { x: 270, y: 830 },
+      badgeR: { x: 930, y: 830 },
+      // Text mirror lands roughly between the two badge mirrors,
+      // slightly below so it doesn't overlap. Tweak if it lands wrong.
+      nameL:  { x: 600, y: 880 }
+    }
+  }
 };
 function bespokeBandMirror(){
   return BAND_MIRRORS[bespokeProductType()] || null;
