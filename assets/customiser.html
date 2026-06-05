@@ -1319,43 +1319,42 @@ function updatePreview(stepId) {
       });
       // ── Band-mirror clones ──────────────────────────────────────────
       // Each flat draggable gets a cloned copy inside its own parent
-      // group. Layout:
-      //   <g class="bcp-band-mirror" transform="translate(ox, oy)">
+      // group with both translate AND scale on the outer transform.
+      // Layout:
+      //   <g class="bcp-band-mirror" transform="translate(ox, oy) scale(s)">
       //     <g class="draggable" data-drag="badgeL"
+      //                          data-drag-scale="1/s"
       //                          transform="translate(S.pos.x, S.pos.y)">
-      //       <g transform="scale(mScale)">
-      //         …the badge image + hit rect + delete X…
-      //       </g>
+      //       …the badge image + hit rect + delete X…
       //     </g>
       //   </g>
       //
-      // The OUTER transform is translate-only and the INNER scale wrapper
-      // only scales the visuals — never the position transforms. So flat
-      // and mirror move together 1:1 (no dragScale gymnastics needed)
-      // while the mirror badge still renders mScale times bigger.
+      // The outer scale gives us the radial-pivot behaviour: a flat
+      // movement of N viewbox units becomes N×s on the mirror, so as
+      // both views are dragged toward centre they converge together.
+      // data-drag-scale = 1/s tells setupDrag to invert that scale when
+      // the customer drags the mirror copy, so the mirror still tracks
+      // their finger exactly. Offset is back-solved from the configured
+      // mirror_pos so the mirror lands at the right spot at default.
       var _mirCfg = bespokeBandMirror();
       if (_mirCfg && _mirCfg.positions) {
         var _mScale = _mirCfg.scale || 1;
+        var _inv    = String(1 / _mScale);
         Array.prototype.forEach.call(bl.querySelectorAll('.draggable'), function(node){
           var _key = node.getAttribute('data-drag');
           var _mp  = _mirCfg.positions[_key];
           var _def = (window.DEF || {})[_key];
           if (!_mp || !_def) return;
-          // Plain offset — no scale factor — so when the customer drags
-          // a flat or mirror copy, the OTHER copy moves the same amount.
-          var _ox = _mp.x - _def.x;
-          var _oy = _mp.y - _def.y;
+          // mirror_visible = parent_translate + scale × flat_pos
+          // ⇒ parent_translate = mirror_pos − scale × flat_default
+          var _ox = _mp.x - _mScale * _def.x;
+          var _oy = _mp.y - _mScale * _def.y;
           var _wrap = document.createElementNS(ns, 'g');
-          _wrap.setAttribute('transform', 'translate(' + _ox + ',' + _oy + ')');
+          _wrap.setAttribute('transform',
+            'translate(' + _ox + ',' + _oy + ') scale(' + _mScale + ')');
           _wrap.setAttribute('class', 'bcp-band-mirror');
           var _clone = node.cloneNode(true);
-          // Move all the clone's children into an inner scale wrapper so
-          // the visuals are bigger but the position transform on the
-          // .draggable group itself stays 1:1.
-          var _sg = document.createElementNS(ns, 'g');
-          _sg.setAttribute('transform', 'scale(' + _mScale + ')');
-          while (_clone.firstChild) _sg.appendChild(_clone.firstChild);
-          _clone.appendChild(_sg);
+          _clone.setAttribute('data-drag-scale', _inv);
           _wrap.appendChild(_clone);
           bl.appendChild(_wrap);
         });
@@ -1583,26 +1582,25 @@ function updatePreview(stepId) {
     }
 
     // ── Band-mirror clones (text layer) ────────────────────────────────
-    // Same translate-only outer + inner-scale-wrapper layout as the
-    // badge layer above. See that comment block for the rationale.
+    // Same outer-scale architecture as the badge layer — see that
+    // comment block for the rationale.
     var _mirCfgT = bespokeBandMirror();
     if (_mirCfgT && _mirCfgT.positions) {
       var _mScaleT = _mirCfgT.scale || 1;
+      var _invT    = String(1 / _mScaleT);
       Array.prototype.forEach.call(tl.querySelectorAll('.draggable'), function(node){
         var _key = node.getAttribute('data-drag');
         var _mp  = _mirCfgT.positions[_key];
         var _def = (window.DEF || {})[_key];
         if (!_mp || !_def) return;
-        var _ox = _mp.x - _def.x;
-        var _oy = _mp.y - _def.y;
+        var _ox = _mp.x - _mScaleT * _def.x;
+        var _oy = _mp.y - _mScaleT * _def.y;
         var _wrap = document.createElementNS(ns, 'g');
-        _wrap.setAttribute('transform', 'translate(' + _ox + ',' + _oy + ')');
+        _wrap.setAttribute('transform',
+          'translate(' + _ox + ',' + _oy + ') scale(' + _mScaleT + ')');
         _wrap.setAttribute('class', 'bcp-band-mirror');
         var _clone = node.cloneNode(true);
-        var _sgT = document.createElementNS(ns, 'g');
-        _sgT.setAttribute('transform', 'scale(' + _mScaleT + ')');
-        while (_clone.firstChild) _sgT.appendChild(_clone.firstChild);
-        _clone.appendChild(_sgT);
+        _clone.setAttribute('data-drag-scale', _invT);
         _wrap.appendChild(_clone);
         tl.appendChild(_wrap);
       });
@@ -2434,9 +2432,17 @@ function bespokeZoneCount(){
 //             exactly here when the flat is at its saved/default spot.
 //             Tracks the flat as the customer drags, preserving the
 //             scale-proportional relationship.
+// scale is the radial pivot ratio — mirror_distance_from_centre divided
+// by flat_distance_from_centre. With the current positions and centre
+// at x=600:
+//   badgeL : (270−600) / (330−600) = 1.222
+//   badgeR : (930−600) / (870−600) = 1.222
+// So mirror movements pivot around the band centre at 1.222× the flat
+// movement; mirror visuals also scale at 1.222× (smaller than the old
+// 1.45 but the pivot behaviour wins over the visual size for now).
 var BAND_MIRRORS = {
   armbands: {
-    scale: 1.45,
+    scale: 1.222,
     positions: {
       badgeL: { x: 270, y: 830 },
       badgeR: { x: 930, y: 830 },
