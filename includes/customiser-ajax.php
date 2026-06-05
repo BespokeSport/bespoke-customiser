@@ -532,6 +532,29 @@ function bespoke_handle_add_to_cart() {
         ],
     ];
 
+    // ── Resolve variation (if the product is variable) ──────────────────────
+    // Match the customer's chosen size + (when set) bg_variant_label
+    // against the product's variation attributes. Simple products skip
+    // this entirely and fall through with variation_id 0.
+    $variation_id    = 0;
+    $variation_attrs = [];
+    if ( $product->is_type( 'variable' ) ) {
+        $customer_values = array_filter( [
+            $customisation['data']['size']             ?? '',
+            $customisation['data']['bg_variant_label'] ?? '',
+        ] );
+        $match = bespoke_match_variation( $product, $customer_values );
+        if ( ! $match ) {
+            wp_send_json_error(
+                'No matching product variation for "' .
+                esc_html( implode( ' / ', $customer_values ) ) .
+                '". Set up a variation in WooCommerce that matches the customer\'s chosen options.'
+            );
+        }
+        $variation_id    = $match['id'];
+        $variation_attrs = $match['attributes'];
+    }
+
     // ── Add to WooCommerce cart ────────────────────────────────────────────────
     //
     // The customisation array is passed as cart item data.
@@ -540,9 +563,9 @@ function bespoke_handle_add_to_cart() {
     //
     $cart_item_key = WC()->cart->add_to_cart(
         $product_id,
-        1,      // Quantity – always 1 pair
-        0,      // Variation ID – not applicable
-        [],     // Variation attributes – not applicable
+        1,                // Quantity – always 1 pair
+        $variation_id,    // Variation ID – 0 for simple products
+        $variation_attrs, // Variation attribute map
         [
             'bespoke_customisation' => $customisation,
         ]
@@ -557,4 +580,69 @@ function bespoke_handle_add_to_cart() {
     wp_send_json_success( [
         'cart_url' => wc_get_cart_url(),
     ] );
+}
+
+
+/* =========================================================================
+   VARIATION MATCHING — used by bespoke_handle_add_to_cart for variable
+   WC products. Finds the variation whose attribute values match the
+   customer's choices in the customiser (size + bg_variant_label).
+   ========================================================================= */
+
+/**
+ * Returns a flexible-match check between two attribute values. WC
+ * variation values often look slightly different from what the
+ * customiser sends ("5cm" vs "5cm band", "small" vs "Small"), so we
+ * normalise case + whitespace and accept a substring match in either
+ * direction. Exact and case-insensitive matches still win first.
+ *
+ * @param string $customer_value  e.g. "24cm" or "5cm band"
+ * @param string $variation_value e.g. "24cm" or "5cm"
+ * @return bool
+ */
+function bespoke_attr_values_match( $customer_value, $variation_value ) {
+    $c = strtolower( trim( (string) $customer_value ) );
+    $v = strtolower( trim( (string) $variation_value ) );
+    if ( $c === '' || $v === '' ) return false;
+    if ( $c === $v ) return true;
+    // Substring either way — covers "5cm band" customer / "5cm" variation
+    // OR "5cm" customer / "5cm band" variation.
+    return ( stripos( $c, $v ) !== false || stripos( $v, $c ) !== false );
+}
+
+/**
+ * Find the variation whose attribute values all match one of the
+ * customer's chosen values (size, bg_variant_label, etc.).
+ *
+ * WC variation attribute arrays look like:
+ *   [ 'attribute_pa_size' => '24cm', 'attribute_pa_thickness' => '5cm' ]
+ * An empty value means "Any …" — matches anything.
+ *
+ * @param WC_Product_Variable $product
+ * @param string[]            $customer_values  e.g. [ '24cm', '5cm band' ]
+ * @return array|null  [ 'id' => int, 'attributes' => [] ]
+ */
+function bespoke_match_variation( $product, $customer_values ) {
+    if ( ! $product instanceof WC_Product_Variable ) return null;
+    foreach ( $product->get_available_variations() as $variation ) {
+        $ok = true;
+        foreach ( $variation['attributes'] as $attr_key => $attr_value ) {
+            if ( $attr_value === '' ) continue; // "Any" — matches anything
+            $found = false;
+            foreach ( $customer_values as $cust ) {
+                if ( bespoke_attr_values_match( $cust, $attr_value ) ) {
+                    $found = true;
+                    break;
+                }
+            }
+            if ( ! $found ) { $ok = false; break; }
+        }
+        if ( $ok ) {
+            return [
+                'id'         => (int) $variation['variation_id'],
+                'attributes' => $variation['attributes'],
+            ];
+        }
+    }
+    return null;
 }
