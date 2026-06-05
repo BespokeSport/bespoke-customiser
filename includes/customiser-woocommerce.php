@@ -1148,6 +1148,17 @@ function bespoke_render_admin_generic_card( $product_label, $d, $opts = [] ) {
                 if ( $show_variant )           $product_rows .= $row( $show_variant, esc_html( bespoke_format_bg_variant( $d ) ) );
                 if ( $product_rows ) echo $section( 'Product', $product_rows );
 
+                // Helper: clean a font reference. The customiser sends
+                // either a friendly label ("Villain") or a CSS family
+                // stack ('"Arial Black", Arial, sans-serif'). Take the
+                // first family from a stack and strip the quotes.
+                $clean_font = function( $raw ) {
+                    $raw = trim( (string) $raw );
+                    if ( $raw === '' ) return '';
+                    $first = trim( explode( ',', $raw )[0] );
+                    return trim( $first, "\"' \t\n\r\0\x0B\\" );
+                };
+
                 $text_rows = '';
                 foreach ( $show_text as $field => $label ) {
                     $parts = explode( '_', $field, 2 );
@@ -1156,6 +1167,14 @@ function bespoke_render_admin_generic_card( $product_label, $d, $opts = [] ) {
                     $val = $d[ $side ][ $kind ] ?? '';
                     if ( $val === '' ) continue;
                     $text_rows .= $row( $label, esc_html( $val ) );
+                    // Show the matching font next to its text row so
+                    // production knows what to set. 'name' kind reads
+                    // d.fonts.name, 'number' reads d.fonts.number.
+                    $font_raw   = $d['fonts'][ $kind ] ?? '';
+                    $font_clean = $clean_font( $font_raw );
+                    if ( $font_clean !== '' ) {
+                        $text_rows .= $row( $label . ' font', esc_html( $font_clean ) );
+                    }
                 }
                 if ( $text_rows ) echo $section( 'Text', $text_rows );
 
