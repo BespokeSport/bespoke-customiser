@@ -247,26 +247,57 @@ add_action( 'wp_head', function () {
     if ( ! is_cart() && ! is_checkout() ) return;
     ?>
     <style id="bespoke-cart-meta-styles">
-    /* Reset the dl wrapper so the dt+dd flow as one block per row. */
-    .woocommerce-cart .cart_item dl.variation,
-    .woocommerce-checkout .cart_item dl.variation { margin: 0; padding: 0; }
-    /* Label */
-    .woocommerce-cart .cart_item dl.variation dt,
-    .woocommerce-checkout .cart_item dl.variation dt {
-        float: left; clear: left;
-        margin: 0 .25em .25em 0; padding: 0;
-        font-weight: 500;
+    /* WooCommerce wraps each cart-item-data row in its OWN
+       <dl class="variation"><dt>…</dt><dd>…</dd></dl>. Default browser
+       dl styling pushes <dd> onto its own line below the <dt>, which
+       is what's making Design / Text / Club badge values appear under
+       their labels instead of beside them.
+
+       We can't always rely on theme selector hierarchy beating ours,
+       so this rule uses high specificity (body + woocommerce class +
+       cart_item) and !important to guarantee a one-line label + value
+       layout on every cart row that goes through the dl markup. */
+
+    body.woocommerce-cart .cart_item dl.variation,
+    body.woocommerce-checkout .cart_item dl.variation,
+    .woocommerce-cart-form__cart-item dl.variation,
+    table.shop_table .cart_item dl.variation {
+        margin: 0 !important;
+        padding: 0 !important;
+        display: block !important;
+        overflow: hidden !important;        /* clearfix for floated dt */
     }
-    /* Value sits next to the label, then the row clears so the next
-       dt starts on its own line. */
-    .woocommerce-cart .cart_item dl.variation dd,
-    .woocommerce-checkout .cart_item dl.variation dd {
-        float: none; margin: 0 0 .25em 0; padding: 0;
-        font-weight: 500; overflow: hidden;
+    body.woocommerce-cart .cart_item dl.variation dt,
+    body.woocommerce-checkout .cart_item dl.variation dt,
+    .woocommerce-cart-form__cart-item dl.variation dt,
+    table.shop_table .cart_item dl.variation dt {
+        float: left !important;
+        clear: left !important;
+        margin: 0 .35em .25em 0 !important;
+        padding: 0 !important;
+        font-weight: 500 !important;
+        display: block !important;
     }
-    .woocommerce-cart .cart_item dl.variation dd p,
-    .woocommerce-checkout .cart_item dl.variation dd p {
-        margin: 0; display: inline;
+    body.woocommerce-cart .cart_item dl.variation dd,
+    body.woocommerce-checkout .cart_item dl.variation dd,
+    .woocommerce-cart-form__cart-item dl.variation dd,
+    table.shop_table .cart_item dl.variation dd {
+        margin: 0 0 .25em 0 !important;
+        padding: 0 !important;
+        font-weight: 500 !important;
+        display: block !important;
+        overflow: hidden !important;       /* allows the dd to flow next
+                                              to the floated dt without
+                                              wrapping under it */
+    }
+    /* WC wraps the value in <p> via wpautop — un-block it. */
+    body.woocommerce-cart .cart_item dl.variation dd p,
+    body.woocommerce-checkout .cart_item dl.variation dd p,
+    .woocommerce-cart-form__cart-item dl.variation dd p,
+    table.shop_table .cart_item dl.variation dd p {
+        margin: 0 !important;
+        padding: 0 !important;
+        display: inline !important;
     }
     </style>
     <?php
