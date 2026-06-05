@@ -1324,12 +1324,17 @@ function updatePreview(stepId) {
         if (bespokeBadgeZones() === 2 && _badges.length > 1) {
           g.appendChild(_makeDeleteBtn(ns, item.key, 0, -hs + 22));
         }
-        // Stage 3 selection outline — dashed mint box around the
-        // selected element. Renders inside the .draggable group so it
-        // follows transform/rotation automatically. pointer-events:none
-        // keeps it from intercepting drags.
+        // Stage 3 selection outline + resize handles — dashed mint box
+        // around the selected element and four corner squares for
+        // resize. Renders inside the .draggable group so they follow
+        // any transform/rotation. The outline has pointer-events:none
+        // so it doesn't intercept drags.
         if (window.S && S.selected === item.key) {
           g.appendChild(_makeSelectionOutline(ns, S.badgeSize, S.badgeSize));
+          g.appendChild(_makeResizeHandle(ns, item.key, 'nw', -hs, -hs));
+          g.appendChild(_makeResizeHandle(ns, item.key, 'ne',  hs, -hs));
+          g.appendChild(_makeResizeHandle(ns, item.key, 'sw', -hs,  hs));
+          g.appendChild(_makeResizeHandle(ns, item.key, 'se',  hs,  hs));
         }
         bl.appendChild(g);
       });
@@ -1561,12 +1566,17 @@ function updatePreview(stepId) {
         var _txtHalfW = Math.max(_maxLen * item.size * 0.35, item.size * 0.8);
         g.appendChild(_makeDeleteBtn(ns, item.key, _txtHalfW + 30, -item.size * 0.6 - 20));
       }
-      // Stage 3 selection outline for text — sized to the rendered
-      // text bounds (same estimate the hit-rect uses).
+      // Stage 3 selection outline + resize handles for text — sized to
+      // the rendered text bounds (same estimate the hit-rect uses).
       if (window.S && S.selected === item.key) {
         var _selW = Math.max(_maxLen * item.size * 0.7 + item.sw * 2 + 40, 220);
         var _selH = Math.max(_lines.length * item.size + item.sw * 2 + 30, 120);
+        var _selHw = _selW / 2, _selHh = _selH / 2;
         g.appendChild(_makeSelectionOutline(ns, _selW, _selH));
+        g.appendChild(_makeResizeHandle(ns, item.key, 'nw', -_selHw, -_selHh));
+        g.appendChild(_makeResizeHandle(ns, item.key, 'ne',  _selHw, -_selHh));
+        g.appendChild(_makeResizeHandle(ns, item.key, 'sw', -_selHw,  _selHh));
+        g.appendChild(_makeResizeHandle(ns, item.key, 'se',  _selHw,  _selHh));
       }
       tl.appendChild(g);
     });
@@ -1642,6 +1652,58 @@ function setupDrag(svg, stepId) {
   //     value recovers the flat-space delta so S.pos stays canonical.
   var dragging=null, startSVG, startPos, dragScale=1,
       pinchStart=null, pinchStartSize=null, pinchKey=null;
+  // Stage 3B resize handle state.
+  var resizing=null, resizeCorner=null, resizeStart=null,
+      resizeStartSize=0, resizeIsMirror=false;
+
+  function _startResize(el, pt){
+    resizing        = el.getAttribute('data-key');
+    resizeCorner    = el.getAttribute('data-corner');
+    resizeStart     = pt;
+    resizeIsMirror  = !!el.closest('.bcp-band-mirror');
+    if      (resizing.indexOf('badge') === 0) resizeStartSize = S.badgeSize;
+    else if (resizing.indexOf('name')  === 0) resizeStartSize = S.nameSize;
+    else if (resizing.indexOf('num')   === 0) resizeStartSize = S.numSize;
+  }
+  function _doResize(pt){
+    if (!resizing || !resizeStart) return;
+    var dx = pt.x - resizeStart.x, dy = pt.y - resizeStart.y;
+    var sx = (resizeCorner === 'ne' || resizeCorner === 'se') ? 1 : -1;
+    var sy = (resizeCorner === 'sw' || resizeCorner === 'se') ? 1 : -1;
+    var eff = sx * dx + sy * dy;
+    if (resizeIsMirror) {
+      var bm = (typeof bespokeBandMirror === 'function') ? bespokeBandMirror() : null;
+      if (bm && bm.scale) eff = eff / bm.scale;
+    }
+    var newSize = resizeStartSize + eff;
+    if (resizing.indexOf('badge') === 0) {
+      S.badgeSize = Math.max(1, Math.min(500, Math.round(newSize)));
+      var bsl = document.getElementById('badge-size-slider');
+      var bsv = document.getElementById('badge-size-val');
+      if (bsl) bsl.value = S.badgeSize;
+      if (bsv) bsv.textContent = S.badgeSize;
+      fastPinchSize('badge');
+    } else if (resizing.indexOf('name') === 0) {
+      S.nameSize = Math.max(40, Math.min(250, Math.round(newSize)));
+      var nsl = document.getElementById('name-size-slider');
+      var nsv = document.getElementById('name-size-val');
+      if (nsl) nsl.value = S.nameSize;
+      if (nsv) nsv.textContent = S.nameSize;
+      fastPinchSize('name');
+    } else if (resizing.indexOf('num') === 0) {
+      S.numSize = Math.max(60, Math.min(240, Math.round(newSize)));
+      var msl = document.getElementById('num-size-slider');
+      var msv = document.getElementById('num-size-val');
+      if (msl) msl.value = S.numSize;
+      if (msv) msv.textContent = S.numSize;
+      fastPinchSize('num');
+    }
+  }
+  function _endResize(){
+    if (!resizing) return;
+    resizing = null; resizeCorner = null; resizeStart = null;
+    syncAll();
+  }
 
   function svgPt(clientX, clientY) {
     var r = svg.getBoundingClientRect();
@@ -1661,6 +1723,13 @@ function setupDrag(svg, stepId) {
       hideDraggable(del.getAttribute('data-key'));
       return;
     }
+    // Resize-handle tap — Stage 3B.
+    var rh = e.target.closest('[data-action="resize"]');
+    if (rh) {
+      e.preventDefault();
+      _startResize(rh, svgPt(e.clientX, e.clientY));
+      return;
+    }
     var t = e.target.closest('.draggable');
     if (!t) {
       // Tap on the SVG background (not on any draggable) → deselect.
@@ -1677,6 +1746,7 @@ function setupDrag(svg, stepId) {
     startPos = {x:S.pos[dragging].x, y:S.pos[dragging].y};
   });
   window.addEventListener('mousemove', function(e){
+    if (resizing) { _doResize(svgPt(e.clientX, e.clientY)); return; }
     if(!dragging) return;
     var pt = svgPt(e.clientX, e.clientY);
     S.pos[dragging].x = Math.round(startPos.x + (pt.x - startSVG.x) * dragScale);
@@ -1685,6 +1755,7 @@ function setupDrag(svg, stepId) {
     fastDragTransform(dragging);
   });
   window.addEventListener('mouseup', function(){
+    if (resizing) { _endResize(); return; }
     if (!dragging) return;
     dragging=null; dragScale=1;
     // Final settle pass so the rebuilt nodes carry the new position.
@@ -1698,6 +1769,12 @@ function setupDrag(svg, stepId) {
       if (del) {
         e.preventDefault();
         hideDraggable(del.getAttribute('data-key'));
+        return;
+      }
+      var rh = e.target.closest('[data-action="resize"]');
+      if (rh) {
+        e.preventDefault();
+        _startResize(rh, svgPt(e.touches[0].clientX, e.touches[0].clientY));
         return;
       }
       var t = e.target.closest('.draggable');
@@ -1742,7 +1819,10 @@ function setupDrag(svg, stepId) {
     //
     // Instead we patch transforms (and sizes for pinch) in-place on the
     // existing nodes and run one syncAll on touchend to settle.
-    if(e.touches.length===1 && dragging){
+    if(e.touches.length===1 && resizing){
+      e.preventDefault();
+      _doResize(svgPt(e.touches[0].clientX, e.touches[0].clientY));
+    } else if(e.touches.length===1 && dragging){
       e.preventDefault();
       var pt = svgPt(e.touches[0].clientX, e.touches[0].clientY);
       S.pos[dragging].x = Math.round(startPos.x + (pt.x - startSVG.x) * dragScale);
@@ -1762,6 +1842,7 @@ function setupDrag(svg, stepId) {
   },{passive:false});
 
   function _endTouch(){
+    if (resizing) { _endResize(); return; }
     if (!dragging && !pinchKey) return;
     dragging=null; dragScale=1; pinchStart=null; pinchKey=null; pinchStartSize=null;
     // One full syncAll at the end of the gesture so multi-line text hit
@@ -1852,6 +1933,39 @@ function _makeSelectionOutline(ns, w, h){
   r.setAttribute('stroke-dasharray', '8 4');
   r.setAttribute('pointer-events', 'none');
   return r;
+}
+
+/**
+ * Builds one of the four corner resize handles for the Stage 3
+ * transform control box. Tag-soup so the drag handler can spot it
+ * via closest('[data-action="resize"]') and read which corner from
+ * data-corner.
+ */
+function _makeResizeHandle(ns, key, corner, cx, cy){
+  var g = document.createElementNS(ns, 'g');
+  g.setAttribute('data-action', 'resize');
+  g.setAttribute('data-key',    key);
+  g.setAttribute('data-corner', corner);
+  g.setAttribute('class',       'bcp-resize-handle');
+  g.setAttribute('transform',   'translate(' + cx + ',' + cy + ')');
+  // Big invisible hit-target so it's tappable on mobile.
+  var hit = document.createElementNS(ns, 'circle');
+  hit.setAttribute('r', 28);
+  hit.setAttribute('fill', 'rgba(0,0,0,0.001)');
+  hit.setAttribute('pointer-events', 'all');
+  g.appendChild(hit);
+  // Visible square in dark with mint outline.
+  var sq = document.createElementNS(ns, 'rect');
+  sq.setAttribute('x', -9);
+  sq.setAttribute('y', -9);
+  sq.setAttribute('width', 18);
+  sq.setAttribute('height', 18);
+  sq.setAttribute('rx', 3);
+  sq.setAttribute('fill', '#1A1A1A');
+  sq.setAttribute('stroke', '#5DCAA5');
+  sq.setAttribute('stroke-width', 2);
+  g.appendChild(sq);
+  return g;
 }
 
 /**
