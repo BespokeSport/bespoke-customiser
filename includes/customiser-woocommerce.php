@@ -227,6 +227,51 @@ function bespoke_wc_enqueue_product_page_styles() {
     );
 }
 
+/**
+ * Inline cart / checkout styling. The custom cart-item-data rows we
+ * append via woocommerce_get_item_data render through WC's standard
+ * <dl class="variation"><dt>…</dt><dd>…</dd></dl> markup, but the
+ * Astra theme + most stock WC themes target the <ul class="variation">
+ * <li> markup that WC uses to display variation attributes. Without
+ * matching CSS, the dl/dt/dd rows stack vertically with labels on
+ * their own line and values on the next — which is what's showing as
+ * "Band Thickness:" then "8CM BAND" on a new line.
+ *
+ * This rule normalises both forms so each cart row reads as
+ *   Label: Value
+ * on a single line (or wraps as one continuous block), matching the
+ * variation attribute display directly above it.
+ */
+add_action( 'wp_head', function () {
+    if ( ! function_exists( 'is_cart' ) ) return;
+    if ( ! is_cart() && ! is_checkout() ) return;
+    ?>
+    <style id="bespoke-cart-meta-styles">
+    /* Reset the dl wrapper so the dt+dd flow as one block per row. */
+    .woocommerce-cart .cart_item dl.variation,
+    .woocommerce-checkout .cart_item dl.variation { margin: 0; padding: 0; }
+    /* Label */
+    .woocommerce-cart .cart_item dl.variation dt,
+    .woocommerce-checkout .cart_item dl.variation dt {
+        float: left; clear: left;
+        margin: 0 .25em .25em 0; padding: 0;
+        font-weight: 500;
+    }
+    /* Value sits next to the label, then the row clears so the next
+       dt starts on its own line. */
+    .woocommerce-cart .cart_item dl.variation dd,
+    .woocommerce-checkout .cart_item dl.variation dd {
+        float: none; margin: 0 0 .25em 0; padding: 0;
+        font-weight: 500; overflow: hidden;
+    }
+    .woocommerce-cart .cart_item dl.variation dd p,
+    .woocommerce-checkout .cart_item dl.variation dd p {
+        margin: 0; display: inline;
+    }
+    </style>
+    <?php
+} );
+
 
 /* =========================================================================
    1. PERSIST CUSTOMISATION DATA TO THE ORDER
