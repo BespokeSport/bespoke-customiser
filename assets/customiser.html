@@ -156,6 +156,15 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
 .draggable{cursor:grab;touch-action:none;-ms-touch-action:none;-webkit-user-select:none;user-select:none;}
 .draggable:active{cursor:grabbing;}
 
+/* Per-step "Add back" panel — shows up only when the customer has
+   deleted a badge / name / number via the in-preview X button. Each
+   button reads "+ Add left badge" etc. and re-renders the element on
+   tap. renderAddBackPanel() owns the contents. */
+.add-back-panel{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 12px;}
+.add-back-panel:empty{display:none;}
+.add-back-btn{flex:1 1 auto;padding:10px 14px;border:1.5px dashed #5DCAA5;border-radius:10px;background:rgba(93,202,165,0.08);color:#5DCAA5;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;text-transform:uppercase;letter-spacing:.04em;transition:background .15s,border-style .15s;}
+.add-back-btn:hover{background:rgba(93,202,165,0.18);border-style:solid;}
+
 /* Background variant toggle — currently used by the Pennant (Frill /
    No Frill) and the Armband (5cm band / 8cm band). Init code reveals
    .bg-variant-row when the conditions are met; the buttons render the
@@ -520,6 +529,11 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
       <span style="font-size:13px;color:#F5F5F0;flex:1;" id="badge-fname"></span>
       <button onclick="removeBadge()" style="background:none;border:none;cursor:pointer;color:#555555;font-size:20px;line-height:1;padding:0 4px;">×</button>
     </div>
+    <!-- Add-back panel: shows "+ Add left/right badge" buttons whenever
+         the customer has deleted one via the in-preview X button.
+         renderAddBackPanel() in the JS keeps the contents in sync with
+         S.hidden. Empty when nothing is hidden. -->
+    <div class="add-back-panel" id="add-back-badge"></div>
     <div class="sec-label" style="margin-top:4px;">Badge size</div>
     <div class="size-row">
       <label>Small</label>
@@ -565,6 +579,8 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
       <div class="zone-row"><div class="zone-info"><div class="zone-lbl">Name text</div><div class="zone-sub">Player name colour</div></div><div class="ct" id="ct-name" style="background:#FFFFFF;"><input type="color" value="#FFFFFF" id="cp-name" oninput="debouncedColor('name',this.value)"/></div></div>
     </div>
     <p class="hint">Leave blank for no name on your pads.</p>
+    <!-- Add-back panel for names (Stage 2 delete + re-add). -->
+    <div class="add-back-panel" id="add-back-name"></div>
     <div class="nav-row"><button class="btn-back" onclick="goTo(0)">←</button><button class="btn-next" onclick="goTo(2)">Next: add number →</button></div>
   </div>
 
@@ -599,6 +615,8 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
       <div class="zone-row"><div class="zone-info"><div class="zone-lbl">Number text</div><div class="zone-sub">Squad number colour</div></div><div class="ct" id="ct-num" style="background:#FFFFFF;"><input type="color" value="#FFFFFF" id="cp-num" oninput="debouncedColor('num',this.value)"/></div></div>
     </div>
     <p class="hint">Leave blank for no number on your pads.</p>
+    <!-- Add-back panel for numbers (Stage 2 delete + re-add). -->
+    <div class="add-back-panel" id="add-back-num"></div>
     <div class="nav-row"><button class="btn-back" onclick="goTo(1)">←</button><button class="btn-next" onclick="goTo(3)">Next: choose design →</button></div>
   </div>
 
@@ -756,7 +774,7 @@ var S = {
   nameL:'', nameR:'', numL:'', numR:'',
   sameName:true, sameNum:true,
   badge:null, badgeURL:null, design:'vanguard',
-  padSize:bespokeDefaultSize(), orderNotes:"", badgeSize:DEFSZ.badgeSize, nameSize:DEFSZ.nameSize, numSize:DEFSZ.numSize, nameFontFamily:'"Arial Black", Arial, sans-serif', numFontFamily:'"Arial Black", Arial, sans-serif', useBgAlt:false,
+  padSize:bespokeDefaultSize(), orderNotes:"", badgeSize:DEFSZ.badgeSize, nameSize:DEFSZ.nameSize, numSize:DEFSZ.numSize, nameFontFamily:'"Arial Black", Arial, sans-serif', numFontFamily:'"Arial Black", Arial, sans-serif', useBgAlt:false, hidden:{badgeL:false,badgeR:false,nameL:false,nameR:false,numL:false,numR:false},
   pos: JSON.parse(JSON.stringify(DEF))
 };
 var PROG=[20,40,60,80,100,100,100];
@@ -1261,6 +1279,10 @@ function updatePreview(stepId) {
       var _badges = [{key:'badgeL',x:S.pos.badgeL.x,y:S.pos.badgeL.y},
        {key:'badgeR',x:S.pos.badgeR.x,y:S.pos.badgeR.y}];
       if (bespokeBadgeZones() === 1) _badges = [_badges[0]];
+      // Drop any badges the customer has explicitly hidden via the
+      // delete X button (Stage 2: per-element delete). The Add-back
+      // panel in the badge step rebuilds them on demand.
+      _badges = _badges.filter(function(b){ return !(S.hidden && S.hidden[b.key]); });
       _badges.forEach(function(item){
         var g = document.createElementNS(ns,'g');
         g.setAttribute('class','draggable');
@@ -1286,6 +1308,13 @@ function updatePreview(stepId) {
         img.setAttribute('width',S.badgeSize); img.setAttribute('height',S.badgeSize);
         img.setAttribute('preserveAspectRatio','xMidYMid meet');
         g.appendChild(img);
+        // Per-element delete X (Stage 2). Only render for 2-badge
+        // products and only when more than one badge is visible — we
+        // never let the customer delete the LAST one (no badges at all
+        // would mean no badge upload point in the design).
+        if (bespokeBadgeZones() === 2 && _badges.length > 1) {
+          g.appendChild(_makeDeleteBtn(ns, item.key, hs + 30, -hs - 30));
+        }
         bl.appendChild(g);
       });
       // ── Band-mirror clones ──────────────────────────────────────────
@@ -1335,6 +1364,9 @@ function updatePreview(stepId) {
     if (bespokeTextZones() === 1) {
       items = items.filter(function(it){ return it.key === 'nameL' || it.key === 'numL'; });
     }
+    // Drop any text items the customer has explicitly hidden via the
+    // delete X button (Stage 2: per-element delete).
+    items = items.filter(function(it){ return !(S.hidden && S.hidden[it.key]); });
     items.forEach(function(item){
       if(!item.txt) return;
       var g = document.createElementNS(ns,'g');
@@ -1491,6 +1523,17 @@ function updatePreview(stepId) {
         t.textContent = item.txt;
       }
       g.appendChild(t);
+      // Delete X for 2-zone text products — only when more than one
+      // text element of this kind is visible (we never delete the last
+      // visible nameL / numL / etc.). Position is offset from the text
+      // baseline so the X clears the glyphs even at the largest sizes.
+      var _sameKind = items.filter(function(it){
+        return it.key.indexOf(item.key.substring(0, item.key.length - 1)) === 0;
+      });
+      if (bespokeTextZones() === 2 && _sameKind.length > 1) {
+        var _txtHalfW = Math.max(_maxLen * item.size * 0.35, item.size * 0.8);
+        g.appendChild(_makeDeleteBtn(ns, item.key, _txtHalfW + 30, -item.size * 0.6 - 20));
+      }
       tl.appendChild(g);
     });
     // ── Mask layer ────────────────────────────────────────────────────
@@ -1575,6 +1618,14 @@ function setupDrag(svg, stepId) {
   }
 
   svg.addEventListener('mousedown', function(e){
+    // Delete-X tap — intercept BEFORE the drag setup so a click on the
+    // X removes the element instead of starting a drag.
+    var del = e.target.closest('[data-action="delete"]');
+    if (del) {
+      e.preventDefault();
+      hideDraggable(del.getAttribute('data-key'));
+      return;
+    }
     var t = e.target.closest('.draggable'); if(!t) return;
     e.preventDefault();
     dragging = t.getAttribute('data-drag');
@@ -1600,6 +1651,12 @@ function setupDrag(svg, stepId) {
   // Touch drag
   svg.addEventListener('touchstart', function(e){
     if(e.touches.length===1){
+      var del = e.target.closest('[data-action="delete"]');
+      if (del) {
+        e.preventDefault();
+        hideDraggable(del.getAttribute('data-key'));
+        return;
+      }
       var t = e.target.closest('.draggable'); if(!t) return;
       e.preventDefault();
       dragging = t.getAttribute('data-drag');
@@ -1678,6 +1735,112 @@ function setupDrag(svg, stepId) {
 }
 
 function syncAll(){ Object.keys(previews).forEach(function(k){updatePreview(parseInt(k));}); }
+
+/**
+ * Builds an SVG <g> containing a circle + X — the in-canvas delete
+ * button rendered over each draggable element. The drag handler
+ * (setupDrag) checks closest('[data-action="delete"]') BEFORE the
+ * .draggable lookup so a tap on this button drops the element instead
+ * of starting a drag.
+ *
+ * key: the data-drag value of the element this button removes
+ *       ("badgeL", "nameR", etc.)
+ * cx, cy: position relative to the parent draggable group's origin
+ *       (so the button can sit at the corner of a badge or beside text).
+ */
+function _makeDeleteBtn(ns, key, cx, cy){
+  var g = document.createElementNS(ns, 'g');
+  g.setAttribute('data-action', 'delete');
+  g.setAttribute('data-key',    key);
+  g.setAttribute('class',       'bcp-delete-btn');
+  g.setAttribute('transform',   'translate(' + cx + ',' + cy + ')');
+  g.style.cursor = 'pointer';
+  // Big invisible tap-target for finger friendliness. ~80 SVG units
+  // ≈ 28px on a typical 360px-wide phone canvas — comfortable on
+  // touch even when the badge underneath is small.
+  var hit = document.createElementNS(ns, 'circle');
+  hit.setAttribute('r', 80);
+  hit.setAttribute('fill', 'rgba(0,0,0,0.001)');
+  hit.setAttribute('pointer-events', 'all');
+  g.appendChild(hit);
+  // Visible badge — small dark disc with mint outline.
+  var disc = document.createElementNS(ns, 'circle');
+  disc.setAttribute('r', 32);
+  disc.setAttribute('fill', '#1A1A1A');
+  disc.setAttribute('stroke', '#5DCAA5');
+  disc.setAttribute('stroke-width', 4);
+  g.appendChild(disc);
+  // X strokes.
+  var x = document.createElementNS(ns, 'path');
+  x.setAttribute('d', 'M -14 -14 L 14 14 M 14 -14 L -14 14');
+  x.setAttribute('stroke', '#5DCAA5');
+  x.setAttribute('stroke-width', 5);
+  x.setAttribute('stroke-linecap', 'round');
+  x.setAttribute('fill', 'none');
+  g.appendChild(x);
+  return g;
+}
+
+/**
+ * Hide an element via the delete X. Bumps S.hidden[key] to true and
+ * rebuilds all previews + the add-back panel in the relevant step.
+ * Refuses to hide the LAST visible badge / text of its kind so we
+ * never end up with zero elements (which would also leave nothing
+ * to "delete" from the next tap).
+ */
+function hideDraggable(key){
+  if (!key || !S.hidden) return;
+  // Count visible siblings of this element's family before hiding.
+  var fam   = key.replace(/[LR]$/, '');
+  var sibs  = [fam + 'L', fam + 'R'].filter(function(k){
+    return !S.hidden[k];
+  });
+  if (sibs.length <= 1) return; // last one — keep it
+  S.hidden[key] = true;
+  renderAddBackPanel();
+  syncAll();
+}
+
+/**
+ * Unhide an element (called by the Add-back panel buttons). Rebuilds
+ * the panel and triggers a syncAll so the preview repaints.
+ */
+function showDraggable(key){
+  if (!key || !S.hidden) return;
+  S.hidden[key] = false;
+  renderAddBackPanel();
+  syncAll();
+}
+
+/**
+ * Render the per-step Add-back panels — one for badges, one for names,
+ * one for numbers. Each panel shows a chunky button per hidden element
+ * ("+ Add right badge", "+ Add left name", etc.). Empty when nothing
+ * is hidden, so the panel collapses out of the layout.
+ */
+function renderAddBackPanel(){
+  if (!window.S || !S.hidden) return;
+  var groups = [
+    { id: 'add-back-badge', keys: ['badgeL','badgeR'], label: 'badge' },
+    { id: 'add-back-name',  keys: ['nameL','nameR'],   label: 'name'  },
+    { id: 'add-back-num',   keys: ['numL','numR'],     label: 'number'}
+  ];
+  groups.forEach(function(grp){
+    var host = document.getElementById(grp.id);
+    if (!host) return;
+    host.innerHTML = '';
+    grp.keys.forEach(function(k){
+      if (!S.hidden[k]) return;
+      var side = k.endsWith('L') ? 'left' : 'right';
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'add-back-btn';
+      btn.textContent = '+ Add ' + side + ' ' + grp.label;
+      btn.onclick = function(){ showDraggable(k); };
+      host.appendChild(btn);
+    });
+  });
+}
 
 /**
  * Diameter-driven band-width scaling has been disabled — see the
@@ -2159,7 +2322,7 @@ function fillSummary(){
   setSumRow('sd-nu',  'sh-nu',  S.numColor,  null);
 }
 function reset(){
-  S={step:0,bgColor:'#feef00',patColor:'#211d33',patColors:[],bgGradient:null,patGradients:[],nameColor:'#FFFFFF',numColor:'#FFFFFF',nameL:'',nameR:'',numL:'',numR:'',sameName:true,sameNum:true,badge:null,badgeURL:null,design:'vanguard',padSize:bespokeDefaultSize(),orderNotes:"",badgeSize:DEFSZ.badgeSize,nameSize:DEFSZ.nameSize,numSize:DEFSZ.numSize,nameFontFamily:'"Arial Black", Arial, sans-serif',numFontFamily:'"Arial Black", Arial, sans-serif',useBgAlt:false,pos:JSON.parse(JSON.stringify(DEF))};
+  S={step:0,bgColor:'#feef00',patColor:'#211d33',patColors:[],bgGradient:null,patGradients:[],nameColor:'#FFFFFF',numColor:'#FFFFFF',nameL:'',nameR:'',numL:'',numR:'',sameName:true,sameNum:true,badge:null,badgeURL:null,design:'vanguard',padSize:bespokeDefaultSize(),orderNotes:"",badgeSize:DEFSZ.badgeSize,nameSize:DEFSZ.nameSize,numSize:DEFSZ.numSize,nameFontFamily:'"Arial Black", Arial, sans-serif',numFontFamily:'"Arial Black", Arial, sans-serif',useBgAlt:false, hidden:{badgeL:false,badgeR:false,nameL:false,nameR:false,numL:false,numR:false},pos:JSON.parse(JSON.stringify(DEF))};
   previews={};
   for(var i=0;i<6;i++){var pb=document.getElementById('pb'+i);if(pb)pb.innerHTML='';}
   document.getElementById('s6').classList.remove('active');
@@ -2934,6 +3097,13 @@ function bespokeAddToCart() {
     // Frill / No Frill) and Armbands (5cm band / 8cm band). Sent for
     // every product so production always sees a definitive answer.
     formData.append('bespoke_bg_variant', S.useBgAlt ? 'alt' : 'default');
+    // Per-element hidden state — Stage 2 delete + re-add. CSV of any
+    // key the customer chose to remove (e.g. "badgeR,nameR"). Empty
+    // string when everything's visible. Production reads this to know
+    // a side has no badge / text.
+    var _hiddenCsv = Object.keys(S.hidden || {})
+      .filter(function(k){ return S.hidden[k]; }).join(',');
+    formData.append('bespoke_hidden_elements', _hiddenCsv);
     // Friendly label so the order screen / customer email show
     // "5cm band" instead of "alt". Looked up from BG_VARIANT_LABELS.
     var _bgVarLabels = (typeof BG_VARIANT_LABELS !== 'undefined') ? BG_VARIANT_LABELS[bespokeProductType()] : null;
@@ -3005,6 +3175,7 @@ _bsInit('zoneConfig',   function(){ applyZoneConfig(); });
 _bsInit('sizes',        function(){ renderSizes(); });
 _bsInit('plateLabels',  function(){ relabelNumberStepForPlate(); });
 _bsInit('bgVariant',    function(){ initBgVariantToggle(); });
+_bsInit('addBack',      function(){ renderAddBackPanel(); });
 
 </script>
 </body>

@@ -499,6 +499,18 @@ function bespoke_handle_add_to_cart() {
             'bg_variant'       => ( ( $_POST['bespoke_bg_variant'] ?? '' ) === 'alt' ) ? 'alt' : 'default',
             'bg_variant_label' => sanitize_text_field( $_POST['bespoke_bg_variant_label'] ?? '' ),
 
+            // ── Hidden elements ──────────────────────────────────────────────
+            // CSV of badge / name / number positions the customer chose to
+            // remove via the in-preview X (e.g. "badgeR,nameR"). Production
+            // reads this so e.g. a single-badge armband design knows which
+            // side to leave blank.
+            'hidden_elements' => array_values( array_filter( array_map(
+                'sanitize_key',
+                explode( ',', wp_unslash( $_POST['bespoke_hidden_elements'] ?? '' ) )
+            ), function( $k ) {
+                return in_array( $k, [ 'badgeL', 'badgeR', 'nameL', 'nameR', 'numL', 'numR' ], true );
+            } ) ),
+
             // ── Cart thumbnail ────────────────────────────────────────────────
             // SVG preview uploaded just before add-to-cart. Shown in cart
             // instead of the default product image so the customer can see
