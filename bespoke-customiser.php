@@ -47,7 +47,14 @@ add_action( 'plugins_loaded', function() {
 register_activation_hook( __FILE__, function() {
     if ( ! file_exists( BESPOKE_UPLOAD_DIR ) ) {
         wp_mkdir_p( BESPOKE_UPLOAD_DIR );
-        // Protect directory from direct browsing
-        file_put_contents( BESPOKE_UPLOAD_DIR . '.htaccess', 'Options -Indexes' );
+        // Block directory listing AND deny execution of any
+        // server-side script extensions ever written here — defence in
+        // depth so a future upload bug can't plant a runnable .php.
+        file_put_contents( BESPOKE_UPLOAD_DIR . '.htaccess',
+            "Options -Indexes\n" .
+            "<FilesMatch \"\\.(php|phtml|phar|pl|py|cgi|sh)\$\">\n" .
+            "    Require all denied\n" .
+            "</FilesMatch>\n"
+        );
     }
 });

@@ -44,7 +44,12 @@ if ( ! defined( 'BESPOKE_PRODUCT_ASSETS_DIR' ) ) {
 add_action( 'init', function() {
     if ( ! file_exists( BESPOKE_PRODUCT_ASSETS_DIR ) ) {
         wp_mkdir_p( BESPOKE_PRODUCT_ASSETS_DIR );
-        @file_put_contents( BESPOKE_PRODUCT_ASSETS_DIR . '.htaccess', "Options -Indexes\n" );
+        @file_put_contents( BESPOKE_PRODUCT_ASSETS_DIR . '.htaccess',
+            "Options -Indexes\n" .
+            "<FilesMatch \"\\.(php|phtml|phar|pl|py|cgi|sh)\$\">\n" .
+            "    Require all denied\n" .
+            "</FilesMatch>\n"
+        );
     }
 } );
 
@@ -113,7 +118,20 @@ add_action( 'wp_ajax_bespoke_upload_product_asset', function() {
     $safe_name = $product_type . '-' . $asset_type . '.' . $ext;
     $target    = BESPOKE_PRODUCT_ASSETS_DIR . $safe_name;
 
-    if ( ! @move_uploaded_file( $file['tmp_name'], $target ) ) {
+    // Sanitise SVG before writing — the file is publicly served from
+    // BESPOKE_PRODUCT_ASSETS_URL, so any <script>/onload payload in an
+    // admin-uploaded SVG would execute when a customer views the
+    // customiser. Admin upload but defence-in-depth.
+    if ( $ext === 'svg' && function_exists( 'bespoke_sanitise_svg' ) ) {
+        $raw   = file_get_contents( $file['tmp_name'] );
+        $clean = bespoke_sanitise_svg( $raw );
+        if ( $clean === '' ) {
+            wp_send_json_error( 'SVG could not be processed safely.' );
+        }
+        if ( file_put_contents( $target, $clean ) === false ) {
+            wp_send_json_error( 'Could not save file (check folder permissions on /wp-content/uploads/bespoke-product-assets/)' );
+        }
+    } elseif ( ! move_uploaded_file( $file['tmp_name'], $target ) ) {
         wp_send_json_error( 'Could not save file (check folder permissions on /wp-content/uploads/bespoke-product-assets/)' );
     }
 

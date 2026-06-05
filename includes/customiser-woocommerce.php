@@ -60,6 +60,11 @@ function bespoke_wc_add_customiser_type_field() {
 add_action( 'woocommerce_process_product_meta', 'bespoke_wc_save_customiser_type_field' );
 
 function bespoke_wc_save_customiser_type_field( $post_id ) {
+    // Defence in depth — WC's own save flow already cap-checks before
+    // firing woocommerce_process_product_meta, but explicit checks make
+    // the handler safe if it's ever invoked from a non-WC code path.
+    if ( ! current_user_can( 'edit_post', $post_id ) ) return;
+    if ( get_post_type( $post_id ) !== 'product' )    return;
     if ( ! isset( $_POST['_bespoke_product_type'] ) ) {
         return;
     }

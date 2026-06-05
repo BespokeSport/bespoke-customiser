@@ -112,6 +112,92 @@ function bespoke_collect_pattern_gradients() {
 
 
 /* =========================================================================
+   SECURITY HELPERS
+   Stored-XSS and origin-spoofing protection used by every upload + cart
+   handler below. Centralised so a future endpoint can't bypass them.
+   ========================================================================= */
+
+/**
+ * Strip everything dangerous out of an SVG string and return a safe
+ * version (or empty string when the input cannot be parsed). Removes
+ *   - <script>, <foreignObject>, <iframe>, <embed>, <object>, <link>
+ *   - every on* event-handler attribute
+ *   - any href / xlink:href starting with javascript: / data:text/html
+ *   - DOCTYPE declarations (blocks XXE + entity-bomb DoS)
+ * Built around DOMDocument with LIBXML_NONET so external entities never
+ * resolve, matching defence-in-depth recommendations from the security
+ * audit (Task #6).
+ *
+ * @param string $svg Raw SVG markup.
+ * @return string     Sanitised SVG markup, or '' if unrecoverable.
+ */
+function bespoke_sanitise_svg( $svg ) {
+    if ( ! is_string( $svg ) || $svg === '' ) return '';
+    // Block DOCTYPE / external entities entirely — easier than trying to
+    // parse them safely.
+    if ( stripos( $svg, '<!DOCTYPE' ) !== false || stripos( $svg, '<!ENTITY' ) !== false ) {
+        return '';
+    }
+    libxml_use_internal_errors( true );
+    $doc = new DOMDocument();
+    $loaded = $doc->loadXML( $svg, LIBXML_NONET | LIBXML_NOERROR | LIBXML_NOWARNING );
+    libxml_clear_errors();
+    libxml_use_internal_errors( false );
+    if ( ! $loaded ) return '';
+
+    $banned_tags  = [ 'script', 'foreignObject', 'iframe', 'embed', 'object', 'link', 'meta', 'base' ];
+    $bad_url_pref = [ 'javascript:', 'data:text/html', 'data:application/javascript', 'vbscript:' ];
+
+    $xpath = new DOMXPath( $doc );
+    // Drop banned tags wholesale.
+    foreach ( $banned_tags as $tag ) {
+        $nodes = $xpath->query( '//*[local-name()="' . $tag . '"]' );
+        for ( $i = $nodes->length - 1; $i >= 0; $i-- ) {
+            $n = $nodes->item( $i );
+            if ( $n && $n->parentNode ) $n->parentNode->removeChild( $n );
+        }
+    }
+    // Walk every element, strip dangerous attributes.
+    $elements = $xpath->query( '//*' );
+    foreach ( $elements as $el ) {
+        $to_remove = [];
+        foreach ( $el->attributes as $attr ) {
+            $name  = strtolower( $attr->name );
+            $value = (string) $attr->value;
+            if ( strpos( $name, 'on' ) === 0 ) { $to_remove[] = $attr->name; continue; }
+            if ( in_array( $name, [ 'href', 'xlink:href', 'action', 'formaction', 'src' ], true ) ) {
+                $v = strtolower( trim( $value ) );
+                foreach ( $bad_url_pref as $bad ) {
+                    if ( strpos( $v, $bad ) === 0 ) { $to_remove[] = $attr->name; break; }
+                }
+            }
+        }
+        foreach ( $to_remove as $attr_name ) {
+            $el->removeAttribute( $attr_name );
+        }
+    }
+    return $doc->saveXML() ?: '';
+}
+
+/**
+ * True when $url points inside the WP uploads directory of this site.
+ * Used to gate any URL coming from a customer's cart blob — preview
+ * thumbnails, badge URLs etc. — before storing or rendering, so an
+ * attacker can't smuggle an external phishing / SSRF URL into the
+ * admin order screen.
+ */
+function bespoke_is_local_upload_url( $url ) {
+    $url = (string) $url;
+    if ( $url === '' ) return false;
+    $u = esc_url_raw( $url );
+    if ( ! $u ) return false;
+    $base = wp_upload_dir();
+    if ( empty( $base['baseurl'] ) ) return false;
+    return strpos( $u, $base['baseurl'] ) === 0;
+}
+
+
+/* =========================================================================
    1. BADGE UPLOAD
    ========================================================================= */
 
@@ -172,8 +258,24 @@ function bespoke_handle_badge_upload() {
     $dest_path = BESPOKE_UPLOAD_DIR . $safe_name;
     $dest_url  = BESPOKE_UPLOAD_URL . $safe_name;
 
-    if ( ! move_uploaded_file( $file['tmp_name'], $dest_path ) ) {
-        wp_send_json_error( 'Could not save the badge image. Please try again.' );
+    // SVG path — read the upload, strip executable content (XSS via
+    // <script>/onload/javascript: hrefs/etc.), write the sanitised
+    // output. NEVER copy raw SVG to disk — anonymous visitors can
+    // upload here, so a malicious SVG would otherwise be served back
+    // and execute in the site origin when later viewed.
+    if ( $real_mime === 'image/svg+xml' ) {
+        $raw   = file_get_contents( $file['tmp_name'] );
+        $clean = bespoke_sanitise_svg( $raw );
+        if ( $clean === '' ) {
+            wp_send_json_error( 'Badge SVG could not be processed safely.' );
+        }
+        if ( file_put_contents( $dest_path, $clean ) === false ) {
+            wp_send_json_error( 'Could not save the badge image. Please try again.' );
+        }
+    } else {
+        if ( ! move_uploaded_file( $file['tmp_name'], $dest_path ) ) {
+            wp_send_json_error( 'Could not save the badge image. Please try again.' );
+        }
     }
 
     // ── Return the public URL and filename to the frontend ───────────────────
@@ -205,19 +307,37 @@ function bespoke_handle_preview_upload() {
 
     $file = $_FILES['preview'];
 
+    // ── File size cap (5 MB) — same as the badge upload, prevents
+    // anonymous-visitor disk-exhaustion DoS against this nopriv endpoint.
+    $max_bytes = 5 * 1024 * 1024;
+    if ( ! empty( $file['size'] ) && $file['size'] > $max_bytes ) {
+        wp_send_json_error( 'Preview file too large. Maximum is 5 MB.' );
+    }
+    if ( ! is_uploaded_file( $file['tmp_name'] ) ) {
+        wp_send_json_error( 'Invalid upload.' );
+    }
+
     // Read the raw content
     $content = file_get_contents( $file['tmp_name'] );
 
     // ── PNG branch ──────────────────────────────────────────────────────────
-    // Detect PNG by magic bytes (first 4 bytes = \x89PNG). If it's a PNG, we
-    // just save it directly — no XML parsing or namespace work needed. This
-    // is the preferred path: the frontend renders the SVG to canvas and
-    // uploads the PNG, sidestepping every SVG quirk.
-    if ( substr( $content, 0, 4 ) === "\x89PNG" ) {
+    // Validate as a REAL PNG before writing — not just first 4 magic bytes.
+    // getimagesize() will return false on anything that isn't a parseable
+    // image, so an attacker can't smuggle arbitrary bytes by prefixing
+    // \x89PNG. Also enforces the real MIME via finfo.
+    $finfo     = finfo_open( FILEINFO_MIME_TYPE );
+    $real_mime = $finfo ? finfo_file( $finfo, $file['tmp_name'] ) : '';
+    if ( $finfo ) finfo_close( $finfo );
+
+    if ( $real_mime === 'image/png' ) {
+        $info = @getimagesize( $file['tmp_name'] );
+        if ( ! $info || ( $info[2] ?? 0 ) !== IMAGETYPE_PNG ) {
+            wp_send_json_error( 'Preview PNG failed validation.' );
+        }
         $safe_name = 'preview-' . time() . '-' . wp_generate_uuid4() . '.png';
         $dest_path = BESPOKE_UPLOAD_DIR . $safe_name;
         $dest_url  = BESPOKE_UPLOAD_URL . $safe_name;
-        if ( file_put_contents( $dest_path, $content ) === false ) {
+        if ( ! move_uploaded_file( $file['tmp_name'], $dest_path ) ) {
             wp_send_json_error( 'Could not save preview PNG.' );
         }
         wp_send_json_success( [ 'url' => $dest_url ] );
@@ -314,8 +434,14 @@ function bespoke_handle_preview_upload() {
     $dest_path = BESPOKE_UPLOAD_DIR . $safe_name;
     $dest_url  = BESPOKE_UPLOAD_URL . $safe_name;
 
-    // Write the (possibly patched) content directly rather than move_uploaded_file
-    if ( file_put_contents( $dest_path, $content ) === false ) {
+    // Sanitise BEFORE writing — strips <script> / on* handlers /
+    // javascript: hrefs / DOCTYPE entities, so even an attacker-crafted
+    // SVG can't execute when later viewed.
+    $clean = bespoke_sanitise_svg( $content );
+    if ( $clean === '' ) {
+        wp_send_json_error( 'Preview SVG could not be processed safely.' );
+    }
+    if ( file_put_contents( $dest_path, $clean ) === false ) {
         wp_send_json_error( 'Could not save preview image.' );
     }
 
@@ -350,6 +476,20 @@ function bespoke_handle_add_to_cart() {
 
     // ── Security ─────────────────────────────────────────────────────────────
     check_ajax_referer( 'bespoke_add_to_cart', 'nonce' );
+
+    // ── Per-IP rate limit ────────────────────────────────────────────────────
+    // Anonymous endpoint, so a naïve attacker could flood the session +
+    // postmeta tables. Allow ~30 attempts per IP per minute — generous
+    // for legitimate "tweak and re-add" customers, tight enough that a
+    // single IP can't blow up the DB. Uses a short-lived transient so it
+    // self-cleans and doesn't grow the options table.
+    $ip       = isset( $_SERVER['REMOTE_ADDR'] ) ? wp_unslash( $_SERVER['REMOTE_ADDR'] ) : '';
+    $ip_key   = 'bespoke_atc_' . md5( (string) $ip );
+    $attempts = (int) get_transient( $ip_key );
+    if ( $attempts >= 30 ) {
+        wp_send_json_error( 'Too many add-to-cart attempts — please wait a minute and try again.' );
+    }
+    set_transient( $ip_key, $attempts + 1, MINUTE_IN_SECONDS );
 
     // ── Ensure WooCommerce session and cart are ready ─────────────────────────
     //
@@ -462,9 +602,15 @@ function bespoke_handle_add_to_cart() {
 
             // ── Club badge ────────────────────────────────────────────────────
             // The URL was returned by the bespoke_upload_badge call earlier.
-            // If no badge was uploaded these will be empty strings.
+            // We gate it to the site's own uploads directory so a malicious
+            // customer can't smuggle an external URL into the order — the
+            // admin order screen renders this as a clickable <a><img>, so
+            // an off-site URL would let them phish the admin on click /
+            // exfiltrate the admin's session cookie via the Referer header.
             'badge' => [
-                'url'      => esc_url_raw( $_POST['bespoke_badge_url']      ?? '' ),
+                'url'      => bespoke_is_local_upload_url( $_POST['bespoke_badge_url'] ?? '' )
+                                ? esc_url_raw( $_POST['bespoke_badge_url'] )
+                                : '',
                 'filename' => sanitize_file_name( $_POST['bespoke_badge_filename'] ?? '' ),
                 'x'        => floatval( $_POST['bespoke_badge_x']    ?? 0 ),
                 'y'        => floatval( $_POST['bespoke_badge_y']    ?? 0 ),
@@ -487,7 +633,9 @@ function bespoke_handle_add_to_cart() {
             ],
 
             // ── Order notes ───────────────────────────────────────────────────
-            'notes' => sanitize_textarea_field( $_POST['bespoke_notes'] ?? '' ),
+            // Server-side hard cap at 2k chars so a malicious customer
+            // can't bloat session / postmeta with a megabyte of "notes".
+            'notes' => mb_substr( sanitize_textarea_field( $_POST['bespoke_notes'] ?? '' ), 0, 2000 ),
 
             // ── Background variant ────────────────────────────────────────────
             // Customer's pick from a per-product variant toggle:
@@ -526,8 +674,11 @@ function bespoke_handle_add_to_cart() {
             // ── Cart thumbnail ────────────────────────────────────────────────
             // SVG preview uploaded just before add-to-cart. Shown in cart
             // instead of the default product image so the customer can see
-            // exactly what they designed.
-            'preview_url' => esc_url_raw( $_POST['bespoke_preview_url'] ?? '' ),
+            // exactly what they designed. Same origin-gating as badge.url
+            // above — only accept URLs that live in our own uploads dir.
+            'preview_url' => bespoke_is_local_upload_url( $_POST['bespoke_preview_url'] ?? '' )
+                                ? esc_url_raw( $_POST['bespoke_preview_url'] )
+                                : '',
 
         ],
     ];

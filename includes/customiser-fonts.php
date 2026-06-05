@@ -31,7 +31,12 @@ add_action( 'init', function() {
     if ( ! file_exists( BESPOKE_FONTS_DIR ) ) {
         wp_mkdir_p( BESPOKE_FONTS_DIR );
         // Prevent directory listing.
-        @file_put_contents( BESPOKE_FONTS_DIR . '.htaccess', "Options -Indexes\n" );
+        @file_put_contents( BESPOKE_FONTS_DIR . '.htaccess',
+            "Options -Indexes\n" .
+            "<FilesMatch \"\\.(php|phtml|phar|pl|py|cgi|sh|html?)\$\">\n" .
+            "    Require all denied\n" .
+            "</FilesMatch>\n"
+        );
     }
 } );
 

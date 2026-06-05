@@ -115,7 +115,12 @@ if ( ! defined( 'BESPOKE_DESIGNS_DIR' ) ) {
 add_action( 'init', function() {
     if ( ! file_exists( BESPOKE_DESIGNS_DIR ) ) {
         wp_mkdir_p( BESPOKE_DESIGNS_DIR );
-        @file_put_contents( BESPOKE_DESIGNS_DIR . '.htaccess', "Options -Indexes\n" );
+        @file_put_contents( BESPOKE_DESIGNS_DIR . '.htaccess',
+            "Options -Indexes\n" .
+            "<FilesMatch \"\\.(php|phtml|phar|pl|py|cgi|sh)\$\">\n" .
+            "    Require all denied\n" .
+            "</FilesMatch>\n"
+        );
     }
 } );
 
@@ -145,8 +150,23 @@ add_action( 'wp_ajax_bespoke_upload_layer_file', function() {
         $target = BESPOKE_DESIGNS_DIR . $base . '-' . $counter . '.' . $ext;
         $counter++;
     }
-    if ( ! @move_uploaded_file( $file['tmp_name'], $target ) ) {
-        wp_send_json_error( 'Could not save file (check folder permissions on /wp-content/uploads/bespoke-designs/)' );
+    // Sanitise SVG before writing — admin upload, but the resulting
+    // file is publicly accessible at BESPOKE_DESIGNS_URL, so a stored
+    // <script>/onload payload would execute in the site origin when an
+    // admin (or any visitor opening the design's pattern URL) loads it.
+    if ( $ext === 'svg' && function_exists( 'bespoke_sanitise_svg' ) ) {
+        $raw   = file_get_contents( $file['tmp_name'] );
+        $clean = bespoke_sanitise_svg( $raw );
+        if ( $clean === '' ) {
+            wp_send_json_error( 'SVG could not be processed safely.' );
+        }
+        if ( file_put_contents( $target, $clean ) === false ) {
+            wp_send_json_error( 'Could not save file (check folder permissions on /wp-content/uploads/bespoke-designs/)' );
+        }
+    } else {
+        if ( ! move_uploaded_file( $file['tmp_name'], $target ) ) {
+            wp_send_json_error( 'Could not save file (check folder permissions on /wp-content/uploads/bespoke-designs/)' );
+        }
     }
     wp_send_json_success( [
         'url'      => BESPOKE_DESIGNS_URL . basename( $target ),
@@ -185,8 +205,21 @@ add_action( 'wp_ajax_bespoke_upload_design_svg', function() {
         $counter++;
     }
 
-    if ( ! @move_uploaded_file( $file['tmp_name'], $target ) ) {
-        wp_send_json_error( 'Could not save file (check folder permissions on /wp-content/uploads/bespoke-designs/)' );
+    // Sanitise SVG before writing (admin upload, but the result is
+    // publicly served, so stored <script>/onload would execute).
+    if ( function_exists( 'bespoke_sanitise_svg' ) ) {
+        $raw   = file_get_contents( $file['tmp_name'] );
+        $clean = bespoke_sanitise_svg( $raw );
+        if ( $clean === '' ) {
+            wp_send_json_error( 'SVG could not be processed safely.' );
+        }
+        if ( file_put_contents( $target, $clean ) === false ) {
+            wp_send_json_error( 'Could not save file (check folder permissions on /wp-content/uploads/bespoke-designs/)' );
+        }
+    } else {
+        if ( ! move_uploaded_file( $file['tmp_name'], $target ) ) {
+            wp_send_json_error( 'Could not save file (check folder permissions on /wp-content/uploads/bespoke-designs/)' );
+        }
     }
 
     wp_send_json_success( [

@@ -368,6 +368,11 @@ function bespoke_pdp_render_size_button_row( $i, $row ) {
 add_action( 'woocommerce_process_product_meta', 'bespoke_pdp_save_panel' );
 
 function bespoke_pdp_save_panel( $post_id ) {
+    // Defence-in-depth gate. WC's save flow capability-checks before
+    // firing woocommerce_process_product_meta, but explicit checks
+    // protect us if this is ever called from another code path.
+    if ( ! current_user_can( 'edit_post', $post_id ) ) return;
+    if ( get_post_type( $post_id ) !== 'product' )    return;
     // Simple text fields
     update_post_meta( $post_id, '_bespoke_eyebrow',
         sanitize_text_field( wp_unslash( $_POST['_bespoke_eyebrow'] ?? '' ) )
