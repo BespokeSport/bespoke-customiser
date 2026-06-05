@@ -25,7 +25,7 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
 .screen{display:none;padding:18px;}
 .screen.active{display:block;}
 .preview-box{background:#1a1a1a;border-radius:14px;padding:10px;margin-bottom:8px;}
-.preview-box svg.preview{display:block;width:100%;height:auto;border-radius:6px;max-width:1050px;max-height:1050px;margin:0 auto;}
+.preview-box svg.preview{display:block;width:100%;height:auto;border-radius:6px;max-width:950px;max-height:950px;margin:0 auto;}
 .drag-hint{font-size:12px;font-weight:600;color:#555;text-align:center;margin-bottom:14px;display:flex;align-items:center;justify-content:center;gap:5px;}
 .sec-label{font-size:11px;font-weight:700;color:#888888;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;}
 .nav-row{display:flex;gap:8px;margin-top:4px;}
@@ -272,12 +272,12 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
   #dt-svg-wrap svg {
     /* Try to fill the viewport (height first since the SVG is square),
        capped at both the available width minus the controls column AND
-       a hard 1050px limit so the preview always fits within a
+       a hard 950px limit so the preview always fits within a
        sensible window without the customer needing to scroll. */
-    height:     min(calc(100vh - 32px), calc(100vw - 420px), 1050px) !important;
-    width:      min(calc(100vh - 32px), calc(100vw - 420px), 1050px) !important;
-    max-width:  1050px !important;
-    max-height: 1050px !important;
+    height:     min(calc(100vh - 32px), calc(100vw - 420px), 950px) !important;
+    width:      min(calc(100vh - 32px), calc(100vw - 420px), 950px) !important;
+    max-width:  950px !important;
+    max-height: 950px !important;
     border-radius: 14px;
     display: block;
     flex-shrink: 0;
