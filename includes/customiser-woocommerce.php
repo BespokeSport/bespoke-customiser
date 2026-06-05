@@ -379,6 +379,18 @@ function bespoke_render_cart_shinpads( $item_data, $d ) {
         'value' => ! empty( $d['badge']['url'] ) ? 'Uploaded' : 'Not added',
     ];
 
+    // New fields (Stage 2 / Stage 3) — only render when non-empty so a
+    // bog-standard order without removals or rotation looks the same as
+    // it always has.
+    $removed = bespoke_format_hidden( $d['hidden_elements'] ?? [] );
+    if ( $removed !== '' ) {
+        $item_data[] = [ 'name' => 'Removed', 'value' => esc_html( $removed ) ];
+    }
+    $rot_rows = bespoke_format_rotation( $d['rotation'] ?? [] );
+    if ( $rot_rows ) {
+        $item_data[] = [ 'name' => 'Rotation', 'value' => esc_html( implode( ', ', $rot_rows ) ) ];
+    }
+
     return $item_data;
 }
 
@@ -422,7 +434,14 @@ function bespoke_render_cart_gripsocks( $item_data, $d ) {
         'name'  => 'Club badge',
         'value' => ! empty( $d['badge']['url'] ) ? 'Uploaded' : 'Not added',
     ];
-
+    $removed = bespoke_format_hidden( $d['hidden_elements'] ?? [] );
+    if ( $removed !== '' ) {
+        $item_data[] = [ 'name' => 'Removed', 'value' => esc_html( $removed ) ];
+    }
+    $rot_rows = bespoke_format_rotation( $d['rotation'] ?? [] );
+    if ( $rot_rows ) {
+        $item_data[] = [ 'name' => 'Rotation', 'value' => esc_html( implode( ', ', $rot_rows ) ) ];
+    }
     return $item_data;
 }
 
@@ -896,3 +915,308 @@ function bespoke_render_admin_gripsocks( $d, $item ) {
    it stores whatever 'type' the frontend sends.
 
    ========================================================================= */
+
+
+/* =========================================================================
+   SHARED FORMATTING HELPERS
+   Reused by every product-specific cart / admin renderer below — converts
+   the raw flag values stored in 'data' (hidden_elements as ['badgeR'],
+   rotation as { badgeL: 12.5 }) into customer- and production-readable
+   text. Wrapped as plain functions so any future product renderer can
+   call them without re-implementing the friendly-label logic.
+   ========================================================================= */
+
+/**
+ * Human-readable name for one of the data-drag keys. Used by the cart and
+ * admin renderers to turn 'badgeR' / 'nameL' / etc. into "Right badge" /
+ * "Left name" etc. that the customer + production team can read at a glance.
+ */
+function bespoke_friendly_key( $key ) {
+    $side  = ( substr( $key, -1 ) === 'L' ) ? 'Left'  : 'Right';
+    $thing = '';
+    if ( strpos( $key, 'badge' ) === 0 ) $thing = 'badge';
+    elseif ( strpos( $key, 'name' )  === 0 ) $thing = 'name';
+    elseif ( strpos( $key, 'num' )   === 0 ) $thing = 'number';
+    if ( ! $thing ) return $key;
+    return $side . ' ' . $thing;
+}
+
+/**
+ * Build the "Removed" line for the cart / admin display. Returns an empty
+ * string when nothing was removed.
+ */
+function bespoke_format_hidden( $hidden ) {
+    if ( empty( $hidden ) || ! is_array( $hidden ) ) return '';
+    $labels = array_map( 'bespoke_friendly_key', $hidden );
+    return implode( ', ', $labels );
+}
+
+/**
+ * Build the rotation summary list. Each rotated element becomes a row
+ * "Left badge: 12.5°". Empty array when nothing's rotated.
+ */
+function bespoke_format_rotation( $rotation ) {
+    if ( empty( $rotation ) || ! is_array( $rotation ) ) return [];
+    $rows = [];
+    foreach ( $rotation as $k => $deg ) {
+        if ( abs( (float) $deg ) < 0.1 ) continue;
+        $rows[] = bespoke_friendly_key( $k ) . ': ' . round( (float) $deg, 1 ) . '°';
+    }
+    return $rows;
+}
+
+/**
+ * Background variant friendly label. Prefers the JS-sent label
+ * ("5cm band" / "With Frill"), falls back to 'default' / 'alt' as a
+ * minimum so production never sees an empty cell.
+ */
+function bespoke_format_bg_variant( $d ) {
+    $label = trim( (string) ( $d['bg_variant_label'] ?? '' ) );
+    if ( $label !== '' ) return $label;
+    return ( ( $d['bg_variant'] ?? '' ) === 'alt' ) ? 'Alt' : 'Default';
+}
+
+
+/* =========================================================================
+   ARMBAND — cart + admin renderers
+   ========================================================================= */
+
+function bespoke_render_cart_armbands( $item_data, $d ) {
+    if ( ! empty( $d['size'] ) ) {
+        $item_data[] = [ 'name' => 'Diameter', 'value' => esc_html( $d['size'] ) ];
+    }
+    $thickness = bespoke_format_bg_variant( $d );
+    if ( $thickness ) {
+        $item_data[] = [ 'name' => 'Band thickness', 'value' => esc_html( $thickness ) ];
+    }
+    if ( ! empty( $d['design'] ) ) {
+        $item_data[] = [ 'name' => 'Design', 'value' => esc_html( $d['design'] ) ];
+    }
+    if ( ! empty( $d['left']['name'] ) ) {
+        $item_data[] = [ 'name' => 'Text', 'value' => esc_html( $d['left']['name'] ) ];
+    }
+    $item_data[] = [
+        'name'  => 'Club badge',
+        'value' => ! empty( $d['badge']['url'] ) ? 'Uploaded' : 'Not added',
+    ];
+    $removed = bespoke_format_hidden( $d['hidden_elements'] ?? [] );
+    if ( $removed !== '' ) {
+        $item_data[] = [ 'name' => 'Removed', 'value' => esc_html( $removed ) ];
+    }
+    return $item_data;
+}
+
+function bespoke_render_admin_armbands( $d, $item ) {
+    echo bespoke_render_admin_generic_card( 'Captain Armband', $d, [
+        'size_label'    => 'Diameter',
+        'show_variant'  => 'Band thickness',
+        'show_text'     => [ 'left_name' => 'Slogan / name' ],
+    ] );
+}
+
+
+/* =========================================================================
+   PENNANT — cart + admin renderers
+   ========================================================================= */
+
+function bespoke_render_cart_pennant( $item_data, $d ) {
+    $style = bespoke_format_bg_variant( $d );
+    if ( $style ) {
+        $item_data[] = [ 'name' => 'Style', 'value' => esc_html( $style ) ];
+    }
+    if ( ! empty( $d['design'] ) ) {
+        $item_data[] = [ 'name' => 'Design', 'value' => esc_html( $d['design'] ) ];
+    }
+    if ( ! empty( $d['left']['name'] ) ) {
+        $item_data[] = [ 'name' => 'Text', 'value' => esc_html( $d['left']['name'] ) ];
+    }
+    $item_data[] = [
+        'name'  => 'Club badge',
+        'value' => ! empty( $d['badge']['url'] ) ? 'Uploaded' : 'Not added',
+    ];
+    return $item_data;
+}
+
+function bespoke_render_admin_pennant( $d, $item ) {
+    echo bespoke_render_admin_generic_card( 'Pennant', $d, [
+        'show_variant'  => 'Style',
+        'show_text'     => [ 'left_name' => 'Pennant text' ],
+    ] );
+}
+
+
+/* =========================================================================
+   AWARDS — Plate Trophy, Gamechanger, Glassblock
+   Plate has TWO text fields (Top text / Bottom text wired through left.name +
+   left.number). The other two have one text field each.
+   ========================================================================= */
+
+function bespoke_render_cart_award_plate( $item_data, $d ) {
+    if ( ! empty( $d['design'] ) ) $item_data[] = [ 'name' => 'Design', 'value' => esc_html( $d['design'] ) ];
+    if ( ! empty( $d['left']['name'] ) )   $item_data[] = [ 'name' => 'Top text',    'value' => esc_html( $d['left']['name'] ) ];
+    if ( ! empty( $d['left']['number'] ) ) $item_data[] = [ 'name' => 'Bottom text', 'value' => esc_html( $d['left']['number'] ) ];
+    $item_data[] = [ 'name' => 'Club badge', 'value' => ! empty( $d['badge']['url'] ) ? 'Uploaded' : 'Not added' ];
+    return $item_data;
+}
+function bespoke_render_admin_award_plate( $d, $item ) {
+    echo bespoke_render_admin_generic_card( 'Plate Trophy', $d, [
+        'show_text' => [
+            'left_name'   => 'Top text',
+            'left_number' => 'Bottom text',
+        ],
+    ] );
+}
+
+function bespoke_render_cart_award_gamechanger( $item_data, $d ) {
+    if ( ! empty( $d['design'] ) ) $item_data[] = [ 'name' => 'Design', 'value' => esc_html( $d['design'] ) ];
+    if ( ! empty( $d['left']['name'] ) ) $item_data[] = [ 'name' => 'Text', 'value' => esc_html( $d['left']['name'] ) ];
+    $item_data[] = [ 'name' => 'Club badge', 'value' => ! empty( $d['badge']['url'] ) ? 'Uploaded' : 'Not added' ];
+    return $item_data;
+}
+function bespoke_render_admin_award_gamechanger( $d, $item ) {
+    echo bespoke_render_admin_generic_card( 'Gamechanger Trophy', $d, [
+        'show_text' => [ 'left_name' => 'Text' ],
+    ] );
+}
+
+function bespoke_render_cart_award_glassblock( $item_data, $d ) {
+    if ( ! empty( $d['design'] ) ) $item_data[] = [ 'name' => 'Design', 'value' => esc_html( $d['design'] ) ];
+    if ( ! empty( $d['left']['name'] ) ) $item_data[] = [ 'name' => 'Text', 'value' => esc_html( $d['left']['name'] ) ];
+    $item_data[] = [ 'name' => 'Club badge', 'value' => ! empty( $d['badge']['url'] ) ? 'Uploaded' : 'Not added' ];
+    return $item_data;
+}
+function bespoke_render_admin_award_glassblock( $d, $item ) {
+    echo bespoke_render_admin_generic_card( 'Glassblock Trophy', $d, [
+        'show_text' => [ 'left_name' => 'Text' ],
+    ] );
+}
+
+
+/* =========================================================================
+   GENERIC ADMIN ORDER CARD
+   Reused by every product type added above so we don't replicate the
+   ~200-line shin-pad layout for each. Returns HTML.
+
+   $product_label : friendly header ("Pennant", "Captain Armband").
+   $opts:
+     size_label   — overrides the "Size" row label (e.g. "Diameter").
+     show_variant — when set, renders the bg_variant friendly label as a
+                    row with the given label ("Style", "Band thickness").
+     show_text    — map of [ field => label ]. Keys:
+                      left_name, left_number, right_name, right_number.
+                    Only rows whose value is non-empty render.
+   ========================================================================= */
+function bespoke_render_admin_generic_card( $product_label, $d, $opts = [] ) {
+
+    $row = function( $label, $value ) {
+        if ( $value === '' || $value === null ) $value = '—';
+        return '<tr><td style="padding:5px 10px 5px 0;color:#666;white-space:nowrap;font-size:12px;vertical-align:top;">'
+            . esc_html( $label ) . '</td>'
+            . '<td style="padding:5px 0;font-size:12px;font-weight:600;color:#1a1a1a;">' . $value . '</td></tr>';
+    };
+    $section = function( $heading, $rows_html ) {
+        return '<div style="margin-bottom:14px;">'
+            . '<div style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.6px;padding-bottom:4px;margin-bottom:6px;border-bottom:1px solid #eee;">'
+            . esc_html( $heading ) . '</div>'
+            . '<table style="width:100%;border-collapse:collapse;">' . $rows_html . '</table>'
+            . '</div>';
+    };
+    $swatch = function( $hex ) {
+        if ( ! $hex ) return '—';
+        $safe = esc_attr( $hex );
+        return sprintf(
+            '<span style="display:inline-flex;align-items:center;gap:6px;">'
+            . '<span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:%1$s;border:1px solid rgba(0,0,0,0.15);flex-shrink:0;"></span>'
+            . '<code style="font-size:12px;">%1$s</code></span>',
+            $safe
+        );
+    };
+
+    $size_label   = $opts['size_label']   ?? 'Size';
+    $show_variant = $opts['show_variant'] ?? '';
+    $show_text    = $opts['show_text']    ?? [];
+
+    ob_start();
+    ?>
+    <div style="margin-top:12px;padding:14px 16px;background:#f9f8f6;border:1px solid #e5e5e5;border-radius:6px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+        <div style="font-size:11px;font-weight:700;color:#2E7D32;text-transform:uppercase;letter-spacing:.6px;margin-bottom:14px;">
+            ✦ BEspoke Sport — <?php echo esc_html( $product_label ); ?> Specification
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;">
+
+            <!-- LEFT COLUMN: product details + text -->
+            <div>
+                <?php
+                $product_rows = '';
+                if ( ! empty( $d['size']   ) ) $product_rows .= $row( $size_label, esc_html( $d['size'] ) );
+                if ( ! empty( $d['design'] ) ) $product_rows .= $row( 'Design',   esc_html( $d['design'] ) );
+                if ( $show_variant )           $product_rows .= $row( $show_variant, esc_html( bespoke_format_bg_variant( $d ) ) );
+                if ( $product_rows ) echo $section( 'Product', $product_rows );
+
+                $text_rows = '';
+                foreach ( $show_text as $field => $label ) {
+                    $parts = explode( '_', $field, 2 );
+                    if ( count( $parts ) !== 2 ) continue;
+                    list( $side, $kind ) = $parts;
+                    $val = $d[ $side ][ $kind ] ?? '';
+                    if ( $val === '' ) continue;
+                    $text_rows .= $row( $label, esc_html( $val ) );
+                }
+                if ( $text_rows ) echo $section( 'Text', $text_rows );
+
+                $hidden_str = bespoke_format_hidden( $d['hidden_elements'] ?? [] );
+                if ( $hidden_str !== '' ) {
+                    echo $section( 'Removed elements', $row( 'Customer removed', esc_html( $hidden_str ) ) );
+                }
+                $rot_rows = bespoke_format_rotation( $d['rotation'] ?? [] );
+                if ( $rot_rows ) {
+                    $rot_html = '';
+                    foreach ( $rot_rows as $r ) {
+                        $rot_html .= $row( 'Rotation', esc_html( $r ) );
+                    }
+                    echo $section( 'Rotation', $rot_html );
+                }
+                ?>
+            </div>
+
+            <!-- RIGHT COLUMN: badge + colours + notes -->
+            <div>
+                <?php
+                $badge_url = $d['badge']['url'] ?? '';
+                $badge_fn  = $d['badge']['filename'] ?? '';
+                $badge_html = '';
+                if ( $badge_url ) {
+                    $badge_html .= $row( 'Status', '<span style="color:#2E7D32;font-weight:700;">Uploaded</span>' );
+                    if ( $badge_fn ) {
+                        $badge_html .= $row( 'Filename', '<a href="' . esc_url( $badge_url ) . '" target="_blank"><code>' . esc_html( $badge_fn ) . '</code></a>' );
+                    }
+                    $badge_html .= $row( 'Size', floatval( $d['badge']['size'] ?? 0 ) . ' SVG units' );
+                    $badge_html .= $row( 'Position', '(' . floatval( $d['badge']['x'] ?? 0 ) . ', ' . floatval( $d['badge']['y'] ?? 0 ) . ')' );
+                } else {
+                    $badge_html .= $row( 'Status', '<span style="color:#aaa;">Not added</span>' );
+                }
+                echo $section( 'Club badge', $badge_html );
+
+                $colour_rows = '';
+                if ( ! empty( $d['colours']['background']   ) ) $colour_rows .= $row( 'Background',  $swatch( $d['colours']['background'] ) );
+                if ( ! empty( $d['colours']['pattern']      ) ) $colour_rows .= $row( 'Pattern',     $swatch( $d['colours']['pattern'] ) );
+                if ( ! empty( $d['colours']['name_text']    ) ) $colour_rows .= $row( 'Name text',   $swatch( $d['colours']['name_text'] ) );
+                if ( ! empty( $d['colours']['number_text'] ) && in_array( 'left_number', array_keys( $show_text ), true ) ) {
+                    $colour_rows .= $row( 'Bottom text', $swatch( $d['colours']['number_text'] ) );
+                }
+                if ( $colour_rows ) echo $section( 'Colours', $colour_rows );
+
+                if ( ! empty( $d['notes'] ) ) {
+                    echo $section( 'Order notes',
+                        '<tr><td colspan="2" style="padding:6px 0;font-size:12px;color:#1a1a1a;background:#fff;border:1px solid #eee;border-radius:4px;padding:8px 10px;">'
+                        . nl2br( esc_html( $d['notes'] ) )
+                        . '</td></tr>'
+                    );
+                }
+                ?>
+            </div>
+        </div>
+    </div>
+    <?php
+    return ob_get_clean();
+}
