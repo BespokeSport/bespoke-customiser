@@ -67,6 +67,24 @@ function bespoke_render_customiser( $atts ) {
     $cust_sizes = get_post_meta( $product_id, '_bespoke_customiser_sizes', true );
     $cust_sizes = is_array( $cust_sizes ) ? array_values( $cust_sizes ) : [];
 
+    // Variable products — pass every variation's attribute values + price
+    // through to the customiser JS so the in-page preview can update the
+    // headline price when the customer picks a different size / thickness
+    // / Frill option. Without this the customiser shows the parent product's
+    // fallback price even though the cart line will charge the variation's
+    // price after add-to-cart.
+    $bespoke_variations = [];
+    if ( $product->is_type( 'variable' ) ) {
+        foreach ( $product->get_available_variations() as $bv ) {
+            $bespoke_variations[] = [
+                'variation_id' => (int) $bv['variation_id'],
+                'attributes'   => $bv['attributes'],
+                'price'        => (float) $bv['display_price'],
+                'price_html'   => wp_kses_post( $bv['price_html'] ?: '' ),
+            ];
+        }
+    }
+
     ob_start();
     ?>
     <script>
@@ -89,7 +107,10 @@ function bespoke_render_customiser( $atts ) {
         geometry:        <?php echo wp_json_encode( function_exists( 'bespoke_get_product_geometry' ) ? bespoke_get_product_geometry( $product_type ) : [] ); ?>,
         canEditGeometry: <?php echo current_user_can( 'manage_options' ) ? 'true' : 'false'; ?>,
         adminAjaxUrl:    '<?php echo esc_js( admin_url( 'admin-ajax.php' ) ); ?>',
-        geometryNonce:   '<?php echo esc_js( wp_create_nonce( 'bespoke_save_geometry' ) ); ?>'
+        geometryNonce:   '<?php echo esc_js( wp_create_nonce( 'bespoke_save_geometry' ) ); ?>',
+        // Live variation lookup table — used by the JS picker to surface
+        // the right price as the customer picks size + thickness etc.
+        variations:      <?php echo wp_json_encode( $bespoke_variations ); ?>
     };
     </script>
 

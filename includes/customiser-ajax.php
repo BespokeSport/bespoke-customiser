@@ -601,13 +601,24 @@ function bespoke_handle_add_to_cart() {
  * @return bool
  */
 function bespoke_attr_values_match( $customer_value, $variation_value ) {
-    $c = strtolower( trim( (string) $customer_value ) );
-    $v = strtolower( trim( (string) $variation_value ) );
+    // Strip ALL non-alphanumeric characters and lowercase for a
+    // forgiving comparison. Handles:
+    //   "5cm Band"   ↔ "5cm band"   (label case mismatch)
+    //   "5cm-band"   ↔ "5cm Band"   (slug vs label — WC stores global
+    //                                taxonomy attributes as the term
+    //                                slug, per-product attributes as
+    //                                the typed value)
+    //   "24cm"       ↔ "24 cm"      (whitespace inside the value)
+    $normalize = function( $v ) {
+        return strtolower( preg_replace( '/[^a-z0-9]/i', '', (string) $v ) );
+    };
+    $c = $normalize( $customer_value );
+    $v = $normalize( $variation_value );
     if ( $c === '' || $v === '' ) return false;
     if ( $c === $v ) return true;
     // Substring either way — covers "5cm band" customer / "5cm" variation
     // OR "5cm" customer / "5cm band" variation.
-    return ( stripos( $c, $v ) !== false || stripos( $v, $c ) !== false );
+    return ( strpos( $c, $v ) !== false || strpos( $v, $c ) !== false );
 }
 
 /**

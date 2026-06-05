@@ -660,6 +660,9 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
     <span class="badge-pill">No minimum order - order just 1 pair</span>
     <div class="sum-card">
       <div class="sum-row"><span class="sum-k">Size</span><span class="sum-v" id="sum-size">M (Age 9-13)</span></div>
+      <!-- Band thickness / Pennant style — shown by fillSummary only when
+           the product has a bg-variant toggle configured. -->
+      <div class="sum-row" id="sum-variant-row" style="display:none;"><span class="sum-k" id="sum-variant-k">Style</span><span class="sum-v" id="sum-variant">—</span></div>
       <div class="sum-row"><span class="sum-k">Design</span><span class="sum-v" id="sum-design">Vanguard</span></div>
       <div class="sum-row"><span class="sum-k">Badge</span><span class="sum-v" id="sum-badge">Not added</span></div>
       <div class="sum-head">Left pad</div>
@@ -848,6 +851,8 @@ function selectSize(size) {
   // width scaling for 16cm vs 36cm bands) pick up the new value.
   // No-op for products that don't read S.padSize in their renderer.
   if (typeof window.updateDesignLayers === 'function') window.updateDesignLayers();
+  // Reflect the new size in the headline price (variable products only).
+  if (typeof bespokeRefreshPriceDisplay === 'function') bespokeRefreshPriceDisplay();
 }
 
 // Build the size buttons from the per-product SIZES list (shin-pad fallback).
@@ -1938,6 +1943,62 @@ function setupDrag(svg, stepId) {
 function syncAll(){ Object.keys(previews).forEach(function(k){updatePreview(parseInt(k));}); }
 
 /**
+ * Look up the variation that matches the customer's current size + bg-
+ * variant choice. Returns null for simple products (no variation data)
+ * or when no variation matches.
+ *
+ * Mirrors the PHP-side bespoke_attr_values_match — normalise to alnum-only
+ * lowercase, then exact-or-substring compare. Empty variation values mean
+ * "Any …" and are skipped.
+ */
+function bespokeFindVariation(){
+  var cfg = window.BespokeConfig || {};
+  var list = Array.isArray(cfg.variations) ? cfg.variations : [];
+  if (!list.length) return null;
+  var labels = (typeof BG_VARIANT_LABELS !== 'undefined') ? BG_VARIANT_LABELS[bespokeProductType()] : null;
+  var variantLabel = labels ? (window.S && window.S.useBgAlt ? labels.alt : labels.primary) : '';
+  var size = window.S && window.S.padSize ? window.S.padSize : '';
+  var customer = [size, variantLabel].filter(function(v){ return v; });
+  function norm(v){ return String(v || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
+  function matches(c, v){
+    var nc = norm(c), nv = norm(v);
+    if (!nc || !nv) return false;
+    return nc === nv || nc.indexOf(nv) !== -1 || nv.indexOf(nc) !== -1;
+  }
+  for (var i = 0; i < list.length; i++) {
+    var V = list[i];
+    var ok = true;
+    for (var k in V.attributes) {
+      var av = V.attributes[k];
+      if (av === '' || av === null) continue; // "Any …"
+      var found = false;
+      for (var j = 0; j < customer.length; j++) {
+        if (matches(customer[j], av)) { found = true; break; }
+      }
+      if (!found) { ok = false; break; }
+    }
+    if (ok) return V;
+  }
+  return null;
+}
+
+/**
+ * Update #bespoke-price-display to reflect the variation that matches
+ * the customer's current choices. Safe to call any time — no-ops when
+ * the product isn't variable.
+ */
+function bespokeRefreshPriceDisplay(){
+  var el = document.getElementById('bespoke-price-display');
+  if (!el) return;
+  var v = bespokeFindVariation();
+  if (v && v.price_html) {
+    el.innerHTML = v.price_html;
+  } else if (window.BespokeConfig && window.BespokeConfig.price) {
+    el.textContent = window.BespokeConfig.price;
+  }
+}
+
+/**
  * Builds an SVG <g> containing a circle + X — the in-canvas delete
  * button rendered over each draggable element. The drag handler
  * (setupDrag) checks closest('[data-action="delete"]') BEFORE the
@@ -2605,6 +2666,27 @@ function fillSummary(){
   document.getElementById('sum-size').textContent = selSize
     ? (selSize.label + (selSize.line1 ? ' (' + selSize.line1 + ')' : ''))
     : (S.padSize || '—');
+  // Band thickness / Pennant style row — only shown when the product
+  // type has a BG_VARIANT_LABELS entry. The k column doubles as the
+  // section label ("Band thickness", "Style"), value as the customer's
+  // chosen option.
+  var _vLabels = (typeof BG_VARIANT_LABELS !== 'undefined') ? BG_VARIANT_LABELS[bespokeProductType()] : null;
+  var _vRow = document.getElementById('sum-variant-row');
+  if (_vRow) {
+    if (_vLabels) {
+      _vRow.style.display = '';
+      var _kEl = document.getElementById('sum-variant-k');
+      var _vEl = document.getElementById('sum-variant');
+      if (_kEl) _kEl.textContent = _vLabels.section || 'Style';
+      if (_vEl) _vEl.textContent = S.useBgAlt ? _vLabels.alt : _vLabels.primary;
+    } else {
+      _vRow.style.display = 'none';
+    }
+  }
+  // Refresh the headline price from the chosen variation (variable
+  // products only). No-op for simple products where BespokeConfig.price
+  // already shows the right number.
+  bespokeRefreshPriceDisplay();
   document.getElementById('sum-design').textContent=d?d.label:'—';
   var nameFont = FONTS.find(function(f){return f.family===S.nameFontFamily;});
   var numFont  = FONTS.find(function(f){return f.family===S.numFontFamily;});
@@ -2948,6 +3030,8 @@ function onBgVariant(useAlt){
   syncBgVariantButtons();
   if (typeof window.updateDesignLayers === 'function') window.updateDesignLayers();
   if (typeof syncAll === 'function') syncAll();
+  // Variant change ⇒ variation might be different ⇒ new price.
+  if (typeof bespokeRefreshPriceDisplay === 'function') bespokeRefreshPriceDisplay();
 }
 
 function syncBgVariantButtons(){
