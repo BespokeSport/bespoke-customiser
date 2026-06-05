@@ -627,7 +627,9 @@ function bespoke_attr_values_match( $customer_value, $variation_value ) {
  *
  * WC variation attribute arrays look like:
  *   [ 'attribute_pa_size' => '24cm', 'attribute_pa_thickness' => '5cm' ]
- * An empty value means "Any …" — matches anything.
+ * An empty value means "Any …" — matches anything. We resolve those
+ * empties to the customer's actual choice before returning so the
+ * add_to_cart call satisfies WC's "required field" check.
  *
  * @param WC_Product_Variable $product
  * @param string[]            $customer_values  e.g. [ '24cm', '5cm band' ]
@@ -651,9 +653,84 @@ function bespoke_match_variation( $product, $customer_values ) {
         if ( $ok ) {
             return [
                 'id'         => (int) $variation['variation_id'],
-                'attributes' => $variation['attributes'],
+                'attributes' => bespoke_resolve_variation_attributes(
+                    $product,
+                    $variation['attributes'],
+                    $customer_values
+                ),
             ];
         }
     }
     return null;
+}
+
+/**
+ * Fill in any "Any …" attribute values in a matched variation with the
+ * customer's actual choice. WC's add_to_cart refuses to accept an empty
+ * value for an attribute that's used for variations — even when the
+ * matched variation explicitly allows Any — so we have to pick a
+ * concrete value out of the attribute's options list.
+ *
+ * For each empty attribute we look up the product's attribute
+ * definition, walk its options (term slugs + names for taxonomy
+ * attributes, plain strings for per-product attributes) and return the
+ * first option that bespoke_attr_values_match()es one of the customer's
+ * values. Falls back to the first customer value when no match.
+ */
+function bespoke_resolve_variation_attributes( $product, $variation_attrs, $customer_values ) {
+    $resolved = $variation_attrs;
+    $product_attrs = $product->get_attributes();
+    foreach ( $resolved as $attr_key => $attr_value ) {
+        if ( $attr_value !== '' ) continue;
+        $slug = str_replace( 'attribute_', '', $attr_key );
+        $matched_def = null;
+        foreach ( $product_attrs as $name => $obj ) {
+            if ( ! $obj instanceof WC_Product_Attribute ) continue;
+            $obj_key = $obj->is_taxonomy()
+                ? $obj->get_name()
+                : sanitize_title( $obj->get_name() );
+            if ( $obj_key === $slug || sanitize_title( $name ) === $slug ) {
+                $matched_def = $obj;
+                break;
+            }
+        }
+        // Compose the candidate option list from whichever attribute
+        // shape we're dealing with — taxonomy stores term IDs, custom
+        // stores strings.
+        $options = [];
+        if ( $matched_def ) {
+            if ( $matched_def->is_taxonomy() ) {
+                $terms = get_terms( [
+                    'taxonomy'   => $matched_def->get_name(),
+                    'hide_empty' => false,
+                ] );
+                if ( ! is_wp_error( $terms ) ) {
+                    foreach ( $terms as $t ) {
+                        $options[] = $t->slug;
+                        $options[] = $t->name;
+                    }
+                }
+            } else {
+                $options = $matched_def->get_options();
+            }
+        }
+        $picked = '';
+        foreach ( $customer_values as $cv ) {
+            foreach ( $options as $opt ) {
+                if ( bespoke_attr_values_match( $cv, $opt ) ) {
+                    $picked = $opt;
+                    break 2;
+                }
+            }
+        }
+        if ( $picked === '' ) {
+            // Last-ditch fallback so the cart call doesn't bail with
+            // "required field". Use whichever customer value is closest
+            // by simply taking the first one — production can still
+            // see the size on the cart-item meta.
+            $picked = $customer_values[0] ?? '';
+        }
+        $resolved[ $attr_key ] = $picked;
+    }
+    return $resolved;
 }
