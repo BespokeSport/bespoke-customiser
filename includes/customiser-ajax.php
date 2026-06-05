@@ -511,6 +511,18 @@ function bespoke_handle_add_to_cart() {
                 return in_array( $k, [ 'badgeL', 'badgeR', 'nameL', 'nameR', 'numL', 'numR' ], true );
             } ) ),
 
+            // ── Per-element rotation (Stage 3) ────────────────────────────────
+            // Degrees, 1dp. JS only sends a field when the rotation is
+            // non-zero (≥0.1), so missing keys stay at 0 for production.
+            'rotation' => array_filter( [
+                'badgeL' => isset( $_POST['bespoke_rot_badgeL'] ) ? (float) $_POST['bespoke_rot_badgeL'] : 0,
+                'badgeR' => isset( $_POST['bespoke_rot_badgeR'] ) ? (float) $_POST['bespoke_rot_badgeR'] : 0,
+                'nameL'  => isset( $_POST['bespoke_rot_nameL']  ) ? (float) $_POST['bespoke_rot_nameL']  : 0,
+                'nameR'  => isset( $_POST['bespoke_rot_nameR']  ) ? (float) $_POST['bespoke_rot_nameR']  : 0,
+                'numL'   => isset( $_POST['bespoke_rot_numL']   ) ? (float) $_POST['bespoke_rot_numL']   : 0,
+                'numR'   => isset( $_POST['bespoke_rot_numR']   ) ? (float) $_POST['bespoke_rot_numR']   : 0,
+            ], function( $v ) { return abs( $v ) >= 0.1; } ),
+
             // ── Cart thumbnail ────────────────────────────────────────────────
             // SVG preview uploaded just before add-to-cart. Shown in cart
             // instead of the default product image so the customer can see

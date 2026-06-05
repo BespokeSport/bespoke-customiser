@@ -778,7 +778,7 @@ var S = {
   nameL:'', nameR:'', numL:'', numR:'',
   sameName:true, sameNum:true,
   badge:null, badgeURL:null, design:'vanguard',
-  padSize:bespokeDefaultSize(), orderNotes:"", badgeSize:DEFSZ.badgeSize, nameSize:DEFSZ.nameSize, numSize:DEFSZ.numSize, nameFontFamily:'"Arial Black", Arial, sans-serif', numFontFamily:'"Arial Black", Arial, sans-serif', useBgAlt:false, hidden:{badgeL:false,badgeR:false,nameL:false,nameR:false,numL:false,numR:false}, selected:null,
+  padSize:bespokeDefaultSize(), orderNotes:"", badgeSize:DEFSZ.badgeSize, nameSize:DEFSZ.nameSize, numSize:DEFSZ.numSize, nameFontFamily:'"Arial Black", Arial, sans-serif', numFontFamily:'"Arial Black", Arial, sans-serif', useBgAlt:false, hidden:{badgeL:false,badgeR:false,nameL:false,nameR:false,numL:false,numR:false}, selected:null, rot:{badgeL:0,badgeR:0,nameL:0,nameR:0,numL:0,numR:0},
   pos: JSON.parse(JSON.stringify(DEF))
 };
 var PROG=[20,40,60,80,100,100,100];
@@ -1291,7 +1291,10 @@ function updatePreview(stepId) {
         var g = document.createElementNS(ns,'g');
         g.setAttribute('class','draggable');
         g.setAttribute('data-drag',item.key);
-        g.setAttribute('transform','translate('+item.x+','+item.y+')');
+        var _rot = (S.rot && S.rot[item.key]) || 0;
+        var _t = 'translate('+item.x+','+item.y+')';
+        if (_rot) _t += ' rotate('+_rot+')';
+        g.setAttribute('transform', _t);
         // Transparent finger-padding rect — sits behind the badge so the
         // whole group has a comfortable hit area on mobile even when the
         // badge itself is small. fill="none" + pointer-events="all" makes
@@ -1335,6 +1338,7 @@ function updatePreview(stepId) {
           g.appendChild(_makeResizeHandle(ns, item.key, 'ne',  hs, -hs));
           g.appendChild(_makeResizeHandle(ns, item.key, 'sw', -hs,  hs));
           g.appendChild(_makeResizeHandle(ns, item.key, 'se',  hs,  hs));
+          g.appendChild(_makeRotateHandle(ns, item.key, -hs));
         }
         bl.appendChild(g);
       });
@@ -1404,7 +1408,10 @@ function updatePreview(stepId) {
       var g = document.createElementNS(ns,'g');
       g.setAttribute('class','draggable');
       g.setAttribute('data-drag',item.key);
-      g.setAttribute('transform','translate('+item.x+','+item.y+')');
+      var _rot2 = (S.rot && S.rot[item.key]) || 0;
+      var _t2 = 'translate('+item.x+','+item.y+')';
+      if (_rot2) _t2 += ' rotate('+_rot2+')';
+      g.setAttribute('transform', _t2);
 
       // ── Plate Trophy: bend name + number along an arc ───────────────
       // The Plate Trophy is the only product that needs curved text (it
@@ -1577,6 +1584,7 @@ function updatePreview(stepId) {
         g.appendChild(_makeResizeHandle(ns, item.key, 'ne',  _selHw, -_selHh));
         g.appendChild(_makeResizeHandle(ns, item.key, 'sw', -_selHw,  _selHh));
         g.appendChild(_makeResizeHandle(ns, item.key, 'se',  _selHw,  _selHh));
+        g.appendChild(_makeRotateHandle(ns, item.key, -_selHh));
       }
       tl.appendChild(g);
     });
@@ -1655,6 +1663,49 @@ function setupDrag(svg, stepId) {
   // Stage 3B resize handle state.
   var resizing=null, resizeCorner=null, resizeStart=null,
       resizeStartSize=0, resizeIsMirror=false;
+  // Stage 3C rotate handle state.
+  var rotating=null, rotateCenterScreen=null, rotateStartAngle=0,
+      rotateStartFingerAngle=0;
+
+  function _elemCenterScreen(el){
+    // Returns the [0,0] of the .draggable group's local space in screen
+    // pixels. Used as the rotation pivot so atan2(finger - centre)
+    // gives a true angle regardless of how the element is nested
+    // (mirror group scale + translate, etc.).
+    var pt = svg.createSVGPoint();
+    pt.x = 0; pt.y = 0;
+    return pt.matrixTransform(el.getScreenCTM());
+  }
+  function _startRotate(actionEl, fingerScreenX, fingerScreenY){
+    var key = actionEl.getAttribute('data-key');
+    var dr  = actionEl.closest('.draggable');
+    if (!dr) return;
+    rotating = key;
+    rotateCenterScreen = _elemCenterScreen(dr);
+    rotateStartAngle   = (S.rot && S.rot[key]) || 0;
+    rotateStartFingerAngle = Math.atan2(
+      fingerScreenY - rotateCenterScreen.y,
+      fingerScreenX - rotateCenterScreen.x
+    );
+  }
+  function _doRotate(fingerScreenX, fingerScreenY){
+    if (!rotating || !rotateCenterScreen) return;
+    var ang = Math.atan2(
+      fingerScreenY - rotateCenterScreen.y,
+      fingerScreenX - rotateCenterScreen.x
+    );
+    var deltaDeg = (ang - rotateStartFingerAngle) * 180 / Math.PI;
+    var newRot   = (rotateStartAngle + deltaDeg) % 360;
+    if (!S.rot) S.rot = {};
+    S.rot[rotating] = Math.round(newRot * 10) / 10; // 1 decimal place
+    fastDragTransform(rotating);
+  }
+  function _endRotate(){
+    if (!rotating) return;
+    rotating = null;
+    rotateCenterScreen = null;
+    syncAll();
+  }
 
   function _startResize(el, pt){
     resizing        = el.getAttribute('data-key');
@@ -1730,6 +1781,13 @@ function setupDrag(svg, stepId) {
       _startResize(rh, svgPt(e.clientX, e.clientY));
       return;
     }
+    // Rotate-handle tap — Stage 3C.
+    var roh = e.target.closest('[data-action="rotate"]');
+    if (roh) {
+      e.preventDefault();
+      _startRotate(roh, e.clientX, e.clientY);
+      return;
+    }
     var t = e.target.closest('.draggable');
     if (!t) {
       // Tap on the SVG background (not on any draggable) → deselect.
@@ -1746,6 +1804,7 @@ function setupDrag(svg, stepId) {
     startPos = {x:S.pos[dragging].x, y:S.pos[dragging].y};
   });
   window.addEventListener('mousemove', function(e){
+    if (rotating) { _doRotate(e.clientX, e.clientY); return; }
     if (resizing) { _doResize(svgPt(e.clientX, e.clientY)); return; }
     if(!dragging) return;
     var pt = svgPt(e.clientX, e.clientY);
@@ -1755,6 +1814,7 @@ function setupDrag(svg, stepId) {
     fastDragTransform(dragging);
   });
   window.addEventListener('mouseup', function(){
+    if (rotating) { _endRotate(); return; }
     if (resizing) { _endResize(); return; }
     if (!dragging) return;
     dragging=null; dragScale=1;
@@ -1775,6 +1835,12 @@ function setupDrag(svg, stepId) {
       if (rh) {
         e.preventDefault();
         _startResize(rh, svgPt(e.touches[0].clientX, e.touches[0].clientY));
+        return;
+      }
+      var roh = e.target.closest('[data-action="rotate"]');
+      if (roh) {
+        e.preventDefault();
+        _startRotate(roh, e.touches[0].clientX, e.touches[0].clientY);
         return;
       }
       var t = e.target.closest('.draggable');
@@ -1819,7 +1885,10 @@ function setupDrag(svg, stepId) {
     //
     // Instead we patch transforms (and sizes for pinch) in-place on the
     // existing nodes and run one syncAll on touchend to settle.
-    if(e.touches.length===1 && resizing){
+    if(e.touches.length===1 && rotating){
+      e.preventDefault();
+      _doRotate(e.touches[0].clientX, e.touches[0].clientY);
+    } else if(e.touches.length===1 && resizing){
       e.preventDefault();
       _doResize(svgPt(e.touches[0].clientX, e.touches[0].clientY));
     } else if(e.touches.length===1 && dragging){
@@ -1842,6 +1911,7 @@ function setupDrag(svg, stepId) {
   },{passive:false});
 
   function _endTouch(){
+    if (rotating) { _endRotate(); return; }
     if (resizing) { _endResize(); return; }
     if (!dragging && !pinchKey) return;
     dragging=null; dragScale=1; pinchStart=null; pinchKey=null; pinchStartSize=null;
@@ -1969,6 +2039,52 @@ function _makeResizeHandle(ns, key, corner, cx, cy){
 }
 
 /**
+ * Builds the rotate handle for the Stage 3 transform-control box.
+ * A short stem rises above the top edge, capped by a small circle.
+ * Tap and drag the circle around the element to rotate it.
+ */
+function _makeRotateHandle(ns, key, topY){
+  var g = document.createElementNS(ns, 'g');
+  g.setAttribute('data-action', 'rotate');
+  g.setAttribute('data-key',    key);
+  g.setAttribute('class',       'bcp-rotate-handle');
+  // Stem
+  var stem = document.createElementNS(ns, 'line');
+  stem.setAttribute('x1', 0); stem.setAttribute('y1', topY);
+  stem.setAttribute('x2', 0); stem.setAttribute('y2', topY - 28);
+  stem.setAttribute('stroke', '#5DCAA5');
+  stem.setAttribute('stroke-width', 2);
+  stem.setAttribute('pointer-events', 'none');
+  g.appendChild(stem);
+  // Hit halo
+  var hit = document.createElementNS(ns, 'circle');
+  hit.setAttribute('cx', 0); hit.setAttribute('cy', topY - 40);
+  hit.setAttribute('r', 28);
+  hit.setAttribute('fill', 'rgba(0,0,0,0.001)');
+  hit.setAttribute('pointer-events', 'all');
+  g.appendChild(hit);
+  // Visible cap
+  var cap = document.createElementNS(ns, 'circle');
+  cap.setAttribute('cx', 0); cap.setAttribute('cy', topY - 40);
+  cap.setAttribute('r', 12);
+  cap.setAttribute('fill', '#1A1A1A');
+  cap.setAttribute('stroke', '#5DCAA5');
+  cap.setAttribute('stroke-width', 2);
+  g.appendChild(cap);
+  // Curved arrow icon inside the cap to hint rotation.
+  var arrow = document.createElementNS(ns, 'path');
+  arrow.setAttribute('d',
+    'M -6 ' + (topY - 40) + ' a 6 6 0 1 1 6 6');
+  arrow.setAttribute('fill', 'none');
+  arrow.setAttribute('stroke', '#5DCAA5');
+  arrow.setAttribute('stroke-width', 1.6);
+  arrow.setAttribute('stroke-linecap', 'round');
+  arrow.setAttribute('pointer-events', 'none');
+  g.appendChild(arrow);
+  return g;
+}
+
+/**
  * Set the currently-selected draggable + repaint so the outline
  * appears/disappears. Pass null to clear selection.
  */
@@ -2060,8 +2176,11 @@ function fastDragTransform(key){
   if (!key || !S.pos[key]) return;
   var nodes = document.querySelectorAll('[data-drag="' + key + '"]');
   var tx = S.pos[key].x, ty = S.pos[key].y;
+  var rot = (S.rot && S.rot[key]) || 0;
   for (var i = 0; i < nodes.length; i++) {
-    nodes[i].setAttribute('transform', 'translate(' + tx + ',' + ty + ')');
+    var t = 'translate(' + tx + ',' + ty + ')';
+    if (rot) t += ' rotate(' + rot + ')';
+    nodes[i].setAttribute('transform', t);
   }
 }
 
@@ -2520,7 +2639,7 @@ function fillSummary(){
   setSumRow('sd-nu',  'sh-nu',  S.numColor,  null);
 }
 function reset(){
-  S={step:0,bgColor:'#feef00',patColor:'#211d33',patColors:[],bgGradient:null,patGradients:[],nameColor:'#FFFFFF',numColor:'#FFFFFF',nameL:'',nameR:'',numL:'',numR:'',sameName:true,sameNum:true,badge:null,badgeURL:null,design:'vanguard',padSize:bespokeDefaultSize(),orderNotes:"",badgeSize:DEFSZ.badgeSize,nameSize:DEFSZ.nameSize,numSize:DEFSZ.numSize,nameFontFamily:'"Arial Black", Arial, sans-serif',numFontFamily:'"Arial Black", Arial, sans-serif',useBgAlt:false, hidden:{badgeL:false,badgeR:false,nameL:false,nameR:false,numL:false,numR:false}, selected:null,pos:JSON.parse(JSON.stringify(DEF))};
+  S={step:0,bgColor:'#feef00',patColor:'#211d33',patColors:[],bgGradient:null,patGradients:[],nameColor:'#FFFFFF',numColor:'#FFFFFF',nameL:'',nameR:'',numL:'',numR:'',sameName:true,sameNum:true,badge:null,badgeURL:null,design:'vanguard',padSize:bespokeDefaultSize(),orderNotes:"",badgeSize:DEFSZ.badgeSize,nameSize:DEFSZ.nameSize,numSize:DEFSZ.numSize,nameFontFamily:'"Arial Black", Arial, sans-serif',numFontFamily:'"Arial Black", Arial, sans-serif',useBgAlt:false, hidden:{badgeL:false,badgeR:false,nameL:false,nameR:false,numL:false,numR:false}, selected:null, rot:{badgeL:0,badgeR:0,nameL:0,nameR:0,numL:0,numR:0},pos:JSON.parse(JSON.stringify(DEF))};
   previews={};
   for(var i=0;i<6;i++){var pb=document.getElementById('pb'+i);if(pb)pb.innerHTML='';}
   document.getElementById('s6').classList.remove('active');
@@ -3310,6 +3429,15 @@ function bespokeAddToCart() {
     var _hiddenCsv = Object.keys(S.hidden || {})
       .filter(function(k){ return S.hidden[k]; }).join(',');
     formData.append('bespoke_hidden_elements', _hiddenCsv);
+    // Stage 3 rotation per element — degrees, 1dp. Skipped fields stay
+    // at 0 server-side, so absent / unrotated elements look identical
+    // to "no rotation" in the order data.
+    Object.keys(S.rot || {}).forEach(function(k){
+      var r = S.rot[k];
+      if (r && Math.abs(r) >= 0.1) {
+        formData.append('bespoke_rot_' + k, String(r));
+      }
+    });
     // Friendly label so the order screen / customer email show
     // "5cm band" instead of "alt". Looked up from BG_VARIANT_LABELS.
     var _bgVarLabels = (typeof BG_VARIANT_LABELS !== 'undefined') ? BG_VARIANT_LABELS[bespokeProductType()] : null;
