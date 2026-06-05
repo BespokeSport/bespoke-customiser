@@ -778,7 +778,7 @@ var S = {
   nameL:'', nameR:'', numL:'', numR:'',
   sameName:true, sameNum:true,
   badge:null, badgeURL:null, design:'vanguard',
-  padSize:bespokeDefaultSize(), orderNotes:"", badgeSize:DEFSZ.badgeSize, nameSize:DEFSZ.nameSize, numSize:DEFSZ.numSize, nameFontFamily:'"Arial Black", Arial, sans-serif', numFontFamily:'"Arial Black", Arial, sans-serif', useBgAlt:false, hidden:{badgeL:false,badgeR:false,nameL:false,nameR:false,numL:false,numR:false},
+  padSize:bespokeDefaultSize(), orderNotes:"", badgeSize:DEFSZ.badgeSize, nameSize:DEFSZ.nameSize, numSize:DEFSZ.numSize, nameFontFamily:'"Arial Black", Arial, sans-serif', numFontFamily:'"Arial Black", Arial, sans-serif', useBgAlt:false, hidden:{badgeL:false,badgeR:false,nameL:false,nameR:false,numL:false,numR:false}, selected:null,
   pos: JSON.parse(JSON.stringify(DEF))
 };
 var PROG=[20,40,60,80,100,100,100];
@@ -1324,6 +1324,13 @@ function updatePreview(stepId) {
         if (bespokeBadgeZones() === 2 && _badges.length > 1) {
           g.appendChild(_makeDeleteBtn(ns, item.key, 0, -hs + 22));
         }
+        // Stage 3 selection outline — dashed mint box around the
+        // selected element. Renders inside the .draggable group so it
+        // follows transform/rotation automatically. pointer-events:none
+        // keeps it from intercepting drags.
+        if (window.S && S.selected === item.key) {
+          g.appendChild(_makeSelectionOutline(ns, S.badgeSize, S.badgeSize));
+        }
         bl.appendChild(g);
       });
       // ── Band-mirror clones ──────────────────────────────────────────
@@ -1554,6 +1561,13 @@ function updatePreview(stepId) {
         var _txtHalfW = Math.max(_maxLen * item.size * 0.35, item.size * 0.8);
         g.appendChild(_makeDeleteBtn(ns, item.key, _txtHalfW + 30, -item.size * 0.6 - 20));
       }
+      // Stage 3 selection outline for text — sized to the rendered
+      // text bounds (same estimate the hit-rect uses).
+      if (window.S && S.selected === item.key) {
+        var _selW = Math.max(_maxLen * item.size * 0.7 + item.sw * 2 + 40, 220);
+        var _selH = Math.max(_lines.length * item.size + item.sw * 2 + 30, 120);
+        g.appendChild(_makeSelectionOutline(ns, _selW, _selH));
+      }
       tl.appendChild(g);
     });
     // ── Mask layer ────────────────────────────────────────────────────
@@ -1647,9 +1661,17 @@ function setupDrag(svg, stepId) {
       hideDraggable(del.getAttribute('data-key'));
       return;
     }
-    var t = e.target.closest('.draggable'); if(!t) return;
+    var t = e.target.closest('.draggable');
+    if (!t) {
+      // Tap on the SVG background (not on any draggable) → deselect.
+      if (window.S && S.selected) selectDraggable(null);
+      return;
+    }
     e.preventDefault();
     dragging = t.getAttribute('data-drag');
+    // Stage 3: starting a drag implicitly selects the element so the
+    // outline (and later, resize / rotate handles) appears around it.
+    selectDraggable(dragging);
     dragScale = readDragScale(t);
     startSVG = svgPt(e.clientX, e.clientY);
     startPos = {x:S.pos[dragging].x, y:S.pos[dragging].y};
@@ -1678,9 +1700,16 @@ function setupDrag(svg, stepId) {
         hideDraggable(del.getAttribute('data-key'));
         return;
       }
-      var t = e.target.closest('.draggable'); if(!t) return;
+      var t = e.target.closest('.draggable');
+      if (!t) {
+        // Tap on the SVG background → deselect.
+        if (window.S && S.selected) selectDraggable(null);
+        return;
+      }
       e.preventDefault();
       dragging = t.getAttribute('data-drag');
+      // Stage 3: implicit select on touch-down so the outline appears.
+      selectDraggable(dragging);
       dragScale = readDragScale(t);
       startSVG = svgPt(e.touches[0].clientX, e.touches[0].clientY);
       startPos = {x:S.pos[dragging].x, y:S.pos[dragging].y};
@@ -1801,6 +1830,39 @@ function _makeDeleteBtn(ns, key, cx, cy){
   x.setAttribute('fill', 'none');
   g.appendChild(x);
   return g;
+}
+
+/**
+ * Builds the Stage 3 selection outline — a dashed mint rectangle
+ * centred on the draggable's origin and sized to the rendered
+ * element. Rendered inside the .draggable group so it inherits any
+ * rotation / translate the element has. pointer-events:none keeps
+ * the outline transparent to drag / tap.
+ */
+function _makeSelectionOutline(ns, w, h){
+  var r = document.createElementNS(ns, 'rect');
+  r.setAttribute('class', 'bcp-selection-outline');
+  r.setAttribute('x',  -w / 2);
+  r.setAttribute('y',  -h / 2);
+  r.setAttribute('width',  w);
+  r.setAttribute('height', h);
+  r.setAttribute('fill', 'none');
+  r.setAttribute('stroke', '#5DCAA5');
+  r.setAttribute('stroke-width', 2);
+  r.setAttribute('stroke-dasharray', '8 4');
+  r.setAttribute('pointer-events', 'none');
+  return r;
+}
+
+/**
+ * Set the currently-selected draggable + repaint so the outline
+ * appears/disappears. Pass null to clear selection.
+ */
+function selectDraggable(key){
+  if (!window.S) return;
+  if (S.selected === key) return;
+  S.selected = key;
+  if (typeof syncAll === 'function') syncAll();
 }
 
 /**
@@ -2344,7 +2406,7 @@ function fillSummary(){
   setSumRow('sd-nu',  'sh-nu',  S.numColor,  null);
 }
 function reset(){
-  S={step:0,bgColor:'#feef00',patColor:'#211d33',patColors:[],bgGradient:null,patGradients:[],nameColor:'#FFFFFF',numColor:'#FFFFFF',nameL:'',nameR:'',numL:'',numR:'',sameName:true,sameNum:true,badge:null,badgeURL:null,design:'vanguard',padSize:bespokeDefaultSize(),orderNotes:"",badgeSize:DEFSZ.badgeSize,nameSize:DEFSZ.nameSize,numSize:DEFSZ.numSize,nameFontFamily:'"Arial Black", Arial, sans-serif',numFontFamily:'"Arial Black", Arial, sans-serif',useBgAlt:false, hidden:{badgeL:false,badgeR:false,nameL:false,nameR:false,numL:false,numR:false},pos:JSON.parse(JSON.stringify(DEF))};
+  S={step:0,bgColor:'#feef00',patColor:'#211d33',patColors:[],bgGradient:null,patGradients:[],nameColor:'#FFFFFF',numColor:'#FFFFFF',nameL:'',nameR:'',numL:'',numR:'',sameName:true,sameNum:true,badge:null,badgeURL:null,design:'vanguard',padSize:bespokeDefaultSize(),orderNotes:"",badgeSize:DEFSZ.badgeSize,nameSize:DEFSZ.nameSize,numSize:DEFSZ.numSize,nameFontFamily:'"Arial Black", Arial, sans-serif',numFontFamily:'"Arial Black", Arial, sans-serif',useBgAlt:false, hidden:{badgeL:false,badgeR:false,nameL:false,nameR:false,numL:false,numR:false}, selected:null,pos:JSON.parse(JSON.stringify(DEF))};
   previews={};
   for(var i=0;i<6;i++){var pb=document.getElementById('pb'+i);if(pb)pb.innerHTML='';}
   document.getElementById('s6').classList.remove('active');
