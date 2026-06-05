@@ -1318,32 +1318,44 @@ function updatePreview(stepId) {
         bl.appendChild(g);
       });
       // ── Band-mirror clones ──────────────────────────────────────────
-      // For products with a band-mirror config (armband currently), each
-      // flat draggable gets a cloned copy inside its OWN parent transform
-      // group, with the parent's translate back-solved from the per-badge
-      // mirror_pos so the mirror lands exactly at the configured spot
-      // when the flat is at its default. data-drag-scale tells setupDrag
-      // how to invert the SVG group scale when the customer drags the
-      // mirror.
+      // Each flat draggable gets a cloned copy inside its own parent
+      // group. Layout:
+      //   <g class="bcp-band-mirror" transform="translate(ox, oy)">
+      //     <g class="draggable" data-drag="badgeL"
+      //                          transform="translate(S.pos.x, S.pos.y)">
+      //       <g transform="scale(mScale)">
+      //         …the badge image + hit rect + delete X…
+      //       </g>
+      //     </g>
+      //   </g>
+      //
+      // The OUTER transform is translate-only and the INNER scale wrapper
+      // only scales the visuals — never the position transforms. So flat
+      // and mirror move together 1:1 (no dragScale gymnastics needed)
+      // while the mirror badge still renders mScale times bigger.
       var _mirCfg = bespokeBandMirror();
       if (_mirCfg && _mirCfg.positions) {
         var _mScale = _mirCfg.scale || 1;
-        var _inv    = String(1 / _mScale);
         Array.prototype.forEach.call(bl.querySelectorAll('.draggable'), function(node){
           var _key = node.getAttribute('data-drag');
           var _mp  = _mirCfg.positions[_key];
           var _def = (window.DEF || {})[_key];
-          if (!_mp || !_def) return; // not configured for this key
-          // mirror_visible = parent_translate + scale × flat_pos
-          // parent_translate = mirror_pos − scale × flat_default
-          var _ox = _mp.x - _mScale * _def.x;
-          var _oy = _mp.y - _mScale * _def.y;
+          if (!_mp || !_def) return;
+          // Plain offset — no scale factor — so when the customer drags
+          // a flat or mirror copy, the OTHER copy moves the same amount.
+          var _ox = _mp.x - _def.x;
+          var _oy = _mp.y - _def.y;
           var _wrap = document.createElementNS(ns, 'g');
-          _wrap.setAttribute('transform',
-            'translate(' + _ox + ',' + _oy + ') scale(' + _mScale + ')');
+          _wrap.setAttribute('transform', 'translate(' + _ox + ',' + _oy + ')');
           _wrap.setAttribute('class', 'bcp-band-mirror');
           var _clone = node.cloneNode(true);
-          _clone.setAttribute('data-drag-scale', _inv);
+          // Move all the clone's children into an inner scale wrapper so
+          // the visuals are bigger but the position transform on the
+          // .draggable group itself stays 1:1.
+          var _sg = document.createElementNS(ns, 'g');
+          _sg.setAttribute('transform', 'scale(' + _mScale + ')');
+          while (_clone.firstChild) _sg.appendChild(_clone.firstChild);
+          _clone.appendChild(_sg);
           _wrap.appendChild(_clone);
           bl.appendChild(_wrap);
         });
@@ -1571,24 +1583,26 @@ function updatePreview(stepId) {
     }
 
     // ── Band-mirror clones (text layer) ────────────────────────────────
-    // Per-key transform groups, same pattern as the badge layer.
+    // Same translate-only outer + inner-scale-wrapper layout as the
+    // badge layer above. See that comment block for the rationale.
     var _mirCfgT = bespokeBandMirror();
     if (_mirCfgT && _mirCfgT.positions) {
       var _mScaleT = _mirCfgT.scale || 1;
-      var _invT    = String(1 / _mScaleT);
       Array.prototype.forEach.call(tl.querySelectorAll('.draggable'), function(node){
         var _key = node.getAttribute('data-drag');
         var _mp  = _mirCfgT.positions[_key];
         var _def = (window.DEF || {})[_key];
         if (!_mp || !_def) return;
-        var _ox = _mp.x - _mScaleT * _def.x;
-        var _oy = _mp.y - _mScaleT * _def.y;
+        var _ox = _mp.x - _def.x;
+        var _oy = _mp.y - _def.y;
         var _wrap = document.createElementNS(ns, 'g');
-        _wrap.setAttribute('transform',
-          'translate(' + _ox + ',' + _oy + ') scale(' + _mScaleT + ')');
+        _wrap.setAttribute('transform', 'translate(' + _ox + ',' + _oy + ')');
         _wrap.setAttribute('class', 'bcp-band-mirror');
         var _clone = node.cloneNode(true);
-        _clone.setAttribute('data-drag-scale', _invT);
+        var _sgT = document.createElementNS(ns, 'g');
+        _sgT.setAttribute('transform', 'scale(' + _mScaleT + ')');
+        while (_clone.firstChild) _sgT.appendChild(_clone.firstChild);
+        _clone.appendChild(_sgT);
         _wrap.appendChild(_clone);
         tl.appendChild(_wrap);
       });
@@ -1755,26 +1769,27 @@ function _makeDeleteBtn(ns, key, cx, cy){
   g.setAttribute('class',       'bcp-delete-btn');
   g.setAttribute('transform',   'translate(' + cx + ',' + cy + ')');
   g.style.cursor = 'pointer';
-  // Big invisible tap-target for finger friendliness. ~80 SVG units
-  // ≈ 28px on a typical 360px-wide phone canvas — comfortable on
-  // touch even when the badge underneath is small.
+  // Invisible hit-circle a touch wider than the visible disc so it's
+  // still finger-friendly on mobile but doesn't dominate the canvas
+  // visually. r=30 SVG units ≈ 10px on a typical phone, comfortably
+  // tappable thanks to OS touch slop.
   var hit = document.createElementNS(ns, 'circle');
-  hit.setAttribute('r', 80);
+  hit.setAttribute('r', 30);
   hit.setAttribute('fill', 'rgba(0,0,0,0.001)');
   hit.setAttribute('pointer-events', 'all');
   g.appendChild(hit);
-  // Visible badge — small dark disc with mint outline.
+  // Visible disc + X. Sized so the button reads as a small pill rather
+  // than the chunky control it was — adjust if it still feels off.
   var disc = document.createElementNS(ns, 'circle');
-  disc.setAttribute('r', 32);
+  disc.setAttribute('r', 11);
   disc.setAttribute('fill', '#1A1A1A');
   disc.setAttribute('stroke', '#5DCAA5');
-  disc.setAttribute('stroke-width', 4);
+  disc.setAttribute('stroke-width', 1.6);
   g.appendChild(disc);
-  // X strokes.
   var x = document.createElementNS(ns, 'path');
-  x.setAttribute('d', 'M -14 -14 L 14 14 M 14 -14 L -14 14');
+  x.setAttribute('d', 'M -5 -5 L 5 5 M 5 -5 L -5 5');
   x.setAttribute('stroke', '#5DCAA5');
-  x.setAttribute('stroke-width', 5);
+  x.setAttribute('stroke-width', 2);
   x.setAttribute('stroke-linecap', 'round');
   x.setAttribute('fill', 'none');
   g.appendChild(x);
