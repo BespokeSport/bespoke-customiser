@@ -982,13 +982,10 @@ function bespoke_format_bg_variant( $d ) {
    ========================================================================= */
 
 function bespoke_render_cart_armbands( $item_data, $d ) {
-    if ( ! empty( $d['size'] ) ) {
-        $item_data[] = [ 'name' => 'Diameter', 'value' => esc_html( $d['size'] ) ];
-    }
-    $thickness = bespoke_format_bg_variant( $d );
-    if ( $thickness ) {
-        $item_data[] = [ 'name' => 'Band thickness', 'value' => esc_html( $thickness ) ];
-    }
+    // Size + band thickness aren't added here — WC shows them
+    // automatically via the variation attributes for variable products
+    // (Band Thickness / Band Width / etc.). Adding our own Diameter and
+    // Band thickness rows on top of that just duplicates the info.
     if ( ! empty( $d['design'] ) ) {
         $item_data[] = [ 'name' => 'Design', 'value' => esc_html( $d['design'] ) ];
     }
@@ -1020,10 +1017,8 @@ function bespoke_render_admin_armbands( $d, $item ) {
    ========================================================================= */
 
 function bespoke_render_cart_pennant( $item_data, $d ) {
-    $style = bespoke_format_bg_variant( $d );
-    if ( $style ) {
-        $item_data[] = [ 'name' => 'Style', 'value' => esc_html( $style ) ];
-    }
+    // Style is shown by WC's own variation attribute display for
+    // variable-product pennants. We just add the design + text + badge.
     if ( ! empty( $d['design'] ) ) {
         $item_data[] = [ 'name' => 'Design', 'value' => esc_html( $d['design'] ) ];
     }
@@ -1216,6 +1211,22 @@ function bespoke_render_admin_generic_card( $product_label, $d, $opts = [] ) {
                 ?>
             </div>
         </div>
+
+        <!-- Full-width design preview row — matches the shin-pad layout
+             so production sees the same kind of snapshot for every
+             product type. preview_url is the PNG snapshot the customiser
+             uploaded just before add-to-cart. -->
+        <?php if ( ! empty( $d['preview_url'] ) ) : ?>
+            <div style="margin-top:6px;">
+                <div style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.6px;padding-bottom:4px;margin-bottom:6px;border-bottom:1px solid #eee;">
+                    Design preview
+                </div>
+                <a href="<?php echo esc_url( $d['preview_url'] ); ?>" target="_blank">
+                    <img src="<?php echo esc_url( $d['preview_url'] ); ?>"
+                         style="max-height:200px;max-width:100%;object-fit:contain;border:1px solid #eee;border-radius:4px;padding:4px;background:#fff;display:block;" />
+                </a>
+            </div>
+        <?php endif; ?>
     </div>
     <?php
     return ob_get_clean();
