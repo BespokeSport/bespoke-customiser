@@ -1169,6 +1169,23 @@ function bespoke_render_admin_award_glassblock( $d, $item ) {
 
 
 /* =========================================================================
+   CORNER FLAGS — single item, one badge + one text
+   ========================================================================= */
+
+function bespoke_render_cart_corner_flags( $item_data, $d ) {
+    if ( ! empty( $d['design'] ) ) $item_data[] = [ 'name' => 'Design', 'value' => esc_html( $d['design'] ) ];
+    if ( ! empty( $d['left']['name'] ) ) $item_data[] = [ 'name' => 'Text', 'value' => esc_html( $d['left']['name'] ) ];
+    $item_data[] = [ 'name' => 'Club badge', 'value' => ! empty( $d['badge']['url'] ) ? 'Uploaded' : 'Not added' ];
+    return $item_data;
+}
+function bespoke_render_admin_corner_flags( $d, $item ) {
+    echo bespoke_render_admin_generic_card( 'Corner Flag', $d, [
+        'show_text' => [ 'left_name' => 'Text' ],
+    ] );
+}
+
+
+/* =========================================================================
    GENERIC ADMIN ORDER CARD
    Reused by every product type added above so we don't replicate the
    ~200-line shin-pad layout for each. Returns HTML.

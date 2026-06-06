@@ -2760,6 +2760,9 @@ var BESPOKE_STEP_CONFIG = {
   // shared with the Pennant; diameter (16-36cm) drives the band-width
   // scaling. See initBgVariantToggle + bespokeArmbandBandScale().
   armbands:           ['badge', 'name', 'design', 'colours'],
+  // Corner Flags — single item, one badge + one text + design + colour
+  // pickers. No squad-number step.
+  corner_flags:       ['badge', 'name', 'design', 'colours'],
   // Future:
   // shinpad_sleeves: ['badge', 'name', 'number', 'design', 'colours'],
   // etc.
@@ -2780,6 +2783,7 @@ var BESPOKE_ZONES_CONFIG = {
   award_plate:        1,
   award_glassblock:   1,
   pennant:            1,
+  corner_flags:       1,
   armbands:           { badge: 2, text: 1 }
 };
 function _bespokeZonesEntry(){
