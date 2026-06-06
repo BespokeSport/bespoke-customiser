@@ -29,19 +29,50 @@ function bespoke_check_woocommerce() {
     return true;
 }
 
-// Load plugin components
+// Load plugin components.
+// Each include is wrapped in file_exists() so a partial upload (one
+// file missing on the server) degrades gracefully instead of fatal-
+// erroring the whole site. Missing files are logged to error_log for
+// the next-time-Claude-helps debugging trail.
 add_action( 'plugins_loaded', function() {
     if ( ! bespoke_check_woocommerce() ) return;
 
-    require_once BESPOKE_PLUGIN_DIR . 'includes/customiser-designs.php';   // design management
-    require_once BESPOKE_PLUGIN_DIR . 'includes/customiser-products.php';  // per-product asset uploads (background + pad base)
-    require_once BESPOKE_PLUGIN_DIR . 'includes/customiser-fonts.php';     // custom font upload
-    require_once BESPOKE_PLUGIN_DIR . 'includes/customiser-frontend.php';
-    require_once BESPOKE_PLUGIN_DIR . 'includes/customiser-woocommerce.php';
-    require_once BESPOKE_PLUGIN_DIR . 'includes/customiser-ajax.php';
-    require_once BESPOKE_PLUGIN_DIR . 'includes/customiser-product-page.php'; // per-product PDP content (eyebrow / sizing / etc.)
-    require_once BESPOKE_PLUGIN_DIR . 'includes/customiser-global-fonts.php'; // force-load Anton (independent of Elementor / theme)
-    require_once BESPOKE_PLUGIN_DIR . 'includes/customiser-shop.php';         // Shop / category archive styling + "Customise →" button copy
+    $modules = [
+        'customiser-designs.php',       // design management
+        'customiser-products.php',      // per-product asset uploads (background + pad base)
+        'customiser-fonts.php',         // custom font upload
+        'customiser-frontend.php',
+        'customiser-woocommerce.php',
+        'customiser-ajax.php',
+        'customiser-product-page.php',  // per-product PDP content (eyebrow / sizing / etc.)
+        'customiser-global-fonts.php',  // force-load Anton (independent of Elementor / theme)
+        'customiser-shop.php',          // Shop / category archive styling + "Customise →" button copy
+    ];
+
+    $missing = [];
+    foreach ( $modules as $file ) {
+        $path = BESPOKE_PLUGIN_DIR . 'includes/' . $file;
+        if ( file_exists( $path ) ) {
+            require_once $path;
+        } else {
+            $missing[] = $file;
+        }
+    }
+
+    if ( ! empty( $missing ) ) {
+        // Log for the developer, AND surface a polite admin notice so
+        // the BEspoke designer notices a partial upload immediately
+        // instead of wondering why a feature isn't there.
+        error_log( '[BEspoke Customiser] missing module files: ' . implode( ', ', $missing ) );
+        add_action( 'admin_notices', function() use ( $missing ) {
+            if ( ! current_user_can( 'activate_plugins' ) ) return;
+            echo '<div class="notice notice-warning"><p><strong>BEspoke Customiser:</strong> '
+                . esc_html( count( $missing ) )
+                . ' module file(s) missing from <code>/wp-content/plugins/bespoke-customiser/includes/</code> — upload these and refresh: '
+                . '<code>' . esc_html( implode( '</code>, <code>', $missing ) ) . '</code>.'
+                . '</p></div>';
+        });
+    }
 });
 
 // Create badge upload directory on activation
