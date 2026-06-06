@@ -582,34 +582,34 @@ add_filter( 'woocommerce_hidden_order_itemmeta', function( $hidden ) {
  */
 function bespoke_render_admin_shinpads( $d, $item ) {
 
-    // Helper: render a colour swatch + hex value
+    // Helper: render a colour swatch + hex value + one-click Copy button.
+    // Delegates to the shared bespoke_admin_colour_swatch() so every spec
+    // card looks identical and the copy-to-clipboard JS only emits once.
     $colour_swatch = function( $hex ) {
-        if ( ! $hex ) return '—';
-        $safe = esc_attr( $hex );
-        return sprintf(
-            '<span style="display:inline-flex;align-items:center;gap:6px;">'
-            . '<span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:%1$s;border:1px solid rgba(0,0,0,0.15);flex-shrink:0;"></span>'
-            . '<code style="font-size:12px;">%1$s</code>'
-            . '</span>',
-            $safe
-        );
+        return bespoke_admin_colour_swatch( $hex );
     };
 
-    // Helper: render a gradient swatch (from → to) with both hex values
-    $gradient_swatch = function( $grad ) use ( $colour_swatch ) {
+    // Helper: render a gradient swatch (from → to) with TWO Copy
+    // buttons so production can grab either stop straight into
+    // Photoshop. The gradient bar already shows the colours, so we
+    // skip the per-stop solid squares and just show "#hex [Copy]"
+    // for each end of the gradient.
+    $gradient_swatch = function( $grad ) {
         if ( empty( $grad['from'] ) || empty( $grad['to'] ) ) return '—';
         $from = esc_attr( $grad['from'] );
         $to   = esc_attr( $grad['to']   );
         return sprintf(
             '<span style="display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;">'
             . '<span style="display:inline-block;width:36px;height:14px;border-radius:3px;background:linear-gradient(180deg,%1$s,%2$s);border:1px solid rgba(0,0,0,0.15);flex-shrink:0;" title="Gradient %1$s → %2$s"></span>'
-            . '<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#666;">'
-              . '<code>%1$s</code> → <code>%2$s</code>'
-            . '</span>'
+            . '<span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;"><code>%1$s</code>%3$s</span>'
+            . '<span style="font-size:11px;color:#666;">→</span>'
+            . '<span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;"><code>%2$s</code>%4$s</span>'
             . '<span style="font-size:10px;font-weight:700;color:#2E7D32;text-transform:uppercase;letter-spacing:.5px;background:#E8F5E9;padding:2px 6px;border-radius:3px;">Gradient</span>'
             . '</span>',
             $from,
-            $to
+            $to,
+            bespoke_admin_copy_button( $grad['from'] ),
+            bespoke_admin_copy_button( $grad['to']   )
         );
     };
 
@@ -836,16 +836,10 @@ function bespoke_render_admin_shinpads( $d, $item ) {
  */
 function bespoke_render_admin_gripsocks( $d, $item ) {
 
+    // Delegates to the shared bespoke_admin_colour_swatch() so every
+    // hex value in every spec card gets the same one-click Copy button.
     $colour_swatch = function( $hex ) {
-        if ( ! $hex ) return '—';
-        $safe = esc_attr( $hex );
-        return sprintf(
-            '<span style="display:inline-flex;align-items:center;gap:6px;">'
-            . '<span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:%1$s;border:1px solid rgba(0,0,0,0.15);flex-shrink:0;"></span>'
-            . '<code style="font-size:12px;">%1$s</code>'
-            . '</span>',
-            $safe
-        );
+        return bespoke_admin_colour_swatch( $hex );
     };
     $row = function( $label, $value ) {
         if ( $value === '' || $value === null ) $value = '—';
@@ -1058,6 +1052,112 @@ function bespoke_format_bg_variant( $d ) {
 }
 
 
+/**
+ * Render just the "Copy" button for a hex value — used inline by
+ * gradient swatches where the solid swatch square would duplicate
+ * the gradient bar visually. Also emits the inline JS once per
+ * request via bespoke_admin_emit_copy_script().
+ */
+function bespoke_admin_copy_button( $hex ) {
+    if ( ! $hex ) return '';
+    bespoke_admin_emit_copy_script();
+    $safe = esc_attr( $hex );
+    return sprintf(
+        '<button type="button" class="bespoke-copy-hex" data-bespoke-copy="%1$s" '
+        . 'title="Copy %1$s to clipboard" '
+        . 'style="all:unset;cursor:pointer;font-size:10px;font-weight:700;color:#2E7D32;text-transform:uppercase;letter-spacing:.5px;background:#E8F5E9;padding:2px 7px;border-radius:3px;line-height:1.4;border:1px solid #C8E6C9;">'
+        . 'Copy'
+        . '</button>',
+        $safe
+    );
+}
+
+/**
+ * Render a colour swatch + hex value + one-click "Copy" button.
+ *
+ * Used by every product spec card in the WC admin order screen so
+ * production can paste hex codes straight into Photoshop without
+ * having to manually select + Ctrl+C. The button writes the hex to
+ * the clipboard via the modern Clipboard API (with a
+ * document.execCommand fallback for older browsers) and briefly
+ * flashes "✓ Copied" feedback so the user knows it worked.
+ *
+ * Returns the swatch markup (or '—' if no hex).
+ */
+function bespoke_admin_colour_swatch( $hex ) {
+    if ( ! $hex ) return '—';
+    $safe = esc_attr( $hex );
+    return sprintf(
+        '<span style="display:inline-flex;align-items:center;gap:6px;">'
+        . '<span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:%1$s;border:1px solid rgba(0,0,0,0.15);flex-shrink:0;"></span>'
+        . '<code style="font-size:12px;">%1$s</code>'
+        . '%2$s'
+        . '</span>',
+        $safe,
+        bespoke_admin_copy_button( $hex )
+    );
+}
+
+/**
+ * Emit the inline JS that powers the "Copy" buttons in colour
+ * swatches. Static flag guarantees the script tag is printed at most
+ * once per request — first colour swatch on the page wins, every
+ * later swatch just relies on the already-wired delegated listener.
+ */
+function bespoke_admin_emit_copy_script() {
+    static $emitted = false;
+    if ( $emitted ) return;
+    $emitted = true;
+    ?>
+    <script>
+    (function(){
+        if (window.__bespokeCopyHexWired) return;
+        window.__bespokeCopyHexWired = true;
+        document.addEventListener('click', function(e){
+            var btn = e.target && e.target.closest && e.target.closest('.bespoke-copy-hex');
+            if (!btn) return;
+            e.preventDefault();
+            e.stopPropagation();
+            var hex = btn.getAttribute('data-bespoke-copy') || '';
+            if (!hex) return;
+            var done = function(ok){
+                var orig = btn.dataset.bespokeOrig || btn.textContent;
+                btn.dataset.bespokeOrig = orig;
+                btn.textContent = ok ? '✓ Copied' : 'Copy failed';
+                btn.style.background = ok ? '#C8E6C9' : '#FFCDD2';
+                btn.style.color      = ok ? '#1B5E20' : '#B71C1C';
+                clearTimeout(btn.__bespokeResetTimer);
+                btn.__bespokeResetTimer = setTimeout(function(){
+                    btn.textContent      = orig;
+                    btn.style.background = '#E8F5E9';
+                    btn.style.color      = '#2E7D32';
+                }, 1500);
+            };
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(hex)
+                    .then(function(){ done(true); })
+                    .catch(function(){ done(false); });
+            } else {
+                // Fallback for older browsers / non-HTTPS admin contexts
+                var ta = document.createElement('textarea');
+                ta.value = hex;
+                ta.setAttribute('readonly', '');
+                ta.style.position = 'fixed';
+                ta.style.left     = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                var ok = false;
+                try { ok = document.execCommand('copy'); } catch(err) { ok = false; }
+                document.body.removeChild(ta);
+                done(ok);
+            }
+        });
+    })();
+    </script>
+    <?php
+}
+
+
 /* =========================================================================
    ARMBAND — cart + admin renderers
    ========================================================================= */
@@ -1214,15 +1314,10 @@ function bespoke_render_admin_generic_card( $product_label, $d, $opts = [] ) {
             . '<table style="width:100%;border-collapse:collapse;">' . $rows_html . '</table>'
             . '</div>';
     };
+    // Delegates to the shared bespoke_admin_colour_swatch() so every
+    // hex value in every spec card gets the same one-click Copy button.
     $swatch = function( $hex ) {
-        if ( ! $hex ) return '—';
-        $safe = esc_attr( $hex );
-        return sprintf(
-            '<span style="display:inline-flex;align-items:center;gap:6px;">'
-            . '<span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:%1$s;border:1px solid rgba(0,0,0,0.15);flex-shrink:0;"></span>'
-            . '<code style="font-size:12px;">%1$s</code></span>',
-            $safe
-        );
+        return bespoke_admin_colour_swatch( $hex );
     };
 
     $size_label   = $opts['size_label']   ?? 'Size';
