@@ -850,11 +850,16 @@ function bespoke_render_customiser( $atts ) {
                 //    (curved shin pads, cylindrical trophies). Untinted and NOT
                 //    masked, and they live in the design layer so the badge /
                 //    name / number stay crisp above them.
-                if (PA.shadow_url) {
-                    stack.push({ url: PA.shadow_url, tint: null, label: 'shadow' });
-                }
+                //
+                //    Order: Highlights first, Shadow last → Shadow renders on
+                //    TOP of Highlights so depth definition shows clearly even
+                //    when both layers are present. (Used to be the other way
+                //    round, which left Highlights covering Shadow.)
                 if (PA.highlights_url) {
                     stack.push({ url: PA.highlights_url, tint: null, label: 'highlight' });
+                }
+                if (PA.shadow_url) {
+                    stack.push({ url: PA.shadow_url, tint: null, label: 'shadow' });
                 }
 
                 if (!stack.length) return;

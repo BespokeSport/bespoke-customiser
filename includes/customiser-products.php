@@ -268,6 +268,20 @@ function bespoke_render_product_setup_page() {
         <p style="color:#666;"><strong>Background (Alt)</strong> is optional — used for products that ship in two variants (e.g. the Pennant comes With Frill or No Frill). When this is set on the Pennant product specifically, the customiser shows a Frill / No Frill toggle to the customer and renders whichever background they pick. Leave blank for products that only have one background.</p>
         <p style="color:#666;"><strong>Mask (on top, optional)</strong> sits ABOVE the badge and text layers. Use a PNG of "the background minus the product silhouette" — i.e. opaque everywhere except where the band / pad shape is. Anything the customer drags outside the band gets covered by the mask, creating the illusion that the badge wraps around the back. Provide a matching <strong>Mask (Alt)</strong> if you've set a Background (Alt) — otherwise the same mask is used for both variants and the cut-out won't match the alt band size.</p>
 
+        <style>
+            /* Row tint for products that have a Background uploaded — at-a-glance
+               "live / ready to ship" indicator. Overrides striped to keep the
+               whole row green regardless of zebra position. */
+            .widefat .bespoke-row-live > td,
+            .widefat .bespoke-row-live:nth-child(odd) > td {
+                background: #e8f5e9 !important;
+                border-top: 1px solid #c8e6c9 !important;
+            }
+            .widefat .bespoke-row-live:hover > td {
+                background: #d4ecd6 !important;
+            }
+        </style>
+
         <table class="widefat striped" style="margin-top: 16px;">
             <thead>
                 <tr>
@@ -297,11 +311,21 @@ function bespoke_render_product_setup_page() {
                     $mk_filename = isset( $assets[ $key ]['mask_filename'] )           ? $assets[ $key ]['mask_filename']           : '';
                     $ma_url      = isset( $assets[ $key ]['mask_alt_url'] )            ? $assets[ $key ]['mask_alt_url']            : '';
                     $ma_filename = isset( $assets[ $key ]['mask_alt_filename'] )       ? $assets[ $key ]['mask_alt_filename']       : '';
+                    // "Live" row indicator — when the Background asset is set
+                    // the product has the minimum needed to render in the
+                    // customiser, so we tint the whole row green to make
+                    // ready-to-ship products easy to spot at a glance.
+                    $row_class = $bg_url ? 'bespoke-row-live' : '';
                     ?>
-                    <tr>
+                    <tr class="<?php echo esc_attr( $row_class ); ?>">
                         <td>
                             <strong><?php echo esc_html( $label ); ?></strong><br/>
                             <code style="font-size: 11px; color: #666;"><?php echo esc_html( $key ); ?></code>
+                            <?php if ( $bg_url ) : ?>
+                                <div style="margin-top:4px;font-size:10px;font-weight:700;color:#2E7D32;text-transform:uppercase;letter-spacing:.5px;">● Live</div>
+                            <?php else : ?>
+                                <div style="margin-top:4px;font-size:10px;color:#999;text-transform:uppercase;letter-spacing:.5px;">○ Background missing</div>
+                            <?php endif; ?>
                         </td>
                         <?php foreach ( [ 'background' => [ $bg_url, $bg_filename ], 'background_alt' => [ $ba_url, $ba_filename ], 'pad_base' => [ $pb_url, $pb_filename ], 'highlights' => [ $hl_url, $hl_filename ], 'shadow' => [ $sd_url, $sd_filename ], 'mask' => [ $mk_url, $mk_filename ], 'mask_alt' => [ $ma_url, $ma_filename ] ] as $atype => $info ) :
                             list( $url, $fn ) = $info;
