@@ -102,6 +102,83 @@ function bespoke_cart_render_customise_link( $cart_item, $cart_item_key ) {
 }
 
 /* -------------------------------------------------------------------------
+ * Elementor WC Cart widget compatibility layer.
+ *
+ * The /cart/ page renders the cart through Elementor Pro's
+ * `elementor-widget-woocommerce-cart` widget, which wraps WC's
+ * standard cart markup in its own .elementor-widget-container.
+ * The Claude Design CSS targets WC's classes directly (table.cart,
+ * .cart_totals etc) which still works on descendant selectors, but
+ * Elementor's own widget styles (padding, backgrounds) sometimes
+ * win on specificity.
+ *
+ * This inline layer (a) flattens Elementor's widget wrapper so it
+ * doesn't double-pad the cart, and (b) styles the empty-cart
+ * message specifically (since most testing happens with an empty
+ * cart, this is what the designer sees first).
+ * --------------------------------------------------------------- */
+add_action( 'wp_head', 'bespoke_cart_print_elementor_compat_css', 99 );
+function bespoke_cart_print_elementor_compat_css() {
+	if ( ! bespoke_cart_is_cart_page() ) {
+		return;
+	}
+	?>
+	<style id="bespoke-cart-elementor-compat">
+	/* Flatten Elementor's cart-widget wrapping so we don't get
+	   double containers / double padding. */
+	body.bespoke-cart-styled .elementor-widget-woocommerce-cart {
+		background: transparent !important;
+	}
+	body.bespoke-cart-styled .elementor-widget-woocommerce-cart > .elementor-widget-container {
+		background: transparent !important;
+		padding: 0 !important;
+	}
+
+	/* Empty-cart state — what shows when the basket is empty. The
+	   Claude Design CSS does style .cart-empty, but the standalone
+	   wrapper around it (.wc-empty-cart-message) needs centring
+	   and breathing room. */
+	body.bespoke-cart-styled .wc-empty-cart-message {
+		max-width: 720px !important;
+		margin: 48px auto !important;
+		text-align: center !important;
+	}
+	body.bespoke-cart-styled .cart-empty.woocommerce-info {
+		background: #141417 !important;
+		color: #fff !important;
+		border: 1px solid rgba(255,255,255,0.10) !important;
+		border-left: 4px solid #7FECB8 !important;
+		border-radius: 12px !important;
+		padding: 28px 32px !important;
+		font-family: 'Inter', system-ui, sans-serif !important;
+		font-size: 16px !important;
+		text-align: left !important;
+	}
+	body.bespoke-cart-styled .return-to-shop {
+		text-align: center !important;
+		margin-top: 24px !important;
+	}
+	body.bespoke-cart-styled .return-to-shop .button {
+		background: #7FECB8 !important;
+		color: #0E0E10 !important;
+		border-radius: 999px !important;
+		padding: 14px 28px !important;
+		font-family: 'Inter', system-ui, sans-serif !important;
+		font-size: 13px !important;
+		font-weight: 700 !important;
+		letter-spacing: 0.1em !important;
+		text-transform: uppercase !important;
+		text-decoration: none !important;
+		display: inline-block !important;
+	}
+	body.bespoke-cart-styled .return-to-shop .button:hover {
+		filter: brightness(1.08) !important;
+	}
+	</style>
+	<?php
+}
+
+/* -------------------------------------------------------------------------
  * Helpers
  * --------------------------------------------------------------------- */
 

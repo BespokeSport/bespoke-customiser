@@ -83,6 +83,153 @@ function bespoke_contact_body_class( $classes ) {
 }
 
 /* -------------------------------------------------------------------------
+ * WPForms compatibility layer.
+ *
+ * The Claude Design CSS file is written for Elementor's form widget
+ * (`.elementor-form .elementor-field-group ...`). The actual contact
+ * page on the BEspoke site uses the WPForms widget instead — so
+ * the form-styling rules in the CSS file don't match anything and
+ * the form keeps WPForms' default light-theme look.
+ *
+ * This inline rule-set re-paints WPForms using the same BEspoke
+ * design tokens (dark ink inputs, mono labels, mint focus ring,
+ * mint submit button). Printed in <head> via wp_head so it loads
+ * after the main stylesheet AND beats WPForms' defaults on
+ * specificity (body.bespoke-contact-styled + .wpforms-* is more
+ * specific than .wpforms-* alone).
+ *
+ * Kept in PHP rather than the CSS file so re-running Claude Design
+ * and overwriting bespoke-contact-page.css leaves the glue intact.
+ * --------------------------------------------------------------- */
+add_action( 'wp_head', 'bespoke_contact_print_wpforms_compat_css', 99 );
+function bespoke_contact_print_wpforms_compat_css() {
+	if ( ! bespoke_contact_is_contact_page() ) {
+		return;
+	}
+	?>
+	<style id="bespoke-contact-wpforms-compat">
+	/* Container */
+	body.bespoke-contact-styled .wpforms-container {
+		background: transparent !important;
+		max-width: 100% !important;
+	}
+	body.bespoke-contact-styled .wpforms-container .wpforms-form {
+		background: transparent !important;
+	}
+
+	/* Field rows */
+	body.bespoke-contact-styled .wpforms-field {
+		padding: 0 0 18px !important;
+	}
+
+	/* Labels */
+	body.bespoke-contact-styled .wpforms-field-label,
+	body.bespoke-contact-styled .wpforms-field > label {
+		font-family: 'JetBrains Mono', SFMono-Regular, monospace !important;
+		font-size: 11px !important;
+		letter-spacing: 0.12em !important;
+		text-transform: uppercase !important;
+		color: rgba(255,255,255,0.55) !important;
+		font-weight: 500 !important;
+		margin-bottom: 10px !important;
+		display: block !important;
+	}
+	body.bespoke-contact-styled .wpforms-field-sublabel {
+		color: rgba(255,255,255,0.40) !important;
+		font-size: 11px !important;
+	}
+
+	/* Inputs + textarea */
+	body.bespoke-contact-styled .wpforms-field input[type="text"],
+	body.bespoke-contact-styled .wpforms-field input[type="email"],
+	body.bespoke-contact-styled .wpforms-field input[type="tel"],
+	body.bespoke-contact-styled .wpforms-field input[type="url"],
+	body.bespoke-contact-styled .wpforms-field input[type="number"],
+	body.bespoke-contact-styled .wpforms-field select,
+	body.bespoke-contact-styled .wpforms-field textarea {
+		width: 100% !important;
+		background: #0E0E10 !important;
+		border: 1px solid rgba(255,255,255,0.10) !important;
+		border-radius: 10px !important;
+		color: #fff !important;
+		padding: 15px 16px !important;
+		font-family: 'Inter', system-ui, sans-serif !important;
+		font-size: 15px !important;
+		line-height: 1.5 !important;
+		box-shadow: none !important;
+		transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
+		-webkit-appearance: none;
+		appearance: none;
+	}
+	body.bespoke-contact-styled .wpforms-field textarea {
+		min-height: 160px !important;
+		resize: vertical !important;
+	}
+	body.bespoke-contact-styled .wpforms-field input::placeholder,
+	body.bespoke-contact-styled .wpforms-field textarea::placeholder {
+		color: rgba(255,255,255,0.40) !important;
+	}
+	body.bespoke-contact-styled .wpforms-field input:focus,
+	body.bespoke-contact-styled .wpforms-field textarea:focus,
+	body.bespoke-contact-styled .wpforms-field select:focus {
+		outline: 0 !important;
+		border-color: #7FECB8 !important;
+		box-shadow: 0 0 0 3px rgba(127,236,184,0.10) !important;
+	}
+
+	/* Submit button — mint pill */
+	body.bespoke-contact-styled .wpforms-submit-container {
+		padding-top: 6px !important;
+	}
+	body.bespoke-contact-styled button.wpforms-submit,
+	body.bespoke-contact-styled .wpforms-submit-container button[type="submit"] {
+		width: 100% !important;
+		background: #7FECB8 !important;
+		color: #0E0E10 !important;
+		border: 0 !important;
+		border-radius: 999px !important;
+		padding: 17px 28px !important;
+		font-family: 'Inter', system-ui, sans-serif !important;
+		font-size: 14px !important;
+		font-weight: 700 !important;
+		letter-spacing: 0.1em !important;
+		text-transform: uppercase !important;
+		cursor: pointer !important;
+		box-shadow: none !important;
+		transition: filter 0.2s ease !important;
+	}
+	body.bespoke-contact-styled button.wpforms-submit:hover {
+		filter: brightness(1.08) !important;
+	}
+
+	/* Validation + success messages */
+	body.bespoke-contact-styled .wpforms-error,
+	body.bespoke-contact-styled label.wpforms-error {
+		color: #E66467 !important;
+		font-family: 'JetBrains Mono', SFMono-Regular, monospace !important;
+		font-size: 11px !important;
+		letter-spacing: 0.06em !important;
+		margin-top: 6px !important;
+		display: block !important;
+	}
+	body.bespoke-contact-styled .wpforms-field input.wpforms-error,
+	body.bespoke-contact-styled .wpforms-field textarea.wpforms-error,
+	body.bespoke-contact-styled .wpforms-field select.wpforms-error {
+		border-color: #E66467 !important;
+	}
+	body.bespoke-contact-styled div.wpforms-confirmation-container-full {
+		background: rgba(127,236,184,0.10) !important;
+		border: 1px solid #7FECB8 !important;
+		border-radius: 10px !important;
+		color: #7FECB8 !important;
+		padding: 14px 16px !important;
+		font-size: 14px !important;
+	}
+	</style>
+	<?php
+}
+
+/* -------------------------------------------------------------------------
  * Helpers
  * --------------------------------------------------------------------- */
 
