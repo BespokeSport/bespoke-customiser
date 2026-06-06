@@ -1,0 +1,392 @@
+/* ==========================================================================
+   BESPOKE SPORT · Shop / category archive styling
+   --------------------------------------------------------------------------
+   Drop-in CSS for the Astra theme + WooCommerce shop & category pages.
+   Layout: full-width banner + clean product grid (NO left filter sidebar).
+
+   Targets: body.archive.woocommerce, body.post-type-archive-product,
+            body.tax-product_cat  (shop page + every category page)
+
+   Where to paste:
+     Appearance ▸ Customize ▸ Additional CSS
+     - OR -
+     wp-content/themes/astra-child/style.css
+
+   Pairs with: "Shop Reference (markup contract).html"
+   Companion file: bespoke-product-page.css (single product)
+   ========================================================================== */
+
+
+/* --------------------------------------------------------------------------
+   1. DESIGN TOKENS  (identical to the product-page CSS — safe to dedupe
+      if both files are loaded; keep one :root block site-wide)
+   -------------------------------------------------------------------------- */
+:root {
+  --bs-ink:        #0E0E10;
+  --bs-deep:       #050505;
+  --bs-panel:      #141417;
+  --bs-panel-2:    #1A1A1E;
+  --bs-mint:       #7FECB8;
+  --bs-mint-deep:  #3DA67A;
+  --bs-mint-soft:  rgba(127,236,184,0.10);
+  --bs-cream:      #F2EFE9;
+  --bs-text:       rgba(255,255,255,0.85);
+  --bs-muted:      rgba(255,255,255,0.55);
+  --bs-line:       rgba(255,255,255,0.10);
+  --bs-font-ui:    'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  --bs-font-mono:  'JetBrains Mono', SFMono-Regular, ui-monospace, monospace;
+}
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+
+/* --------------------------------------------------------------------------
+   2. GLOBAL — dark canvas across all shop/archive pages
+   -------------------------------------------------------------------------- */
+body.woocommerce.archive,
+body.post-type-archive-product,
+body.tax-product_cat {
+  background: var(--bs-ink) !important;
+  color: var(--bs-text) !important;
+  font-family: var(--bs-font-ui) !important;
+}
+
+body.woocommerce.archive .site,
+body.woocommerce.archive .site-content,
+body.woocommerce.archive #primary,
+body.woocommerce.archive .content-area,
+body.post-type-archive-product .site-content,
+body.tax-product_cat .site-content {
+  background: var(--bs-ink) !important;
+}
+
+/* Kill Astra's boxed white wrapper / shadow */
+body.woocommerce.archive .ast-woocommerce-container,
+body.post-type-archive-product .ast-woocommerce-container,
+body.tax-product_cat .ast-woocommerce-container {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: 0 !important;
+}
+
+
+/* --------------------------------------------------------------------------
+   3. REMOVE THE SIDEBAR — force full-width content
+   --------------------------------------------------------------------------
+   Astra's WooCommerce sidebar usually lives in #secondary.
+   Also set this in Customize ▸ WooCommerce ▸ Sidebar = "No Sidebar"
+   (or Layout ▸ Sidebar = Disabled) — the CSS below is a belt-and-braces
+   fallback so the grid runs full width regardless. */
+body.woocommerce.archive #secondary,
+body.post-type-archive-product #secondary,
+body.tax-product_cat #secondary,
+body.woocommerce.archive .widget-area,
+body.woocommerce.archive aside.sidebar-widget-area {
+  display: none !important;
+}
+
+body.woocommerce.archive #primary,
+body.post-type-archive-product #primary,
+body.tax-product_cat #primary {
+  width: 100% !important;
+  max-width: 100% !important;
+  flex: 0 0 100% !important;
+  padding: 0 !important;
+}
+
+
+/* --------------------------------------------------------------------------
+   4. SHOP BANNER  (page title + intro)
+   --------------------------------------------------------------------------
+   Astra outputs the title in .ast-archive-description or a .page-title.
+   We turn that whole block into a dark banner with a mint eyebrow.
+   The eyebrow + headline come via ::before content so no markup change
+   is strictly required — but the reference HTML shows the cleaner markup. */
+body.woocommerce.archive .ast-archive-description,
+body.post-type-archive-product .ast-archive-description,
+body.tax-product_cat .ast-archive-description,
+body.woocommerce.archive .woocommerce-products-header {
+  background: var(--bs-ink) !important;
+  border-bottom: 1px solid var(--bs-line) !important;
+  padding: 56px 0 44px !important;
+  margin: 0 0 40px !important;
+  text-align: left !important;
+}
+
+body.woocommerce.archive .woocommerce-products-header__title,
+body.woocommerce.archive .ast-archive-title,
+body.tax-product_cat .ast-archive-title,
+body.woocommerce.archive .page-title {
+  font-family: var(--bs-font-ui) !important;
+  font-weight: 800 !important;
+  font-size: clamp(40px, 5vw, 76px) !important;
+  letter-spacing: -0.03em !important;
+  line-height: 0.95 !important;
+  color: #fff !important;
+  margin: 0 !important;
+}
+
+/* Mint eyebrow above the title */
+body.woocommerce.archive .woocommerce-products-header__title::before,
+body.woocommerce.archive .ast-archive-title::before {
+  content: 'Shop · Everything personalised';
+  display: block;
+  font-family: var(--bs-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--bs-mint);
+  margin-bottom: 16px;
+  font-weight: 500;
+}
+
+/* Category description / intro copy */
+body.woocommerce.archive .ast-archive-description .ast-archive-description-text,
+body.woocommerce.archive .term-description,
+body.tax-product_cat .term-description {
+  color: var(--bs-muted) !important;
+  font-size: 16px !important;
+  line-height: 1.55 !important;
+  max-width: 560px !important;
+  margin-top: 18px !important;
+}
+
+
+/* --------------------------------------------------------------------------
+   5. RESULT COUNT + SORT BAR
+   -------------------------------------------------------------------------- */
+body.woocommerce.archive .woocommerce-result-count {
+  font-family: var(--bs-font-mono) !important;
+  font-size: 11px !important;
+  letter-spacing: 0.14em !important;
+  text-transform: uppercase !important;
+  color: var(--bs-muted) !important;
+  margin: 0 0 24px !important;
+  float: none !important;
+}
+
+body.woocommerce.archive .woocommerce-ordering {
+  margin: 0 0 24px !important;
+  float: right !important;
+}
+
+body.woocommerce.archive .woocommerce-ordering select,
+body.woocommerce.archive select.orderby {
+  background: var(--bs-panel) !important;
+  color: #fff !important;
+  border: 1px solid var(--bs-line) !important;
+  border-radius: 8px !important;
+  padding: 12px 16px !important;
+  font-family: var(--bs-font-ui) !important;
+  font-size: 13px !important;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+
+/* --------------------------------------------------------------------------
+   6. PRODUCT GRID  (the core)
+   --------------------------------------------------------------------------
+   WooCommerce renders ul.products > li.product. We override Astra's column
+   widths with CSS grid so spacing is even and responsive. */
+body.woocommerce.archive ul.products,
+body.post-type-archive-product ul.products,
+body.tax-product_cat ul.products {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 20px !important;
+  margin: 0 0 80px !important;
+  padding: 0 !important;
+  list-style: none !important;
+}
+
+/* Neutralise Astra's float/percentage widths */
+body.woocommerce.archive ul.products li.product,
+body.post-type-archive-product ul.products li.product,
+body.tax-product_cat ul.products li.product {
+  width: auto !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  float: none !important;
+  clear: none !important;
+
+  background: var(--bs-panel) !important;
+  border: 1px solid var(--bs-line) !important;
+  border-radius: 12px !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+body.woocommerce.archive ul.products li.product:hover {
+  border-color: rgba(127,236,184,0.45) !important;
+  transform: translateY(-2px);
+}
+
+/* 4-up on wide screens */
+@media (min-width: 1280px) {
+  body.woocommerce.archive ul.products,
+  body.post-type-archive-product ul.products,
+  body.tax-product_cat ul.products {
+    grid-template-columns: repeat(4, 1fr) !important;
+  }
+}
+
+
+/* --- Card image ----------------------------------------------------------- */
+body.woocommerce.archive ul.products li.product a img,
+body.woocommerce.archive ul.products li.product img {
+  margin: 0 !important;
+  border-radius: 0 !important;
+  aspect-ratio: 1 / 1 !important;
+  object-fit: cover !important;
+  width: 100% !important;
+  background: var(--bs-panel-2) !important;
+}
+
+/* The whole card link */
+body.woocommerce.archive ul.products li.product > a {
+  display: flex !important;
+  flex-direction: column !important;
+  text-decoration: none !important;
+}
+
+
+/* --- Card text ------------------------------------------------------------ */
+body.woocommerce.archive ul.products li.product .woocommerce-loop-product__title {
+  font-family: var(--bs-font-ui) !important;
+  font-weight: 700 !important;
+  font-size: 18px !important;
+  color: #fff !important;
+  padding: 18px 20px 0 !important;
+  margin: 0 !important;
+}
+
+body.woocommerce.archive ul.products li.product .price {
+  padding: 8px 20px 0 !important;
+  color: var(--bs-text) !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+}
+body.woocommerce.archive ul.products li.product .price .woocommerce-Price-amount {
+  color: #fff !important;
+  font-weight: 700 !important;
+}
+/* "From" prefix on variable products */
+body.woocommerce.archive ul.products li.product .price .from {
+  color: var(--bs-muted) !important;
+  font-weight: 500 !important;
+}
+
+/* Category label (if shown) */
+body.woocommerce.archive ul.products li.product .ast-woo-product-category {
+  font-family: var(--bs-font-mono) !important;
+  font-size: 9px !important;
+  letter-spacing: 0.12em !important;
+  text-transform: uppercase !important;
+  color: var(--bs-muted) !important;
+  padding: 16px 20px 0 !important;
+}
+
+
+/* --- Add-to-cart / customise button --------------------------------------- */
+body.woocommerce.archive ul.products li.product .button,
+body.woocommerce.archive ul.products li.product .add_to_cart_button {
+  margin: 16px 20px 20px !important;
+  background: transparent !important;
+  color: var(--bs-mint) !important;
+  border: 1px solid var(--bs-line) !important;
+  border-radius: 999px !important;
+  padding: 12px 20px !important;
+  font-family: var(--bs-font-ui) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.1em !important;
+  text-transform: uppercase !important;
+  text-align: center !important;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+body.woocommerce.archive ul.products li.product .button:hover,
+body.woocommerce.archive ul.products li.product .add_to_cart_button:hover {
+  background: var(--bs-mint) !important;
+  color: var(--bs-ink) !important;
+  border-color: var(--bs-mint) !important;
+}
+
+
+/* --- Sale / new flash badge ----------------------------------------------- */
+body.woocommerce.archive ul.products li.product .onsale,
+body.woocommerce.archive span.onsale {
+  position: absolute !important;
+  top: 14px !important;
+  left: 14px !important;
+  background: var(--bs-mint) !important;
+  color: var(--bs-ink) !important;
+  border-radius: 999px !important;
+  padding: 5px 12px !important;
+  font-family: var(--bs-font-mono) !important;
+  font-size: 9px !important;
+  letter-spacing: 0.12em !important;
+  text-transform: uppercase !important;
+  font-weight: 700 !important;
+  min-height: 0 !important;
+  min-width: 0 !important;
+  line-height: 1.4 !important;
+  margin: 0 !important;
+}
+body.woocommerce.archive ul.products li.product { position: relative !important; }
+
+
+/* --------------------------------------------------------------------------
+   7. PAGINATION
+   -------------------------------------------------------------------------- */
+body.woocommerce.archive .woocommerce-pagination ul,
+body.woocommerce.archive nav.woocommerce-pagination ul {
+  border: 0 !important;
+  display: flex !important;
+  gap: 8px !important;
+  justify-content: center !important;
+}
+body.woocommerce.archive .woocommerce-pagination ul li {
+  border: 0 !important;
+  margin: 0 !important;
+}
+body.woocommerce.archive .woocommerce-pagination ul li a,
+body.woocommerce.archive .woocommerce-pagination ul li span {
+  background: var(--bs-panel) !important;
+  border: 1px solid var(--bs-line) !important;
+  border-radius: 8px !important;
+  color: var(--bs-text) !important;
+  min-width: 44px !important;
+  padding: 12px 0 !important;
+  font-family: var(--bs-font-mono) !important;
+  font-size: 13px !important;
+}
+body.woocommerce.archive .woocommerce-pagination ul li span.current {
+  background: var(--bs-mint) !important;
+  color: var(--bs-ink) !important;
+  border-color: var(--bs-mint) !important;
+  font-weight: 700 !important;
+}
+
+
+/* --------------------------------------------------------------------------
+   8. MOBILE
+   -------------------------------------------------------------------------- */
+@media (max-width: 768px) {
+  body.woocommerce.archive ul.products,
+  body.post-type-archive-product ul.products,
+  body.tax-product_cat ul.products {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+  }
+  body.woocommerce.archive .woocommerce-products-header__title,
+  body.woocommerce.archive .ast-archive-title { font-size: 40px !important; }
+  body.woocommerce.archive ul.products li.product .woocommerce-loop-product__title { font-size: 15px !important; }
+}
+
+
+/* ==========================================================================
+   END · Bespoke Sport shop archive styling
+   ========================================================================== */
