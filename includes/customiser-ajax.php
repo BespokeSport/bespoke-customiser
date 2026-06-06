@@ -694,16 +694,38 @@ function bespoke_handle_add_to_cart() {
             $customisation['data']['size']             ?? '',
             $customisation['data']['bg_variant_label'] ?? '',
         ] );
-        $match = bespoke_match_variation( $product, $customer_values );
-        if ( ! $match ) {
-            wp_send_json_error(
-                'No matching product variation for "' .
-                esc_html( implode( ' / ', $customer_values ) ) .
-                '". Set up a variation in WooCommerce that matches the customer\'s chosen options.'
+
+        if ( empty( $customer_values ) ) {
+            // No customiser choices to match against. Common for
+            // single-zone products (corner flags, pennants etc.) where
+            // the WC product is variable purely for stock/SKU reasons
+            // but the customiser doesn't expose any of the variation
+            // axes. Fall back to the first available variation so the
+            // add-to-cart still succeeds. If the admin wants a specific
+            // variation to be the default, putting it first in WC's
+            // variations list controls that.
+            $variations = $product->get_available_variations();
+            if ( empty( $variations ) ) {
+                wp_send_json_error( 'This product has no available variations. Please add one in WooCommerce.' );
+            }
+            $variation_id    = (int) $variations[0]['variation_id'];
+            $variation_attrs = bespoke_resolve_variation_attributes(
+                $product,
+                $variations[0]['attributes'],
+                $customer_values
             );
+        } else {
+            $match = bespoke_match_variation( $product, $customer_values );
+            if ( ! $match ) {
+                wp_send_json_error(
+                    'No matching product variation for "' .
+                    esc_html( implode( ' / ', $customer_values ) ) .
+                    '". Set up a variation in WooCommerce that matches the customer\'s chosen options.'
+                );
+            }
+            $variation_id    = $match['id'];
+            $variation_attrs = $match['attributes'];
         }
-        $variation_id    = $match['id'];
-        $variation_attrs = $match['attributes'];
     }
 
     // ── Add to WooCommerce cart ────────────────────────────────────────────────
@@ -876,10 +898,18 @@ function bespoke_resolve_variation_attributes( $product, $variation_attrs, $cust
         }
         if ( $picked === '' ) {
             // Last-ditch fallback so the cart call doesn't bail with
-            // "required field". Use whichever customer value is closest
-            // by simply taking the first one — production can still
-            // see the size on the cart-item meta.
-            $picked = $customer_values[0] ?? '';
+            // "required field". Preferences:
+            //   1. First customer value (e.g. their chosen size) — even
+            //      if it didn't match an explicit option list.
+            //   2. First option from the parent attribute's options.
+            //      Covers products with no customiser-side choice axis
+            //      at all (e.g. corner flags configured as variable for
+            //      stock SKUs).
+            if ( ! empty( $customer_values ) ) {
+                $picked = $customer_values[0];
+            } elseif ( ! empty( $options ) ) {
+                $picked = $options[0];
+            }
         }
         $resolved[ $attr_key ] = $picked;
     }
