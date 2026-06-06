@@ -235,6 +235,16 @@ function bespoke_blog_render_masthead() {
 	if ( absint( get_query_var( 'paged' ) ) > 1 ) {
 		return;
 	}
+	// On an Elementor-built blog Page, the designer usually has their
+	// own hero (marquee, headline section, etc.) — injecting our
+	// masthead on top would push their hero down and create a
+	// double-banner. Skip by default; allow override via filter.
+	if ( bespoke_blog_is_designated_index_page() ) {
+		$show = apply_filters( 'bespoke_blog_show_masthead_on_designated_page', false );
+		if ( ! $show ) {
+			return;
+		}
+	}
 
 	$eyebrow = apply_filters( 'bespoke_blog_masthead_eyebrow', __( 'The Locker Room · Field notes', 'bespoke-customiser' ) );
 	$title   = apply_filters( 'bespoke_blog_masthead_title',   __( 'The Locker Room', 'bespoke-customiser' ) );
@@ -268,17 +278,39 @@ add_action( 'astra_primary_content_top',    'bespoke_blog_open_grid_wrapper',  8
 add_action( 'astra_primary_content_bottom', 'bespoke_blog_close_grid_wrapper', 5 );
 
 function bespoke_blog_open_grid_wrapper() {
-	if ( ! bespoke_blog_is_list_view() ) {
+	if ( ! bespoke_blog_should_wrap_loop() ) {
 		return;
 	}
 	echo '<div class="bs-blog-grid"><div class="bs-post-list">';
 }
 
 function bespoke_blog_close_grid_wrapper() {
-	if ( ! bespoke_blog_is_list_view() ) {
+	if ( ! bespoke_blog_should_wrap_loop() ) {
 		return;
 	}
 	echo '</div></div>';
+}
+
+/**
+ * Should we wrap the page content in `.bs-blog-grid > .bs-post-list`?
+ * YES on a real WP archive — the wrapper turns the loop into a 3-
+ * column magazine grid via CSS.
+ * NO on an Elementor-built Page using the Posts widget — Elementor
+ * already grids the posts inside its own widget, and wrapping the
+ * whole <main> in our grid container shrinks Elementor's content
+ * to one third width and makes the posts disappear off-screen.
+ *
+ * Override either way via:
+ *   add_filter( 'bespoke_blog_wrap_designated_page_loop', '__return_true' );
+ */
+function bespoke_blog_should_wrap_loop() {
+	if ( ! bespoke_blog_is_list_view() ) {
+		return false;
+	}
+	if ( bespoke_blog_is_designated_index_page() ) {
+		return (bool) apply_filters( 'bespoke_blog_wrap_designated_page_loop', false );
+	}
+	return true;
 }
 
 /* -------------------------------------------------------------------------

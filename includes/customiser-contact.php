@@ -108,7 +108,40 @@ function bespoke_contact_print_wpforms_compat_css() {
 	}
 	?>
 	<style id="bespoke-contact-wpforms-compat">
-	/* Container */
+	/* ─── Page canvas — force dark behind every Elementor wrapper ─────
+	   Elementor sections on the contact page each carry their own
+	   background-color the designer set in the editor; if any is
+	   white, it punches through our body-level dark BG. Force every
+	   Elementor section / column / container on the contact page to
+	   transparent so the dark canvas wins, EXCEPT sections whose
+	   class includes the word 'marquee' (so the mint scrolling
+	   marquee at the top of the page keeps its mint background).
+	*/
+	body.bespoke-contact-styled .elementor-section:not([class*="marquee"]):not([class*="bs-marquee"]),
+	body.bespoke-contact-styled .e-con:not([class*="marquee"]):not([class*="bs-marquee"]),
+	body.bespoke-contact-styled .elementor-column,
+	body.bespoke-contact-styled .e-con-inner {
+		background-color: transparent !important;
+		background-image: none !important;
+	}
+
+	/* Text fallback — any default-coloured paragraph / heading inside
+	   the contact page should read as white-on-dark, not the body
+	   theme's default colour. */
+	body.bespoke-contact-styled .elementor-widget-heading h1,
+	body.bespoke-contact-styled .elementor-widget-heading h2,
+	body.bespoke-contact-styled .elementor-widget-heading h3,
+	body.bespoke-contact-styled .elementor-widget-heading h4,
+	body.bespoke-contact-styled .elementor-widget-text-editor,
+	body.bespoke-contact-styled .elementor-widget-text-editor p {
+		color: #fff !important;
+	}
+	body.bespoke-contact-styled .elementor-widget-icon-box .elementor-icon-box-title,
+	body.bespoke-contact-styled .elementor-widget-icon-box .elementor-icon-box-description {
+		color: #fff !important;
+	}
+
+	/* WPForms — Container */
 	body.bespoke-contact-styled .wpforms-container {
 		background: transparent !important;
 		max-width: 100% !important;
