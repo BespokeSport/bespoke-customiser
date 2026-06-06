@@ -1,0 +1,314 @@
+/* ==========================================================================
+   BESPOKE SPORT · Contact page styling
+   --------------------------------------------------------------------------
+   Drop-in CSS for the Astra theme + Elementor form widget.
+
+   Layout: two columns on desktop —
+     LEFT  : contact form (name, email, message, send) in a dark panel
+     RIGHT : contact-info card (email, phone, address, hours) with mono
+             label/value pairs matching the spec-card aesthetic.
+   Mobile: single column, stacked (form first).
+
+   SCOPING — IMPORTANT
+   -------------------
+   Everything is scoped under .bs-contact so it can't bleed into other
+   Elementor forms on the site. In Elementor, give the contact page's
+   Section (or Container) the CSS class "bs-contact":
+       Edit Section ▸ Advanced ▸ CSS Classes → bs-contact
+   The reference HTML shows the exact structure to wrap.
+
+   FORM PLUGIN
+   -----------
+   This is written for the ELEMENTOR FORM widget (.elementor-form,
+   .elementor-field-group, .elementor-field, .elementor-button).
+   If the form is actually built with WPForms / Contact Form 7 / Gravity
+   Forms, the field wrappers differ — tell me and I'll swap the selectors:
+       WPForms     → .wpforms-field, .wpforms-field-medium, input.wpforms-field-*
+       CF7         → .wpcf7-form p, .wpcf7-form-control
+       Gravity     → .gform_wrapper .gfield, .gfield_label, .ginput_container
+
+   Where to paste:
+     Appearance ▸ Customize ▸ Additional CSS
+     - OR - wp-content/themes/astra-child/style.css
+
+   Pairs with: Contact Reference (markup contract).html
+   Companion files (share ONE :root site-wide):
+     bespoke-product-page.css · bespoke-shop-page.css ·
+     bespoke-blog-page.css · bespoke-cart-page.css
+   ========================================================================== */
+
+
+/* --------------------------------------------------------------------------
+   1. DESIGN TOKENS  (identical across all Bespoke stylesheets)
+   -------------------------------------------------------------------------- */
+:root {
+  --bs-ink:        #0E0E10;
+  --bs-deep:       #050505;
+  --bs-panel:      #141417;
+  --bs-panel-2:    #1A1A1E;
+  --bs-mint:       #7FECB8;
+  --bs-mint-deep:  #3DA67A;
+  --bs-mint-soft:  rgba(127,236,184,0.10);
+  --bs-cream:      #F2EFE9;
+  --bs-text:       rgba(255,255,255,0.85);
+  --bs-muted:      rgba(255,255,255,0.55);
+  --bs-faint:      rgba(255,255,255,0.40);
+  --bs-line:       rgba(255,255,255,0.10);
+  --bs-danger:     #E66467;
+  --bs-font-ui:    'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  --bs-font-mono:  'JetBrains Mono', SFMono-Regular, ui-monospace, monospace;
+}
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+
+/* --------------------------------------------------------------------------
+   2. PAGE CANVAS
+   --------------------------------------------------------------------------
+   Scope the dark background to the contact section. If you'd rather darken
+   the whole page, add the body-class form too (e.g. body.page-id-NN). */
+.bs-contact,
+.bs-contact .elementor-container,
+body.bs-contact-page,
+body.bs-contact-page .site-content,
+body.bs-contact-page #primary {
+  background: var(--bs-ink) !important;
+  color: var(--bs-text) !important;
+  font-family: var(--bs-font-ui) !important;
+}
+
+
+/* --------------------------------------------------------------------------
+   3. SHELL + GRID
+   -------------------------------------------------------------------------- */
+.bs-contact .bs-contact-inner {
+  max-width: 1200px !important;
+  margin: 0 auto !important;
+  padding: 64px 48px 96px !important;
+}
+
+/* Masthead */
+.bs-contact .bs-contact-head { margin-bottom: 48px !important; }
+.bs-contact .bs-eyebrow {
+  font-family: var(--bs-font-mono) !important;
+  font-size: 11px !important; letter-spacing: 0.14em !important; text-transform: uppercase !important;
+  color: var(--bs-mint) !important; margin-bottom: 16px !important; font-weight: 500 !important;
+  display: block !important;
+}
+.bs-contact .bs-contact-head h1 {
+  font-family: var(--bs-font-ui) !important;
+  font-weight: 800 !important;
+  font-size: clamp(40px, 5vw, 68px) !important;
+  letter-spacing: -0.03em !important; line-height: 0.95 !important;
+  color: #fff !important; margin: 0 !important;
+}
+.bs-contact .bs-contact-head p {
+  max-width: 560px !important; margin: 18px 0 0 !important;
+  font-size: 16px !important; line-height: 1.55 !important; color: var(--bs-muted) !important;
+}
+
+/* The two-column grid */
+.bs-contact .bs-contact-grid {
+  display: grid !important;
+  grid-template-columns: 1.3fr 1fr !important;
+  gap: 24px !important;
+  align-items: start !important;
+}
+
+
+/* --------------------------------------------------------------------------
+   4. FORM PANEL  (left column)
+   -------------------------------------------------------------------------- */
+.bs-contact .bs-form-panel {
+  background: var(--bs-panel) !important;
+  border: 1px solid var(--bs-line) !important;
+  border-radius: 16px !important;
+  padding: 36px !important;
+}
+.bs-contact .bs-form-panel .bs-panel-title {
+  font-family: var(--bs-font-ui) !important;
+  font-weight: 800 !important; font-size: 22px !important;
+  letter-spacing: -0.01em !important; color: #fff !important; margin: 0 0 6px !important;
+}
+.bs-contact .bs-form-panel .bs-panel-sub {
+  font-size: 14px !important; color: var(--bs-muted) !important; margin: 0 0 28px !important;
+}
+
+/* --- 4a. Elementor field groups ------------------------------------------ */
+.bs-contact .elementor-form .elementor-form-fields-wrapper {
+  display: flex !important; flex-wrap: wrap !important; gap: 18px !important;
+}
+.bs-contact .elementor-form .elementor-field-group {
+  margin: 0 !important;
+  padding: 0 !important;
+  flex: 1 1 100% !important;
+}
+/* Half-width name + email on one row (give these groups the Elementor
+   column width 50, or the helper class .bs-half in the reference) */
+.bs-contact .elementor-form .elementor-field-group.bs-half,
+.bs-contact .elementor-form .elementor-field-group.elementor-col-50 {
+  flex: 1 1 calc(50% - 9px) !important;
+}
+
+/* --- 4b. Labels ----------------------------------------------------------- */
+.bs-contact .elementor-form .elementor-field-group > label,
+.bs-contact .elementor-field-label {
+  display: block !important;
+  font-family: var(--bs-font-mono) !important;
+  font-size: 11px !important;
+  letter-spacing: 0.12em !important;
+  text-transform: uppercase !important;
+  color: var(--bs-muted) !important;
+  margin-bottom: 10px !important;
+  font-weight: 500 !important;
+}
+
+/* --- 4c. Inputs + textarea ------------------------------------------------ */
+.bs-contact .elementor-form input[type="text"],
+.bs-contact .elementor-form input[type="email"],
+.bs-contact .elementor-form input[type="tel"],
+.bs-contact .elementor-form textarea,
+.bs-contact .elementor-form select,
+.bs-contact .elementor-field-textual {
+  width: 100% !important;
+  background: var(--bs-ink) !important;
+  border: 1px solid var(--bs-line) !important;
+  border-radius: 10px !important;
+  color: #fff !important;
+  padding: 15px 16px !important;
+  font-family: var(--bs-font-ui) !important;
+  font-size: 15px !important;
+  line-height: 1.5 !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  -webkit-appearance: none; appearance: none;
+}
+.bs-contact .elementor-form textarea {
+  min-height: 160px !important; resize: vertical !important;
+}
+.bs-contact .elementor-form ::placeholder { color: var(--bs-faint) !important; }
+
+.bs-contact .elementor-form input:focus,
+.bs-contact .elementor-form textarea:focus,
+.bs-contact .elementor-form select:focus {
+  outline: 0 !important;
+  border-color: var(--bs-mint) !important;
+  box-shadow: 0 0 0 3px var(--bs-mint-soft) !important;
+}
+
+/* --- 4d. Submit button ---------------------------------------------------- */
+.bs-contact .elementor-form .elementor-button,
+.bs-contact .elementor-form button[type="submit"] {
+  width: 100% !important;
+  justify-content: center !important;
+  background: var(--bs-mint) !important;
+  color: var(--bs-ink) !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  padding: 17px 28px !important;
+  font-family: var(--bs-font-ui) !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.1em !important;
+  text-transform: uppercase !important;
+  cursor: pointer !important;
+  transition: filter 0.2s ease;
+  margin-top: 4px !important;
+}
+.bs-contact .elementor-form .elementor-button:hover { filter: brightness(1.08) !important; }
+.bs-contact .elementor-form .elementor-button .elementor-button-text { color: var(--bs-ink) !important; }
+
+/* --- 4e. Validation + success messages ------------------------------------ */
+.bs-contact .elementor-message.elementor-message-success {
+  background: var(--bs-mint-soft) !important;
+  border: 1px solid var(--bs-mint) !important;
+  border-radius: 10px !important;
+  color: var(--bs-mint) !important;
+  padding: 14px 16px !important;
+  font-size: 14px !important;
+}
+.bs-contact .elementor-message.elementor-message-danger,
+.bs-contact .elementor-form .elementor-field-group .elementor-error .elementor-message {
+  color: var(--bs-danger) !important;
+  font-family: var(--bs-font-mono) !important;
+  font-size: 11px !important; letter-spacing: 0.06em !important;
+}
+.bs-contact .elementor-form input.elementor-error,
+.bs-contact .elementor-form textarea.elementor-error {
+  border-color: var(--bs-danger) !important;
+}
+
+
+/* --------------------------------------------------------------------------
+   5. INFO CARD  (right column) — mono label/value pairs
+   -------------------------------------------------------------------------- */
+.bs-contact .bs-info-card {
+  background: var(--bs-panel) !important;
+  border: 1px solid var(--bs-line) !important;
+  border-radius: 16px !important;
+  padding: 36px !important;
+  position: sticky; top: 24px;
+}
+.bs-contact .bs-info-card .bs-panel-title {
+  font-family: var(--bs-font-ui) !important;
+  font-weight: 800 !important; font-size: 22px !important;
+  letter-spacing: -0.01em !important; color: #fff !important; margin: 0 0 24px !important;
+}
+
+/* The label/value rows (spec-card aesthetic) */
+.bs-contact .bs-info-row {
+  padding: 18px 0 !important;
+  border-top: 1px solid var(--bs-line) !important;
+}
+.bs-contact .bs-info-row:first-of-type { border-top: 0 !important; padding-top: 0 !important; }
+.bs-contact .bs-info-label {
+  font-family: var(--bs-font-mono) !important;
+  font-size: 10px !important; letter-spacing: 0.14em !important; text-transform: uppercase !important;
+  color: var(--bs-muted) !important; margin-bottom: 8px !important;
+}
+.bs-contact .bs-info-value {
+  font-size: 17px !important; color: #fff !important; font-weight: 500 !important; line-height: 1.45 !important;
+}
+.bs-contact .bs-info-value a {
+  color: #fff !important; text-decoration: none !important;
+  border-bottom: 1px solid var(--bs-mint) !important;
+}
+.bs-contact .bs-info-value a:hover { color: var(--bs-mint) !important; }
+.bs-contact .bs-info-value .bs-sub {
+  display: block !important; font-size: 13px !important; color: var(--bs-muted) !important;
+  font-weight: 400 !important; margin-top: 4px !important;
+}
+
+/* Socials row */
+.bs-contact .bs-socials { display: flex !important; gap: 10px !important; margin-top: 24px !important; }
+.bs-contact .bs-socials a {
+  width: 42px !important; height: 42px !important; border-radius: 50% !important;
+  border: 1px solid var(--bs-line) !important; color: var(--bs-muted) !important;
+  display: flex !important; align-items: center !important; justify-content: center !important;
+  font-family: var(--bs-font-mono) !important; font-size: 11px !important; letter-spacing: 0.06em !important;
+  text-decoration: none !important; transition: all 0.15s ease;
+}
+.bs-contact .bs-socials a:hover { color: var(--bs-mint) !important; border-color: var(--bs-mint) !important; }
+
+/* Optional hours mini-grid */
+.bs-contact .bs-hours { display: grid !important; grid-template-columns: 1fr auto !important; gap: 8px 16px !important; }
+.bs-contact .bs-hours .day { font-size: 14px !important; color: var(--bs-muted) !important; }
+.bs-contact .bs-hours .time { font-family: var(--bs-font-mono) !important; font-size: 13px !important; color: #fff !important; text-align: right !important; }
+
+
+/* --------------------------------------------------------------------------
+   6. MOBILE — single column, form first
+   -------------------------------------------------------------------------- */
+@media (max-width: 880px) {
+  .bs-contact .bs-contact-grid { grid-template-columns: 1fr !important; }
+  .bs-contact .bs-info-card { position: static !important; }
+  .bs-contact .bs-contact-inner { padding: 40px 20px 64px !important; }
+  .bs-contact .bs-form-panel,
+  .bs-contact .bs-info-card { padding: 28px !important; }
+  .bs-contact .elementor-form .elementor-field-group.bs-half,
+  .bs-contact .elementor-form .elementor-field-group.elementor-col-50 { flex: 1 1 100% !important; }
+}
+
+
+/* ==========================================================================
+   END · Bespoke Sport contact styling
+   ========================================================================== */

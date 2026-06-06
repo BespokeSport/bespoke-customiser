@@ -1,0 +1,588 @@
+/* ==========================================================================
+   BESPOKE SPORT · The Locker Room — blog styling
+   --------------------------------------------------------------------------
+   Drop-in CSS for the Astra theme on WordPress blog templates.
+
+   Covers TWO templates:
+     A) INDEX / ARCHIVE  — body.blog, body.archive, body.category, body.tag
+        Magazine grid: featured hero post + tight 3-up grid of recent posts.
+     B) SINGLE ARTICLE   — body.single-post
+        Long-form reading column, max 720px, mint pull-quotes, mono captions.
+
+   Where to paste:
+     Appearance ▸ Customize ▸ Additional CSS
+     - OR - wp-content/themes/astra-child/style.css
+
+   Pairs with:
+     Blog Index Reference (markup contract).html
+     Single Article Reference (markup contract).html
+
+   Companion files (same token set — keep ONE :root site-wide):
+     bespoke-product-page.css · bespoke-shop-page.css
+
+   Heavy !important usage is intentional (Astra ships high-specificity
+   defaults). Peel back once a rule proves it isn't overridden.
+   ========================================================================== */
+
+
+/* --------------------------------------------------------------------------
+   1. DESIGN TOKENS  (identical across all Bespoke stylesheets)
+   -------------------------------------------------------------------------- */
+:root {
+  --bs-ink:        #0E0E10;
+  --bs-deep:       #050505;
+  --bs-panel:      #141417;
+  --bs-panel-2:    #1A1A1E;
+  --bs-mint:       #7FECB8;
+  --bs-mint-deep:  #3DA67A;
+  --bs-mint-soft:  rgba(127,236,184,0.10);
+  --bs-cream:      #F2EFE9;
+  --bs-text:       rgba(255,255,255,0.85);
+  --bs-muted:      rgba(255,255,255,0.55);
+  --bs-faint:      rgba(255,255,255,0.40);
+  --bs-line:       rgba(255,255,255,0.10);
+  --bs-font-ui:    'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  --bs-font-mono:  'JetBrains Mono', SFMono-Regular, ui-monospace, monospace;
+  --bs-read:       720px;   /* long-form column width */
+}
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+
+/* ==========================================================================
+   2. SHARED — dark canvas on every blog template
+   ========================================================================== */
+body.blog,
+body.archive,
+body.category,
+body.tag,
+body.single-post,
+body.blog .site, body.blog .site-content, body.blog #primary, body.blog .content-area,
+body.archive .site, body.archive .site-content, body.archive #primary, body.archive .content-area,
+body.category .site-content, body.category #primary,
+body.tag .site-content, body.tag #primary,
+body.single-post .site, body.single-post .site-content, body.single-post #primary, body.single-post .content-area {
+  background: var(--bs-ink) !important;
+  color: var(--bs-text) !important;
+  font-family: var(--bs-font-ui) !important;
+}
+
+/* Kill Astra's boxed white article card + shadow */
+body.blog .ast-article-post, body.blog .ast-article-single,
+body.archive .ast-article-post, body.category .ast-article-post, body.tag .ast-article-post,
+body.single-post .ast-article-single {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: 0 !important;
+}
+
+/* Hide the blog sidebar — these are full-width templates.
+   Also set Customize ▸ Blog ▸ Sidebar = "No Sidebar". */
+body.blog #secondary, body.archive #secondary,
+body.category #secondary, body.tag #secondary,
+body.single-post #secondary,
+body.blog .widget-area, body.single-post .widget-area {
+  display: none !important;
+}
+body.blog #primary, body.archive #primary,
+body.category #primary, body.tag #primary,
+body.single-post #primary {
+  width: 100% !important;
+  max-width: 100% !important;
+  flex: 0 0 100% !important;
+  padding: 0 !important;
+}
+
+
+/* ==========================================================================
+   3. INDEX / ARCHIVE  (body.blog, body.archive, body.category, body.tag)
+   ========================================================================== */
+
+/* --- 3a. Masthead --------------------------------------------------------
+   Astra prints the archive title in .ast-archive-description / .page-title.
+   On the static blog page it may be absent; the reference HTML wraps it in
+   .bs-blog-masthead so you get a banner either way. */
+body.blog .bs-blog-masthead,
+body.archive .bs-blog-masthead,
+body.category .ast-archive-description,
+body.tag .ast-archive-description,
+.bs-blog-masthead {
+  max-width: 1440px !important;
+  margin: 0 auto !important;
+  padding: 56px 48px 44px !important;
+  border-bottom: 1px solid var(--bs-line) !important;
+  position: relative;
+  overflow: hidden;
+}
+.bs-blog-masthead::after { /* mint corner glow */
+  content: '';
+  position: absolute; right: -100px; top: -80px;
+  width: 560px; height: 560px;
+  background: radial-gradient(circle, rgba(127,236,184,0.12), transparent 60%);
+  filter: blur(40px); pointer-events: none;
+}
+.bs-blog-masthead .bs-eyebrow,
+body.category .ast-archive-title::before {
+  display: block;
+  font-family: var(--bs-font-mono);
+  font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--bs-mint); margin-bottom: 16px; font-weight: 500;
+}
+body.category .ast-archive-title::before { content: 'The Locker Room · Category'; }
+
+.bs-blog-masthead h1,
+body.blog .page-title,
+body.category .ast-archive-title,
+body.tag .ast-archive-title {
+  font-family: var(--bs-font-ui) !important;
+  font-weight: 800 !important;
+  font-size: clamp(40px, 5vw, 72px) !important;
+  letter-spacing: -0.03em !important;
+  line-height: 0.95 !important;
+  color: #fff !important;
+  margin: 0 !important;
+}
+.bs-blog-masthead p.bs-blog-intro {
+  max-width: 560px !important;
+  margin: 18px 0 0 !important;
+  font-size: 16px !important;
+  line-height: 1.55 !important;
+  color: var(--bs-muted) !important;
+}
+
+/* --- 3b. Grid wrapper ---------------------------------------------------- */
+.bs-blog-grid {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 40px 48px 80px;
+}
+
+/* --- 3c. Featured hero post (first .post on the index) -------------------
+   The reference HTML adds .bs-featured to the first article. This lays it
+   out as a 2-col split: large image | text. */
+.bs-blog-grid .bs-featured.post,
+article.post.bs-featured {
+  display: grid !important;
+  grid-template-columns: 1.25fr 1fr !important;
+  gap: 0 !important;
+  border: 1px solid var(--bs-line) !important;
+  border-radius: 16px !important;
+  overflow: hidden !important;
+  background: var(--bs-panel) !important;
+  margin: 0 0 24px !important;
+  min-height: 440px;
+}
+article.post.bs-featured .post-thumbnail,
+article.post.bs-featured .ast-blog-featured-section {
+  margin: 0 !important;
+  position: relative;
+  min-height: 440px;
+}
+article.post.bs-featured .post-thumbnail img {
+  width: 100% !important; height: 100% !important;
+  object-fit: cover !important;
+  position: absolute; inset: 0;
+  border-radius: 0 !important;
+}
+article.post.bs-featured .bs-post-body,
+article.post.bs-featured .blog-layout-1 .post-content {
+  padding: 48px 44px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+}
+article.post.bs-featured .entry-title {
+  font-size: 40px !important;
+  line-height: 1.05 !important;
+}
+
+/* --- 3d. 3-up recent posts grid ----------------------------------------- */
+.bs-blog-grid .bs-post-list {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 20px !important;
+  list-style: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Each card */
+.bs-blog-grid .bs-post-list article.post,
+.bs-post-list > li {
+  background: var(--bs-panel) !important;
+  border: 1px solid var(--bs-line) !important;
+  border-radius: 12px !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  margin: 0 !important;
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+.bs-blog-grid .bs-post-list article.post:hover {
+  border-color: rgba(127,236,184,0.45) !important;
+  transform: translateY(-2px);
+}
+
+/* Card image */
+.bs-post-list .post-thumbnail { margin: 0 !important; display: block; }
+.bs-post-list .post-thumbnail img {
+  width: 100% !important;
+  aspect-ratio: 16 / 10 !important;
+  object-fit: cover !important;
+  border-radius: 0 !important;
+  display: block;
+  background: var(--bs-panel-2) !important;
+}
+
+/* Card body */
+.bs-post-list .bs-post-body { padding: 20px 22px 24px !important; }
+
+
+/* --- 3e. Post meta (category + read time) — shared by featured & cards --- */
+.entry-meta-bs {
+  font-family: var(--bs-font-mono) !important;
+  font-size: 10px !important;
+  letter-spacing: 0.12em !important;
+  text-transform: uppercase !important;
+  color: var(--bs-muted) !important;
+  display: flex !important;
+  gap: 14px !important;
+  align-items: center;
+  margin-bottom: 14px !important;
+}
+.entry-meta-bs .cat { color: var(--bs-mint) !important; }
+.entry-meta-bs .dot { width: 3px; height: 3px; border-radius: 50%; background: var(--bs-faint); }
+
+/* --- 3f. Post titles + excerpts on cards -------------------------------- */
+.bs-blog-grid .entry-title {
+  font-family: var(--bs-font-ui) !important;
+  font-weight: 700 !important;
+  font-size: 22px !important;
+  line-height: 1.12 !important;
+  letter-spacing: -0.01em !important;
+  margin: 0 0 12px !important;
+}
+.bs-blog-grid .entry-title a { color: #fff !important; text-decoration: none !important; }
+.bs-blog-grid .entry-title a:hover { color: var(--bs-mint) !important; }
+
+.bs-blog-grid .entry-excerpt,
+.bs-blog-grid .entry-content p {
+  font-size: 14px !important;
+  line-height: 1.55 !important;
+  color: var(--bs-muted) !important;
+  margin: 0 !important;
+}
+
+/* "Read" link footer on cards */
+.bs-read-link {
+  margin-top: 18px !important;
+  font-family: var(--bs-font-mono) !important;
+  font-size: 11px !important;
+  letter-spacing: 0.12em !important;
+  text-transform: uppercase !important;
+  color: #fff !important;
+  display: inline-flex; align-items: center; gap: 8px;
+  text-decoration: none !important;
+}
+.bs-read-link:hover { color: var(--bs-mint) !important; }
+
+/* --- 3g. Pagination (reuse shop styling) -------------------------------- */
+body.blog .ast-pagination, body.archive .ast-pagination,
+body.blog nav.pagination, body.archive nav.pagination {
+  max-width: 1440px; margin: 0 auto !important; padding: 0 48px 80px !important;
+  display: flex !important; gap: 8px !important; justify-content: center !important;
+}
+body.blog .ast-pagination a, body.blog .ast-pagination .page-numbers,
+body.archive .ast-pagination a, body.archive .ast-pagination .page-numbers {
+  background: var(--bs-panel) !important;
+  border: 1px solid var(--bs-line) !important;
+  border-radius: 8px !important;
+  color: var(--bs-text) !important;
+  min-width: 44px !important; padding: 12px 14px !important;
+  font-family: var(--bs-font-mono) !important; font-size: 13px !important;
+  text-decoration: none !important;
+}
+body.blog .ast-pagination .page-numbers.current,
+body.archive .ast-pagination .page-numbers.current {
+  background: var(--bs-mint) !important; color: var(--bs-ink) !important;
+  border-color: var(--bs-mint) !important; font-weight: 700 !important;
+}
+
+/* --- 3h. Index responsive ----------------------------------------------- */
+@media (max-width: 1024px) {
+  .bs-blog-grid .bs-post-list { grid-template-columns: repeat(2, 1fr) !important; }
+}
+@media (max-width: 768px) {
+  article.post.bs-featured { grid-template-columns: 1fr !important; }
+  article.post.bs-featured .post-thumbnail { min-height: 240px; }
+  article.post.bs-featured .bs-post-body { padding: 28px 24px !important; }
+  article.post.bs-featured .entry-title { font-size: 28px !important; }
+  .bs-blog-grid .bs-post-list { grid-template-columns: 1fr !important; }
+  .bs-blog-masthead, .bs-blog-grid { padding-left: 24px !important; padding-right: 24px !important; }
+}
+
+
+/* ==========================================================================
+   4. SINGLE ARTICLE  (body.single-post)
+   ========================================================================== */
+
+/* --- 4a. Article hero --------------------------------------------------- */
+body.single-post .bs-article-hero {
+  max-width: 1100px !important;
+  margin: 0 auto !important;
+  padding: 64px 24px 0 !important;
+  text-align: center;
+}
+body.single-post .bs-article-hero .entry-meta-bs {
+  justify-content: center !important;
+  margin-bottom: 24px !important;
+}
+body.single-post .entry-title,
+body.single-post .ast-single-post .entry-title {
+  font-family: var(--bs-font-ui) !important;
+  font-weight: 800 !important;
+  font-size: clamp(36px, 5vw, 60px) !important;
+  letter-spacing: -0.03em !important;
+  line-height: 1.02 !important;
+  color: #fff !important;
+  max-width: 900px !important;
+  margin: 0 auto !important;
+  text-align: center !important;
+}
+body.single-post .bs-article-dek {
+  max-width: var(--bs-read) !important;
+  margin: 24px auto 0 !important;
+  font-size: 20px !important;
+  line-height: 1.5 !important;
+  color: var(--bs-muted) !important;
+  text-align: center !important;
+}
+
+/* Byline row */
+body.single-post .bs-byline {
+  max-width: var(--bs-read) !important;
+  margin: 32px auto 0 !important;
+  padding: 20px 0 !important;
+  border-top: 1px solid var(--bs-line) !important;
+  border-bottom: 1px solid var(--bs-line) !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 14px !important;
+}
+body.single-post .bs-byline .bs-avatar {
+  width: 44px; height: 44px; border-radius: 50%;
+  background: var(--bs-panel-2); border: 1px solid var(--bs-line);
+  flex-shrink: 0; overflow: hidden;
+}
+body.single-post .bs-byline .bs-avatar img { width: 100%; height: 100%; object-fit: cover; }
+body.single-post .bs-byline .bs-author { font-size: 14px; font-weight: 600; color: #fff; }
+body.single-post .bs-byline .bs-byline-meta {
+  font-family: var(--bs-font-mono); font-size: 11px; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--bs-muted); margin-top: 3px;
+}
+body.single-post .bs-byline .bs-share {
+  margin-left: auto; display: flex; gap: 8px;
+}
+body.single-post .bs-byline .bs-share a {
+  width: 36px; height: 36px; border-radius: 50%;
+  border: 1px solid var(--bs-line); color: var(--bs-muted);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--bs-font-mono); font-size: 10px; text-decoration: none;
+}
+body.single-post .bs-byline .bs-share a:hover { color: var(--bs-mint); border-color: var(--bs-mint); }
+
+/* --- 4b. Lead / hero image ---------------------------------------------- */
+body.single-post .post-thumbnail,
+body.single-post .ast-single-post .post-thumbnail {
+  max-width: 1100px !important;
+  margin: 40px auto 0 !important;
+}
+body.single-post .post-thumbnail img {
+  width: 100% !important;
+  border-radius: 14px !important;
+  display: block;
+}
+body.single-post .bs-figcaption,
+body.single-post figure figcaption {
+  font-family: var(--bs-font-mono) !important;
+  font-size: 11px !important;
+  letter-spacing: 0.1em !important;
+  text-transform: uppercase !important;
+  color: var(--bs-faint) !important;
+  margin-top: 12px !important;
+  text-align: center !important;
+}
+
+/* --- 4c. THE READING COLUMN --------------------------------------------- */
+body.single-post .entry-content,
+body.single-post .ast-single-post .entry-content {
+  max-width: var(--bs-read) !important;
+  margin: 48px auto 0 !important;
+  padding: 0 24px !important;
+}
+
+/* Body copy */
+body.single-post .entry-content p {
+  font-family: var(--bs-font-ui) !important;
+  font-size: 19px !important;
+  line-height: 1.75 !important;
+  color: var(--bs-text) !important;
+  margin: 0 0 28px !important;
+}
+body.single-post .entry-content > p:first-of-type { /* lead paragraph — direct child only, so it can't reach into blockquotes/figures */
+  font-size: 21px !important;
+  line-height: 1.65 !important;
+  color: #fff !important;
+}
+
+/* Headings within article */
+body.single-post .entry-content h2 {
+  font-family: var(--bs-font-ui) !important;
+  font-weight: 800 !important;
+  font-size: 30px !important;
+  letter-spacing: -0.02em !important;
+  color: #fff !important;
+  margin: 56px 0 18px !important;
+  line-height: 1.1 !important;
+}
+body.single-post .entry-content h3 {
+  font-family: var(--bs-font-ui) !important;
+  font-weight: 700 !important;
+  font-size: 22px !important;
+  color: #fff !important;
+  margin: 40px 0 14px !important;
+}
+
+/* Links */
+body.single-post .entry-content a {
+  color: #fff !important;
+  text-decoration: none !important;
+  border-bottom: 1px solid var(--bs-mint) !important;
+}
+body.single-post .entry-content a:hover { color: var(--bs-mint) !important; }
+
+/* Lists */
+body.single-post .entry-content ul,
+body.single-post .entry-content ol {
+  font-size: 19px !important; line-height: 1.7 !important;
+  color: var(--bs-text) !important;
+  margin: 0 0 28px !important; padding-left: 24px !important;
+}
+body.single-post .entry-content li { margin-bottom: 10px !important; }
+body.single-post .entry-content ul li::marker { color: var(--bs-mint) !important; }
+
+/* Bold / strong */
+body.single-post .entry-content strong { color: #fff !important; font-weight: 700 !important; }
+
+/* --- 4d. MINT PULL-QUOTE ------------------------------------------------- */
+body.single-post .entry-content blockquote {
+  margin: 44px 0 !important;
+  padding: 8px 0 8px 32px !important;
+  border-left: 3px solid var(--bs-mint) !important;
+  background: transparent !important;
+}
+body.single-post .entry-content blockquote p {
+  font-family: var(--bs-font-ui) !important;
+  font-size: 28px !important;
+  line-height: 1.35 !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.015em !important;
+  color: #fff !important;
+  margin: 0 0 12px !important;
+}
+body.single-post .entry-content blockquote cite,
+body.single-post .entry-content blockquote footer {
+  font-family: var(--bs-font-mono) !important;
+  font-size: 12px !important;
+  letter-spacing: 0.12em !important;
+  text-transform: uppercase !important;
+  color: var(--bs-mint) !important;
+  font-style: normal !important;
+}
+
+/* --- 4e. Inline figures + captions inside the article ------------------- */
+body.single-post .entry-content figure {
+  margin: 40px 0 !important;
+}
+/* Let figures break out slightly wider than the text column */
+body.single-post .entry-content figure.bs-wide {
+  width: calc(100% + 200px) !important;
+  margin-left: -100px !important;
+}
+body.single-post .entry-content figure img { width: 100% !important; border-radius: 12px !important; display: block; }
+body.single-post .entry-content figcaption {
+  font-family: var(--bs-font-mono) !important;
+  font-size: 11px !important;
+  letter-spacing: 0.1em !important;
+  text-transform: uppercase !important;
+  color: var(--bs-faint) !important;
+  margin-top: 12px !important;
+}
+
+/* --- 4f. Tags + end matter ---------------------------------------------- */
+body.single-post .bs-article-footer {
+  max-width: var(--bs-read) !important;
+  margin: 56px auto 0 !important;
+  padding: 32px 24px !important;
+  border-top: 1px solid var(--bs-line) !important;
+}
+body.single-post .bs-tags {
+  display: flex !important; flex-wrap: wrap !important; gap: 8px !important;
+}
+body.single-post .bs-tags a {
+  padding: 8px 14px !important;
+  border: 1px solid var(--bs-line) !important;
+  border-radius: 999px !important;
+  font-size: 12px !important;
+  color: var(--bs-muted) !important;
+  text-decoration: none !important;
+}
+body.single-post .bs-tags a:hover { color: var(--bs-mint) !important; border-color: var(--bs-mint) !important; }
+
+/* Author bio card */
+body.single-post .bs-author-card {
+  max-width: var(--bs-read) !important;
+  margin: 24px auto 0 !important;
+  padding: 28px !important;
+  background: var(--bs-panel) !important;
+  border: 1px solid var(--bs-line) !important;
+  border-radius: 12px !important;
+  display: flex !important; gap: 18px !important; align-items: flex-start !important;
+}
+body.single-post .bs-author-card .bs-avatar { width: 56px; height: 56px; border-radius: 50%; background: var(--bs-panel-2); flex-shrink: 0; overflow: hidden; }
+body.single-post .bs-author-card .bs-avatar img { width: 100%; height: 100%; object-fit: cover; }
+body.single-post .bs-author-card .bs-author { font-size: 16px; font-weight: 700; color: #fff; }
+body.single-post .bs-author-card .bs-author-bio { font-size: 14px; line-height: 1.55; color: var(--bs-muted); margin-top: 6px; }
+
+/* --- 4g. Related / read-next -------------------------------------------- */
+body.single-post .bs-read-next {
+  max-width: 1440px !important;
+  margin: 80px auto 0 !important;
+  padding: 64px 48px 96px !important;
+  border-top: 1px solid var(--bs-line) !important;
+  background: var(--bs-deep) !important;
+}
+body.single-post .bs-read-next h2 {
+  font-family: var(--bs-font-ui) !important;
+  font-weight: 800 !important; font-size: 32px !important;
+  letter-spacing: -0.02em !important; color: #fff !important; margin: 0 0 32px !important;
+}
+body.single-post .bs-read-next .bs-post-list {
+  display: grid !important; grid-template-columns: repeat(3, 1fr) !important; gap: 20px !important;
+  list-style: none; margin: 0; padding: 0;
+}
+
+/* --- 4h. Single responsive ---------------------------------------------- */
+@media (max-width: 768px) {
+  body.single-post .entry-content p { font-size: 17px !important; }
+  body.single-post .entry-content p:first-of-type { font-size: 19px !important; }
+  body.single-post .entry-content blockquote p { font-size: 22px !important; }
+  body.single-post .entry-content figure.bs-wide { width: 100% !important; margin-left: 0 !important; }
+  body.single-post .bs-read-next .bs-post-list { grid-template-columns: 1fr !important; }
+  body.single-post .bs-read-next { padding: 48px 24px 64px !important; }
+}
+
+
+/* ==========================================================================
+   END · Bespoke Sport blog styling
+   ========================================================================== */

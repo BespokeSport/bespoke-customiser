@@ -47,6 +47,9 @@ add_action( 'plugins_loaded', function() {
         'customiser-product-page.php',  // per-product PDP content (eyebrow / sizing / etc.)
         'customiser-global-fonts.php',  // force-load Anton (independent of Elementor / theme)
         'customiser-shop.php',          // Shop / category archive styling + "Customise →" button copy
+        'customiser-blog.php',          // The Locker Room (blog index + single article) styling
+        'customiser-cart.php',          // Cart page styling + "Re-customise" link on each item
+        'customiser-contact.php',       // Contact page styling (form + info card)
     ];
 
     $missing = [];

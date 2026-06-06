@@ -1,0 +1,558 @@
+/* ==========================================================================
+   BESPOKE SPORT · Cart page styling
+   --------------------------------------------------------------------------
+   Drop-in CSS for the Astra theme + WooCommerce CART page.
+   Targets: body.woocommerce-cart  (the /cart/ page)
+
+   Restyles the default WooCommerce cart for the dark theme:
+     - ink panels for the cart table + totals, hairline borders
+     - mono labels (SUBTOTAL / SHIPPING / TOTAL)
+     - mint "Customise" links to re-edit a line item
+     - mint primary CTA on "Proceed to Checkout"
+
+   Where to paste:
+     Appearance ▸ Customize ▸ Additional CSS
+     - OR - wp-content/themes/astra-child/style.css
+
+   Pairs with: Cart Reference (markup contract).html
+   Companion files (share ONE :root site-wide):
+     bespoke-product-page.css · bespoke-shop-page.css · bespoke-blog-page.css
+
+   Heavy !important usage is intentional (Astra ships high-specificity
+   defaults). Peel back once a rule proves it isn't overridden.
+   ========================================================================== */
+
+
+/* --------------------------------------------------------------------------
+   1. DESIGN TOKENS  (identical across all Bespoke stylesheets)
+   -------------------------------------------------------------------------- */
+:root {
+  --bs-ink:        #0E0E10;
+  --bs-deep:       #050505;
+  --bs-panel:      #141417;
+  --bs-panel-2:    #1A1A1E;
+  --bs-mint:       #7FECB8;
+  --bs-mint-deep:  #3DA67A;
+  --bs-mint-soft:  rgba(127,236,184,0.10);
+  --bs-cream:      #F2EFE9;
+  --bs-text:       rgba(255,255,255,0.85);
+  --bs-muted:      rgba(255,255,255,0.55);
+  --bs-faint:      rgba(255,255,255,0.40);
+  --bs-line:       rgba(255,255,255,0.10);
+  --bs-danger:     #E66467;
+  --bs-font-ui:    'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  --bs-font-mono:  'JetBrains Mono', SFMono-Regular, ui-monospace, monospace;
+}
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+
+/* --------------------------------------------------------------------------
+   2. GLOBAL — dark canvas
+   -------------------------------------------------------------------------- */
+body.woocommerce-cart,
+body.woocommerce-cart .site,
+body.woocommerce-cart .site-content,
+body.woocommerce-cart #primary,
+body.woocommerce-cart .content-area,
+body.woocommerce-cart .ast-container {
+  background: var(--bs-ink) !important;
+  color: var(--bs-text) !important;
+  font-family: var(--bs-font-ui) !important;
+}
+
+/* Kill Astra's boxed white wrapper + shadow */
+body.woocommerce-cart .ast-article-single,
+body.woocommerce-cart article.page,
+body.woocommerce-cart .ast-woocommerce-container {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: 0 !important;
+}
+
+/* Hide sidebar — cart is full width */
+body.woocommerce-cart #secondary,
+body.woocommerce-cart .widget-area {
+  display: none !important;
+}
+body.woocommerce-cart #primary {
+  width: 100% !important; max-width: 100% !important; flex: 0 0 100% !important; padding: 0 !important;
+}
+
+/* Constrain + centre the cart shell */
+body.woocommerce-cart .ast-woocommerce-container,
+body.woocommerce-cart .woocommerce {
+  max-width: 1200px !important;
+  margin: 0 auto !important;
+  padding: 56px 48px 96px !important;
+}
+
+
+/* --------------------------------------------------------------------------
+   3. PAGE TITLE
+   -------------------------------------------------------------------------- */
+body.woocommerce-cart .entry-title,
+body.woocommerce-cart .page-title {
+  font-family: var(--bs-font-ui) !important;
+  font-weight: 800 !important;
+  font-size: clamp(36px, 4vw, 60px) !important;
+  letter-spacing: -0.03em !important;
+  line-height: 1 !important;
+  color: #fff !important;
+  margin: 0 0 32px !important;
+}
+/* Mono eyebrow above title (optional — inject via ::before on a wrapper) */
+body.woocommerce-cart .entry-title::before {
+  content: 'Review your order';
+  display: block;
+  font-family: var(--bs-font-mono);
+  font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--bs-mint); margin-bottom: 14px; font-weight: 500;
+}
+
+
+/* --------------------------------------------------------------------------
+   4. CART LAYOUT — table left, totals right (desktop)
+   --------------------------------------------------------------------------
+   WooCommerce wraps the form (table + coupon + actions) and the
+   .cart-collaterals (totals) as siblings. We grid them 2-up. */
+@media (min-width: 981px) {
+  body.woocommerce-cart .woocommerce {
+    display: grid !important;
+    grid-template-columns: 1fr 380px !important;
+    gap: 32px !important;
+    align-items: start !important;
+  }
+  /* Title spans both columns */
+  body.woocommerce-cart .woocommerce > .entry-title,
+  body.woocommerce-cart .woocommerce > .woocommerce-notices-wrapper {
+    grid-column: 1 / -1 !important;
+  }
+  body.woocommerce-cart form.woocommerce-cart-form { grid-column: 1 !important; }
+  body.woocommerce-cart .cart-collaterals { grid-column: 2 !important; width: auto !important; }
+}
+
+
+/* --------------------------------------------------------------------------
+   5. CART TABLE  (.shop_table.cart)
+   -------------------------------------------------------------------------- */
+body.woocommerce-cart table.shop_table,
+body.woocommerce-cart table.cart {
+  background: var(--bs-panel) !important;
+  border: 1px solid var(--bs-line) !important;
+  border-radius: 14px !important;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  overflow: hidden !important;
+  margin: 0 !important;
+}
+
+/* Table head — mono labels */
+body.woocommerce-cart table.cart thead th {
+  background: transparent !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--bs-line) !important;
+  padding: 18px 24px !important;
+  font-family: var(--bs-font-mono) !important;
+  font-size: 10px !important;
+  letter-spacing: 0.14em !important;
+  text-transform: uppercase !important;
+  color: var(--bs-muted) !important;
+  font-weight: 500 !important;
+  text-align: left !important;
+}
+
+/* Body rows */
+body.woocommerce-cart table.cart tbody td {
+  background: transparent !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--bs-line) !important;
+  padding: 22px 24px !important;
+  vertical-align: middle !important;
+  color: var(--bs-text) !important;
+}
+body.woocommerce-cart table.cart tbody tr:last-child td { border-bottom: 0 !important; }
+
+/* The "actions" row (coupon + update) — full width footer of the table */
+body.woocommerce-cart table.cart td.actions {
+  padding: 20px 24px !important;
+  border-top: 1px solid var(--bs-line) !important;
+  background: var(--bs-panel-2) !important;
+}
+
+
+/* --- 5a. Product thumbnail ----------------------------------------------- */
+body.woocommerce-cart table.cart td.product-thumbnail {
+  width: 96px !important;
+}
+body.woocommerce-cart table.cart td.product-thumbnail img {
+  width: 72px !important; height: 72px !important;
+  object-fit: cover !important;
+  border-radius: 8px !important;
+  border: 1px solid var(--bs-line) !important;
+  background: var(--bs-panel-2) !important;
+}
+
+/* --- 5b. Product name + Customise link ----------------------------------- */
+body.woocommerce-cart table.cart td.product-name { color: #fff !important; }
+body.woocommerce-cart table.cart td.product-name a {
+  color: #fff !important;
+  font-weight: 600 !important;
+  font-size: 16px !important;
+  text-decoration: none !important;
+}
+body.woocommerce-cart table.cart td.product-name a:hover { color: var(--bs-mint) !important; }
+
+/* Variation / personalisation meta (club, name, number, size) */
+body.woocommerce-cart table.cart td.product-name .variation,
+body.woocommerce-cart table.cart td.product-name dl.variation {
+  margin: 8px 0 0 !important;
+  font-size: 12px !important;
+  color: var(--bs-muted) !important;
+}
+body.woocommerce-cart table.cart .variation dt { float: left; clear: left; margin-right: 6px; font-weight: 600; color: var(--bs-faint) !important; }
+body.woocommerce-cart table.cart .variation dd { margin: 0 0 2px !important; }
+
+/* The mint "Customise" / "Edit" re-edit link (add via cart-item-data filter
+   or the BEspoke Customiser plugin — give it class .bs-customise-link) */
+body.woocommerce-cart table.cart td.product-name a.bs-customise-link,
+body.woocommerce-cart .bs-customise-link {
+  display: inline-flex !important; align-items: center !important; gap: 6px !important;
+  margin-top: 10px !important;
+  font-family: var(--bs-font-mono) !important;
+  font-size: 11px !important; letter-spacing: 0.1em !important; text-transform: uppercase !important;
+  color: var(--bs-mint) !important; text-decoration: none !important;
+  font-weight: 500 !important;
+}
+body.woocommerce-cart table.cart td.product-name a.bs-customise-link:hover,
+body.woocommerce-cart .bs-customise-link:hover { color: #fff !important; }
+
+/* --- 5c. Price + subtotal cells ------------------------------------------ */
+body.woocommerce-cart table.cart td.product-price,
+body.woocommerce-cart table.cart td.product-subtotal {
+  color: #fff !important;
+  font-weight: 600 !important;
+  font-size: 15px !important;
+}
+body.woocommerce-cart table.cart .woocommerce-Price-amount { color: #fff !important; }
+
+/* --- 5d. Quantity stepper ------------------------------------------------ */
+body.woocommerce-cart table.cart td.product-quantity .quantity {
+  display: inline-flex !important;
+  align-items: center !important;
+  background: var(--bs-panel-2) !important;
+  border: 1px solid var(--bs-line) !important;
+  border-radius: 999px !important;
+  overflow: hidden !important;
+}
+body.woocommerce-cart table.cart td.product-quantity input.qty {
+  width: 52px !important;
+  background: transparent !important;
+  border: 0 !important;
+  color: #fff !important;
+  text-align: center !important;
+  font-family: var(--bs-font-mono) !important;
+  font-size: 14px !important;
+  padding: 12px 4px !important;
+  -moz-appearance: textfield;
+}
+body.woocommerce-cart table.cart td.product-quantity input.qty::-webkit-outer-spin-button,
+body.woocommerce-cart table.cart td.product-quantity input.qty::-webkit-inner-spin-button {
+  -webkit-appearance: none; margin: 0;
+}
+/* If the theme renders +/- buttons */
+body.woocommerce-cart table.cart .quantity .plus,
+body.woocommerce-cart table.cart .quantity .minus {
+  background: transparent !important;
+  border: 0 !important;
+  color: var(--bs-muted) !important;
+  width: 40px !important; height: 44px !important;
+  font-size: 16px !important; cursor: pointer !important;
+}
+body.woocommerce-cart table.cart .quantity .plus:hover,
+body.woocommerce-cart table.cart .quantity .minus:hover { color: var(--bs-mint) !important; }
+
+/* --- 5e. Remove button --------------------------------------------------- */
+body.woocommerce-cart table.cart td.product-remove { width: 48px !important; text-align: center !important; }
+body.woocommerce-cart table.cart td.product-remove a.remove,
+body.woocommerce-cart a.remove {
+  display: inline-flex !important; align-items: center !important; justify-content: center !important;
+  width: 30px !important; height: 30px !important;
+  border-radius: 50% !important;
+  background: transparent !important;
+  border: 1px solid var(--bs-line) !important;
+  color: var(--bs-muted) !important;
+  font-size: 16px !important; line-height: 1 !important;
+  text-decoration: none !important;
+  transition: all 0.15s ease;
+}
+body.woocommerce-cart table.cart td.product-remove a.remove:hover,
+body.woocommerce-cart a.remove:hover {
+  background: var(--bs-danger) !important;
+  border-color: var(--bs-danger) !important;
+  color: #fff !important;
+}
+
+
+/* --------------------------------------------------------------------------
+   6. COUPON + ACTIONS  (inside td.actions)
+   -------------------------------------------------------------------------- */
+body.woocommerce-cart .coupon {
+  display: inline-flex !important;
+  gap: 10px !important;
+  align-items: center !important;
+  float: left !important;
+}
+body.woocommerce-cart .coupon label { display: none !important; }
+body.woocommerce-cart .coupon input#coupon_code,
+body.woocommerce-cart .coupon input.input-text {
+  background: var(--bs-ink) !important;
+  border: 1px solid var(--bs-line) !important;
+  border-radius: 8px !important;
+  color: #fff !important;
+  padding: 13px 16px !important;
+  font-family: var(--bs-font-ui) !important;
+  font-size: 13px !important;
+  min-width: 200px !important;
+}
+body.woocommerce-cart .coupon input::placeholder { color: var(--bs-faint) !important; }
+body.woocommerce-cart .coupon input:focus {
+  outline: 0 !important; border-color: var(--bs-mint) !important;
+  box-shadow: 0 0 0 3px var(--bs-mint-soft) !important;
+}
+
+/* Apply-coupon = secondary (outline) button */
+body.woocommerce-cart .coupon button[name="apply_coupon"],
+body.woocommerce-cart button.button[name="apply_coupon"] {
+  background: transparent !important;
+  color: #fff !important;
+  border: 1px solid var(--bs-line) !important;
+  border-radius: 999px !important;
+  padding: 13px 22px !important;
+  font-family: var(--bs-font-ui) !important;
+  font-size: 12px !important; font-weight: 600 !important;
+  letter-spacing: 0.1em !important; text-transform: uppercase !important;
+  cursor: pointer !important;
+}
+body.woocommerce-cart .coupon button[name="apply_coupon"]:hover {
+  border-color: var(--bs-mint) !important; color: var(--bs-mint) !important;
+}
+
+/* Update cart = ghost / muted button (right aligned) */
+body.woocommerce-cart td.actions button[name="update_cart"],
+body.woocommerce-cart button.button[name="update_cart"] {
+  float: right !important;
+  background: transparent !important;
+  color: var(--bs-muted) !important;
+  border: 1px solid var(--bs-line) !important;
+  border-radius: 999px !important;
+  padding: 13px 22px !important;
+  font-family: var(--bs-font-ui) !important;
+  font-size: 12px !important; font-weight: 600 !important;
+  letter-spacing: 0.1em !important; text-transform: uppercase !important;
+  cursor: pointer !important;
+}
+body.woocommerce-cart td.actions button[name="update_cart"]:hover {
+  color: #fff !important; border-color: rgba(255,255,255,0.3) !important;
+}
+body.woocommerce-cart td.actions button[name="update_cart"]:disabled {
+  opacity: 0.4 !important; cursor: default !important;
+}
+
+
+/* --------------------------------------------------------------------------
+   7. CART TOTALS  (.cart-collaterals .cart_totals)
+   -------------------------------------------------------------------------- */
+body.woocommerce-cart .cart-collaterals .cart_totals {
+  background: var(--bs-panel) !important;
+  border: 1px solid var(--bs-line) !important;
+  border-radius: 14px !important;
+  padding: 28px !important;
+  position: sticky; top: 24px;
+}
+body.woocommerce-cart .cart-collaterals .cart_totals > h2 {
+  font-family: var(--bs-font-ui) !important;
+  font-weight: 800 !important;
+  font-size: 20px !important;
+  color: #fff !important;
+  margin: 0 0 20px !important;
+  letter-spacing: -0.01em !important;
+}
+
+/* Totals table */
+body.woocommerce-cart .cart_totals table.shop_table {
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+}
+body.woocommerce-cart .cart_totals table th,
+body.woocommerce-cart .cart_totals table td {
+  border: 0 !important;
+  border-bottom: 1px solid var(--bs-line) !important;
+  padding: 16px 0 !important;
+  background: transparent !important;
+}
+body.woocommerce-cart .cart_totals table tr:last-child th,
+body.woocommerce-cart .cart_totals table tr:last-child td { border-bottom: 0 !important; }
+
+/* Row labels (SUBTOTAL / SHIPPING) — mono */
+body.woocommerce-cart .cart_totals table th {
+  font-family: var(--bs-font-mono) !important;
+  font-size: 11px !important;
+  letter-spacing: 0.12em !important;
+  text-transform: uppercase !important;
+  color: var(--bs-muted) !important;
+  font-weight: 500 !important;
+  text-align: left !important;
+  width: auto !important;
+}
+/* Row values */
+body.woocommerce-cart .cart_totals table td {
+  color: #fff !important;
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  text-align: right !important;
+}
+body.woocommerce-cart .cart_totals .woocommerce-Price-amount { color: #fff !important; }
+
+/* Shipping options inside totals */
+body.woocommerce-cart .cart_totals .shipping ul#shipping_method,
+body.woocommerce-cart .cart_totals .woocommerce-shipping-methods {
+  margin: 0 !important; padding: 0 !important; list-style: none !important;
+  text-align: right !important;
+}
+body.woocommerce-cart .cart_totals .shipping label { color: var(--bs-text) !important; font-size: 13px !important; }
+body.woocommerce-cart .cart_totals .shipping-calculator-button { color: var(--bs-mint) !important; }
+
+/* Grand total — bigger */
+body.woocommerce-cart .cart_totals table tr.order-total th {
+  font-size: 12px !important; color: #fff !important;
+}
+body.woocommerce-cart .cart_totals table tr.order-total td,
+body.woocommerce-cart .cart_totals table tr.order-total td strong {
+  font-family: var(--bs-font-ui) !important;
+  font-size: 26px !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.01em !important;
+}
+body.woocommerce-cart .cart_totals tr.order-total .includes_tax,
+body.woocommerce-cart .cart_totals small.includes_tax {
+  display: block !important;
+  font-family: var(--bs-font-mono) !important;
+  font-size: 10px !important; letter-spacing: 0.1em !important;
+  color: var(--bs-faint) !important; font-weight: 400 !important;
+  margin-top: 4px !important; text-transform: uppercase !important;
+}
+
+
+/* --------------------------------------------------------------------------
+   8. PROCEED TO CHECKOUT  (primary mint CTA)
+   -------------------------------------------------------------------------- */
+body.woocommerce-cart .wc-proceed-to-checkout { padding: 20px 0 0 !important; }
+body.woocommerce-cart .wc-proceed-to-checkout a.checkout-button,
+body.woocommerce-cart a.checkout-button.button.alt {
+  display: block !important;
+  background: var(--bs-mint) !important;
+  color: var(--bs-ink) !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  padding: 18px 28px !important;
+  font-family: var(--bs-font-ui) !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.1em !important;
+  text-transform: uppercase !important;
+  text-align: center !important;
+  text-decoration: none !important;
+  transition: filter 0.2s ease;
+}
+body.woocommerce-cart .wc-proceed-to-checkout a.checkout-button:hover { filter: brightness(1.08) !important; }
+
+
+/* --------------------------------------------------------------------------
+   9. NOTICES  (added to cart / errors / empty cart)
+   -------------------------------------------------------------------------- */
+body.woocommerce-cart .woocommerce-message,
+body.woocommerce-cart .woocommerce-info,
+body.woocommerce-cart .woocommerce-error,
+body.woocommerce-cart .cart-empty {
+  background: var(--bs-panel) !important;
+  color: #fff !important;
+  border: 0 !important;
+  border-left: 4px solid var(--bs-mint) !important;
+  border-radius: 8px !important;
+  padding: 16px 20px !important;
+  font-family: var(--bs-font-ui) !important;
+  list-style: none !important;
+}
+body.woocommerce-cart .woocommerce-error { border-left-color: var(--bs-danger) !important; }
+body.woocommerce-cart .woocommerce-message::before,
+body.woocommerce-cart .woocommerce-info::before { color: var(--bs-mint) !important; }
+body.woocommerce-cart .woocommerce-message a.button,
+body.woocommerce-cart .return-to-shop a.button {
+  background: transparent !important; color: var(--bs-mint) !important;
+  border: 1px solid var(--bs-line) !important; border-radius: 999px !important;
+  padding: 10px 20px !important; font-size: 12px !important;
+  letter-spacing: 0.1em !important; text-transform: uppercase !important; font-weight: 600 !important;
+}
+
+
+/* --------------------------------------------------------------------------
+   10. CROSS-SELLS  ("You may be interested in…")
+   -------------------------------------------------------------------------- */
+body.woocommerce-cart .cross-sells {
+  margin-top: 56px !important;
+  border-top: 1px solid var(--bs-line) !important;
+  padding-top: 48px !important;
+}
+body.woocommerce-cart .cross-sells > h2 {
+  font-family: var(--bs-font-ui) !important;
+  font-weight: 800 !important; font-size: 28px !important;
+  letter-spacing: -0.02em !important; color: #fff !important; margin: 0 0 28px !important;
+}
+body.woocommerce-cart .cross-sells ul.products {
+  display: grid !important; grid-template-columns: repeat(3, 1fr) !important; gap: 20px !important;
+  list-style: none !important; margin: 0 !important; padding: 0 !important;
+}
+body.woocommerce-cart .cross-sells ul.products li.product {
+  background: var(--bs-panel) !important; border: 1px solid var(--bs-line) !important;
+  border-radius: 12px !important; overflow: hidden !important; margin: 0 !important; width: auto !important;
+}
+body.woocommerce-cart .cross-sells .woocommerce-loop-product__title { color: #fff !important; font-size: 16px !important; padding: 16px 18px 0 !important; }
+body.woocommerce-cart .cross-sells .price { padding: 6px 18px 16px !important; color: var(--bs-text) !important; }
+
+
+/* --------------------------------------------------------------------------
+   11. MOBILE
+   -------------------------------------------------------------------------- */
+@media (max-width: 980px) {
+  body.woocommerce-cart .ast-woocommerce-container,
+  body.woocommerce-cart .woocommerce { padding: 40px 20px 64px !important; }
+  body.woocommerce-cart .cart-collaterals .cart_totals { position: static !important; margin-top: 24px !important; }
+  /* Stack table rows into cards on small screens */
+  body.woocommerce-cart table.cart thead { display: none !important; }
+  body.woocommerce-cart table.cart tbody tr {
+    display: grid !important;
+    grid-template-columns: 72px 1fr auto !important;
+    gap: 6px 14px !important;
+    padding: 16px !important;
+    border-bottom: 1px solid var(--bs-line) !important;
+    align-items: center !important;
+  }
+  body.woocommerce-cart table.cart tbody td { border: 0 !important; padding: 0 !important; }
+  body.woocommerce-cart table.cart td.product-remove { grid-row: 1; grid-column: 3; justify-self: end; }
+  body.woocommerce-cart table.cart td.product-thumbnail { grid-row: 1 / span 2; grid-column: 1; }
+  body.woocommerce-cart table.cart td.product-name { grid-row: 1; grid-column: 2; }
+  body.woocommerce-cart table.cart td.product-quantity { grid-row: 2; grid-column: 2; }
+  body.woocommerce-cart table.cart td.product-subtotal { grid-row: 2; grid-column: 3; justify-self: end; }
+  body.woocommerce-cart table.cart td.product-price { display: none !important; }
+  body.woocommerce-cart table.cart td.actions { grid-template-columns: 1fr !important; display: block !important; }
+  body.woocommerce-cart .coupon { float: none !important; display: flex !important; margin-bottom: 12px !important; }
+  body.woocommerce-cart td.actions button[name="update_cart"] { float: none !important; width: 100% !important; }
+  body.woocommerce-cart .cross-sells ul.products { grid-template-columns: 1fr 1fr !important; }
+}
+
+
+/* ==========================================================================
+   END · Bespoke Sport cart styling
+   ========================================================================== */
