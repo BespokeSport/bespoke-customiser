@@ -50,6 +50,7 @@ add_action( 'plugins_loaded', function() {
         'customiser-blog.php',          // The Locker Room (blog index + single article) styling
         'customiser-cart.php',          // Cart page styling + "Re-customise" link on each item
         'customiser-contact.php',       // Contact page styling (form + info card)
+        'customiser-shortcodes.php',    // [bespoke_ticker] / [bespoke_promise] / [bespoke_clubs_say]
     ];
 
     $missing = [];
