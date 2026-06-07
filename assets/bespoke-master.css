@@ -178,6 +178,93 @@ body.bespoke-themed:not(.bs-light) button[type="submit"]:not([class*="elementor-
 }
 
 
+/* --------------------------------------------------------------------------
+   8. `.bs-dark` UTILITY CLASS — drop on any Elementor section, column,
+   container, or block to force the BEspoke dark canvas + white text on
+   that one element. Useful for any old light Elementor section you
+   want to flip dark without rebuilding it.
+
+   How to use:
+     In Elementor, click the section / column / widget you want dark →
+     Advanced ▸ CSS Classes → enter:  bs-dark
+     Save. The section turns dark immediately.
+
+   What it does:
+     * forces the background dark ink
+     * forces every heading inside white
+     * forces body text and Elementor text-editor copy to white
+     * forces icon-box titles white, descriptions muted-white
+     * keeps the BEspoke mint hover on internal links
+
+   Mirror utility `.bs-light` is left undefined on purpose — that
+   lets it act as the master theme's opt-out class (see Section 2)
+   AND as a hint to Elementor section settings (a section that
+   genuinely needs a light look should use Elementor's own
+   background controls, not this class).
+   -------------------------------------------------------------------------- */
+.bs-dark,
+.bs-dark.elementor-section,
+.bs-dark.elementor-element,
+.bs-dark.elementor-column,
+.bs-dark.e-con,
+.bs-dark.e-con-inner,
+section.bs-dark,
+div.bs-dark {
+  background-color: var(--bs-ink) !important;
+  background-image: none !important;
+  color: var(--bs-text) !important;
+}
+
+/* Headings inside a .bs-dark section turn pure white */
+.bs-dark .elementor-heading-title,
+.bs-dark h1, .bs-dark h2, .bs-dark h3,
+.bs-dark h4, .bs-dark h5, .bs-dark h6 {
+  color: #fff !important;
+}
+
+/* Body copy + Elementor text-editor widgets */
+.bs-dark p,
+.bs-dark .elementor-widget-text-editor,
+.bs-dark .elementor-widget-text-editor p,
+.bs-dark .elementor-widget-text-editor li {
+  color: var(--bs-text) !important;
+}
+
+/* Elementor icon-box / image-box widgets */
+.bs-dark .elementor-icon-box-title,
+.bs-dark .elementor-icon-box-title a,
+.bs-dark .elementor-image-box-title,
+.bs-dark .elementor-image-box-title a {
+  color: #fff !important;
+}
+.bs-dark .elementor-icon-box-description,
+.bs-dark .elementor-image-box-description {
+  color: var(--bs-muted) !important;
+}
+
+
+/* --------------------------------------------------------------------------
+   9. Homepage "Why Choose Bespoke" section — targeted dark fix.
+   Same element IDs the Elementor editor auto-generated. If the
+   section is ever rebuilt, add `bs-dark` to its CSS classes (see #8
+   above) and these specific rules become redundant.
+   -------------------------------------------------------------------------- */
+body.bespoke-themed .elementor-element-084080c,
+body.bespoke-themed .elementor-element-f161f5c,
+body.bespoke-themed .elementor-element-a87b402,
+body.bespoke-themed .elementor-element-9d00b78,
+body.bespoke-themed .elementor-element-0b59807 {
+  background-color: var(--bs-ink) !important;
+}
+body.bespoke-themed .elementor-element-084080c .elementor-heading-title,
+body.bespoke-themed .elementor-element-f161f5c .elementor-heading-title,
+body.bespoke-themed .elementor-element-a87b402 .elementor-heading-title,
+body.bespoke-themed .elementor-element-9d00b78 .elementor-heading-title,
+body.bespoke-themed .elementor-element-0b59807 .elementor-heading-title {
+  color: #fff !important;
+}
+
+
 /* ==========================================================================
    END · Bespoke Sport master / global page theme
    ========================================================================== */
