@@ -63,10 +63,13 @@ body.bespoke-themed:not(.bs-light) {
   font-family: var(--bs-font-ui) !important;
 }
 
-/* Common page-shell wrappers Astra emits. Force transparent so the dark
-   body background shows through and we don't get a white inner column
-   on every page. Specific page CSS (shop, blog, cart) re-asserts these
-   anyway, this is the safety net for plain pages with NO specific CSS. */
+/* Common page-shell wrappers Astra + Elementor emit. Force transparent
+   so the dark body background shows through and we don't get a white
+   inner column on every page. The screenshot of the homepage showed
+   thick white side-strips: those came from Astra's #page / .ast-container
+   / .entry-content wrappers (which default to white-ish on the
+   page-builder template) — they're all on the list now. */
+body.bespoke-themed:not(.bs-light) #page,
 body.bespoke-themed:not(.bs-light) .site,
 body.bespoke-themed:not(.bs-light) .site-content,
 body.bespoke-themed:not(.bs-light) #content,
@@ -78,31 +81,44 @@ body.bespoke-themed:not(.bs-light) .ast-woocommerce-container,
 body.bespoke-themed:not(.bs-light) article.page,
 body.bespoke-themed:not(.bs-light) article.post,
 body.bespoke-themed:not(.bs-light) .ast-article-post,
-body.bespoke-themed:not(.bs-light) .ast-article-single {
+body.bespoke-themed:not(.bs-light) .ast-article-single,
+body.bespoke-themed:not(.bs-light) .entry-content,
+body.bespoke-themed:not(.bs-light) .elementor,
+body.bespoke-themed:not(.bs-light) [data-elementor-type] {
   background-color: transparent !important;
   box-shadow: none !important;
 }
 
 
 /* --------------------------------------------------------------------------
-   3. DEFAULT TYPOGRAPHY  (only fires when the page hasn't already
-   styled its headings/paragraphs — we exclude .elementor-* descendants
-   so Elementor widget defaults still win where they're set in the editor)
+   3. DEFAULT TYPOGRAPHY — force white headings + body copy everywhere
+   on the dark canvas. Originally these rules excluded Elementor's own
+   widgets to avoid stomping on editor-configured colours; in practice
+   the editor-configured colours are almost always cream / dark on a
+   light theme that no longer exists, so the headings on Gallery /
+   Locker Room / Contact were rendering invisible (cream on dark).
+
+   We now force every heading to white. If a SPECIFIC heading needs a
+   different colour (e.g. the mint "YOUR" span inside the homepage
+   hero), apply that colour to the inner span or override per-element
+   in Elementor — span colour beats heading colour on specificity.
    -------------------------------------------------------------------------- */
-body.bespoke-themed:not(.bs-light) h1:not(.elementor-heading-title):not([class*="elementor-"]),
-body.bespoke-themed:not(.bs-light) h2:not(.elementor-heading-title):not([class*="elementor-"]),
-body.bespoke-themed:not(.bs-light) h3:not(.elementor-heading-title):not([class*="elementor-"]),
-body.bespoke-themed:not(.bs-light) h4:not(.elementor-heading-title):not([class*="elementor-"]),
-body.bespoke-themed:not(.bs-light) h5:not(.elementor-heading-title):not([class*="elementor-"]),
-body.bespoke-themed:not(.bs-light) h6:not(.elementor-heading-title):not([class*="elementor-"]) {
+body.bespoke-themed:not(.bs-light) h1,
+body.bespoke-themed:not(.bs-light) h2,
+body.bespoke-themed:not(.bs-light) h3,
+body.bespoke-themed:not(.bs-light) h4,
+body.bespoke-themed:not(.bs-light) h5,
+body.bespoke-themed:not(.bs-light) h6,
+body.bespoke-themed:not(.bs-light) .elementor-heading-title,
+body.bespoke-themed:not(.bs-light) .elementor-widget-heading .elementor-heading-title {
   color: #fff !important;
-  font-family: var(--bs-font-ui) !important;
-  letter-spacing: -0.02em;
 }
 
-body.bespoke-themed:not(.bs-light) p:not([class*="elementor-"]) {
+body.bespoke-themed:not(.bs-light) p,
+body.bespoke-themed:not(.bs-light) .elementor-widget-text-editor,
+body.bespoke-themed:not(.bs-light) .elementor-widget-text-editor p,
+body.bespoke-themed:not(.bs-light) .elementor-widget-text-editor li {
   color: var(--bs-text) !important;
-  font-family: var(--bs-font-ui) !important;
 }
 
 
@@ -244,24 +260,43 @@ div.bs-dark {
 
 
 /* --------------------------------------------------------------------------
-   9. Homepage "Why Choose Bespoke" section — targeted dark fix.
-   Same element IDs the Elementor editor auto-generated. If the
-   section is ever rebuilt, add `bs-dark` to its CSS classes (see #8
-   above) and these specific rules become redundant.
+   9. Page-specific Elementor element overrides — targeted dark fixes
+   for sections that the editor configured with explicit light
+   backgrounds before the dark theme arrived. Each rule keys off the
+   auto-generated Elementor element ID seen on the live HTML.
+
+   If any section is rebuilt and the ID changes, add `bs-dark` to its
+   CSS classes (see #8 above) and these specific rules become
+   redundant.
    -------------------------------------------------------------------------- */
+
+/* Homepage "Why Choose Bespoke?" — outer + inner sections */
 body.bespoke-themed .elementor-element-084080c,
 body.bespoke-themed .elementor-element-f161f5c,
 body.bespoke-themed .elementor-element-a87b402,
 body.bespoke-themed .elementor-element-9d00b78,
 body.bespoke-themed .elementor-element-0b59807 {
   background-color: var(--bs-ink) !important;
+  background-image: none !important;
 }
-body.bespoke-themed .elementor-element-084080c .elementor-heading-title,
-body.bespoke-themed .elementor-element-f161f5c .elementor-heading-title,
-body.bespoke-themed .elementor-element-a87b402 .elementor-heading-title,
-body.bespoke-themed .elementor-element-9d00b78 .elementor-heading-title,
-body.bespoke-themed .elementor-element-0b59807 .elementor-heading-title {
-  color: #fff !important;
+
+/* Contact page — WPForms widget + its parent column / container */
+body.bespoke-themed .elementor-element-5545211,
+body.bespoke-themed .elementor-element-5545211 .elementor-widget-container {
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+/* Catch-all: any Elementor section / column on a contact page that has
+   an INLINE white-ish background colour the editor baked in. Scoped
+   under body.bespoke-contact-styled so it can't bleed into other pages
+   that legitimately want a light section. */
+body.bespoke-contact-styled .elementor-section,
+body.bespoke-contact-styled .elementor-column,
+body.bespoke-contact-styled .e-con,
+body.bespoke-contact-styled .e-con-inner,
+body.bespoke-contact-styled .elementor-widget-wrap {
+  background-color: transparent !important;
 }
 
 
