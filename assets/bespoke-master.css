@@ -1,0 +1,183 @@
+/* ==========================================================================
+   BESPOKE SPORT · Master / global page theme
+   --------------------------------------------------------------------------
+   Applies the dark mint look-and-feel to EVERY front-end page by default,
+   so a brand-new Page created in WP Admin picks up the brand colours,
+   typography and link styling automatically — no per-page setup needed.
+
+   Targets every page via `body.bespoke-themed` (added in customiser-master.php).
+   Specific page CSS (shop / blog / cart / contact / PDP) layers on top.
+
+   Opt out on a specific page by adding `bs-light` to the page's body class
+   (Astra has a body-class field per page) OR by returning false from the
+   `bespoke_apply_master_theme` PHP filter.
+
+   What this DOES NOT touch on purpose:
+     - Elementor section backgrounds (each section keeps the BG you set in
+       Elementor — for sections that should inherit the dark canvas, set
+       their background to transparent in Elementor editor).
+     - Elementor widget defaults (heading colours, button colours).
+     - The customiser configurator UI inside the PDP (its own design).
+
+   Pairs with the Claude Design palette already used by:
+     bespoke-shop-page.css · bespoke-blog-page.css · bespoke-cart-page.css
+     bespoke-contact-page.css · bespoke-product-page.css
+
+   Heavy !important usage is intentional — Astra and Elementor ship
+   high-specificity defaults that otherwise win.
+   ========================================================================== */
+
+
+/* --------------------------------------------------------------------------
+   1. DESIGN TOKENS — kept in sync with every other bespoke-*.css.
+   -------------------------------------------------------------------------- */
+:root {
+  --bs-ink:          #0E0E10;
+  --bs-deep:         #050505;
+  --bs-panel:        #141417;
+  --bs-panel-2:      #1A1A1E;
+  --bs-mint:         #7FECB8;
+  --bs-mint-deep:    #3DA67A;
+  --bs-mint-soft:    rgba(127,236,184,0.10);
+  --bs-cream:        #F2EFE9;
+  --bs-text:         rgba(255,255,255,0.85);
+  --bs-muted:        rgba(255,255,255,0.55);
+  --bs-faint:        rgba(255,255,255,0.40);
+  --bs-line:         rgba(255,255,255,0.10);
+  --bs-font-ui:      'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  --bs-font-mono:    'JetBrains Mono', SFMono-Regular, ui-monospace, monospace;
+  --bs-font-display: 'Anton', Impact, 'Arial Black', sans-serif;
+}
+
+
+/* --------------------------------------------------------------------------
+   2. CANVAS — dark page background + brand fonts on EVERY page.
+   --------------------------------------------------------------------------
+   `.bs-light` is the escape hatch — add it to a specific page's body
+   classes and that page reverts to the theme's default (light) canvas
+   without touching the rest of the site.
+   -------------------------------------------------------------------------- */
+body.bespoke-themed:not(.bs-light) {
+  background-color: var(--bs-ink) !important;
+  color: var(--bs-text) !important;
+  font-family: var(--bs-font-ui) !important;
+}
+
+/* Common page-shell wrappers Astra emits. Force transparent so the dark
+   body background shows through and we don't get a white inner column
+   on every page. Specific page CSS (shop, blog, cart) re-asserts these
+   anyway, this is the safety net for plain pages with NO specific CSS. */
+body.bespoke-themed:not(.bs-light) .site,
+body.bespoke-themed:not(.bs-light) .site-content,
+body.bespoke-themed:not(.bs-light) #content,
+body.bespoke-themed:not(.bs-light) #primary,
+body.bespoke-themed:not(.bs-light) #main,
+body.bespoke-themed:not(.bs-light) .content-area,
+body.bespoke-themed:not(.bs-light) .ast-container,
+body.bespoke-themed:not(.bs-light) .ast-woocommerce-container,
+body.bespoke-themed:not(.bs-light) article.page,
+body.bespoke-themed:not(.bs-light) article.post,
+body.bespoke-themed:not(.bs-light) .ast-article-post,
+body.bespoke-themed:not(.bs-light) .ast-article-single {
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
+
+/* --------------------------------------------------------------------------
+   3. DEFAULT TYPOGRAPHY  (only fires when the page hasn't already
+   styled its headings/paragraphs — we exclude .elementor-* descendants
+   so Elementor widget defaults still win where they're set in the editor)
+   -------------------------------------------------------------------------- */
+body.bespoke-themed:not(.bs-light) h1:not(.elementor-heading-title):not([class*="elementor-"]),
+body.bespoke-themed:not(.bs-light) h2:not(.elementor-heading-title):not([class*="elementor-"]),
+body.bespoke-themed:not(.bs-light) h3:not(.elementor-heading-title):not([class*="elementor-"]),
+body.bespoke-themed:not(.bs-light) h4:not(.elementor-heading-title):not([class*="elementor-"]),
+body.bespoke-themed:not(.bs-light) h5:not(.elementor-heading-title):not([class*="elementor-"]),
+body.bespoke-themed:not(.bs-light) h6:not(.elementor-heading-title):not([class*="elementor-"]) {
+  color: #fff !important;
+  font-family: var(--bs-font-ui) !important;
+  letter-spacing: -0.02em;
+}
+
+body.bespoke-themed:not(.bs-light) p:not([class*="elementor-"]) {
+  color: var(--bs-text) !important;
+  font-family: var(--bs-font-ui) !important;
+}
+
+
+/* --------------------------------------------------------------------------
+   4. LINKS — mint by default, white on hover. Scoped to non-Elementor
+   anchors so existing Elementor button widgets keep their own colour.
+   -------------------------------------------------------------------------- */
+body.bespoke-themed:not(.bs-light) a:not([class*="elementor-"]):not(.button):not(.add_to_cart_button):not(.checkout-button) {
+  color: var(--bs-mint);
+  transition: color 0.2s ease;
+}
+body.bespoke-themed:not(.bs-light) a:not([class*="elementor-"]):not(.button):not(.add_to_cart_button):not(.checkout-button):hover {
+  color: #fff;
+}
+
+
+/* --------------------------------------------------------------------------
+   5. SELECTION — mint highlight so highlighted text reads as on-brand.
+   -------------------------------------------------------------------------- */
+body.bespoke-themed:not(.bs-light) ::selection {
+  background: var(--bs-mint);
+  color: var(--bs-ink);
+}
+
+
+/* --------------------------------------------------------------------------
+   6. SCROLLBAR — dark with mint thumb (Chromium / Firefox).
+   -------------------------------------------------------------------------- */
+body.bespoke-themed:not(.bs-light) {
+  scrollbar-color: var(--bs-mint-deep) var(--bs-deep);
+  scrollbar-width: thin;
+}
+body.bespoke-themed:not(.bs-light) ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+body.bespoke-themed:not(.bs-light) ::-webkit-scrollbar-track {
+  background: var(--bs-deep);
+}
+body.bespoke-themed:not(.bs-light) ::-webkit-scrollbar-thumb {
+  background: var(--bs-mint-deep);
+  border-radius: 999px;
+  border: 2px solid var(--bs-deep);
+}
+body.bespoke-themed:not(.bs-light) ::-webkit-scrollbar-thumb:hover {
+  background: var(--bs-mint);
+}
+
+
+/* --------------------------------------------------------------------------
+   7. BUTTONS — give any plain WP/WC button a brand pill look IF the
+   page hasn't already styled it. Excludes Elementor widget buttons
+   (those keep whatever the editor specifies).
+   -------------------------------------------------------------------------- */
+body.bespoke-themed:not(.bs-light) input[type="submit"]:not([class*="elementor-"]):not(.wpforms-submit),
+body.bespoke-themed:not(.bs-light) button[type="submit"]:not([class*="elementor-"]):not(.wpforms-submit) {
+  background: var(--bs-mint);
+  color: var(--bs-ink);
+  border: 0;
+  border-radius: 999px;
+  padding: 14px 26px;
+  font-family: var(--bs-font-ui);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: filter 0.2s ease;
+}
+body.bespoke-themed:not(.bs-light) input[type="submit"]:not([class*="elementor-"]):not(.wpforms-submit):hover,
+body.bespoke-themed:not(.bs-light) button[type="submit"]:not([class*="elementor-"]):not(.wpforms-submit):hover {
+  filter: brightness(1.08);
+}
+
+
+/* ==========================================================================
+   END · Bespoke Sport master / global page theme
+   ========================================================================== */

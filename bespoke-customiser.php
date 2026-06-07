@@ -51,6 +51,7 @@ add_action( 'plugins_loaded', function() {
         'customiser-cart.php',          // Cart page styling + "Re-customise" link on each item
         'customiser-contact.php',       // Contact page styling (form + info card)
         'customiser-shortcodes.php',    // [bespoke_ticker] / [bespoke_promise] / [bespoke_clubs_say]
+        'customiser-master.php',        // Master/global page theme — dark + mint + Inter on every front-end page
     ];
 
     $missing = [];
