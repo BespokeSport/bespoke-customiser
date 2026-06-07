@@ -1,0 +1,243 @@
+/* ==========================================================================
+   BESPOKE SPORT · Homepage styling
+   --------------------------------------------------------------------------
+   Migrated into the plugin from two Custom CSS/JS snippets that the
+   designer is decommissioning:
+     - "BEspoke Homepage Styles"      (snippet 6618)
+     - "BEspoke — Range Section Styles" (snippet 6636, partial overlap)
+
+   What this file does:
+     1. Hides Astra's stock site header on the homepage (Elementor
+        renders its own header instead).
+     2. Lifts the homepage hero headline to its proper huge Anton
+        size (the rule that broke when the snippet was disabled).
+     3. Styles the product Range section (dark canvas, 3-up grid,
+        Anton card titles, sale flash).
+     4. Styles the "Start Designing" CTA button.
+
+   Heads up — these rules target SPECIFIC Elementor element IDs (e.g.
+   .elementor-element-d5d3fd2) that come from the editor's auto-
+   generated IDs. If you rebuild that hero section in Elementor the
+   ID changes and the rules stop firing. If that happens, give the
+   new section a CSS class (`bs-home-hero`) in Elementor's Advanced
+   tab and ask me to swap the selectors over.
+
+   Loaded ONLY on the front page by customiser-homepage.php so it
+   can't leak into other pages.
+   ========================================================================== */
+
+
+/* --------------------------------------------------------------------------
+   1. ASTRA SITE HEADER — hide on the homepage. Elementor's own
+   header (logo + nav + bag) is rendered as part of the page itself,
+   so showing Astra's WP header too gives you a stacked double-bar.
+   -------------------------------------------------------------------------- */
+body.home #masthead,
+body.home .site-header,
+body.page-id-1 #masthead,
+body.page-id-1 .site-header {
+	display: none !important;
+}
+
+
+/* --------------------------------------------------------------------------
+   2. HERO HEADLINE — "BUILT FOR YOUR BADGE."
+   The original snippet keyed off the auto-generated Elementor element
+   ID. We keep that AND add a class-based selector (`bs-home-hero`) so
+   if the designer rebuilds the section, adding `bs-home-hero` to the
+   heading widget's Advanced ▸ CSS Classes restores the styling.
+   -------------------------------------------------------------------------- */
+.elementor-element-d5d3fd2 .elementor-heading-title,
+body .elementor-element-d5d3fd2 .elementor-heading-title.elementor-size-xl,
+.bs-home-hero .elementor-heading-title,
+.bs-home-hero.elementor-heading-title {
+	font-size: clamp(80px, 10vw, 160px) !important;
+	line-height: 0.9 !important;
+	letter-spacing: -0.02em !important;
+	font-family: 'Anton', sans-serif !important;
+	font-weight: 400 !important;
+	text-transform: uppercase !important;
+}
+
+
+/* --------------------------------------------------------------------------
+   3. START DESIGNING CTA — mint pill primary button.
+   -------------------------------------------------------------------------- */
+.elementor-element-619d5f1 .elementor-button,
+.bs-home-cta .elementor-button {
+	background: #5DCAA5 !important;
+	color: #04342C !important;
+}
+
+
+/* --------------------------------------------------------------------------
+   4. SECTION HEADINGS — second-tier hero headlines (e.g. "The Range")
+   shared by two element IDs in the original snippet.
+   -------------------------------------------------------------------------- */
+.elementor-element-1091053,
+.bs-home-range {
+	background: #0E0E10 !important;
+	padding: 120px 0 140px !important;
+}
+.elementor-element-1091053 .elementor-heading-title,
+.elementor-element-a18dec0 .elementor-heading-title,
+.bs-home-range .elementor-heading-title {
+	color: #ffffff !important;
+	font-size: clamp(64px, 8vw, 128px) !important;
+	line-height: 0.88 !important;
+	letter-spacing: -0.01em !important;
+	margin-bottom: 48px !important;
+}
+
+
+/* --------------------------------------------------------------------------
+   5. PRODUCT RANGE GRID — the dark product card row on the homepage.
+   Three columns of full-bleed product images with overlay text and
+   a thin pill "Customise" button per card.
+   -------------------------------------------------------------------------- */
+.elementor-element-c9cefc7,
+.bs-home-product-grid {
+	background: #0E0E10 !important;
+}
+.elementor-element-c9cefc7 ul.products,
+.bs-home-product-grid ul.products {
+	display: grid !important;
+	grid-template-columns: repeat(3, 1fr) !important;
+	gap: 16px !important;
+	margin: 0 !important;
+	padding: 0 !important;
+	list-style: none !important;
+}
+.elementor-element-c9cefc7 ul.products li.product,
+.bs-home-product-grid ul.products li.product {
+	position: relative !important;
+	height: 480px !important;
+	overflow: hidden !important;
+	background: #1a1a1a !important;
+	border: none !important;
+	border-radius: 0 !important;
+	padding: 0 !important;
+	margin: 0 !important;
+	cursor: pointer !important;
+	transition: transform 0.4s ease !important;
+}
+.elementor-element-c9cefc7 ul.products li.product:hover,
+.bs-home-product-grid ul.products li.product:hover {
+	transform: scale(1.015) !important;
+}
+.elementor-element-c9cefc7 ul.products li.product img,
+.bs-home-product-grid ul.products li.product img {
+	position: absolute !important;
+	inset: 0 !important;
+	width: 100% !important;
+	height: 100% !important;
+	object-fit: cover !important;
+	margin: 0 !important;
+	display: block !important;
+}
+.elementor-element-c9cefc7 ul.products li.product::after,
+.bs-home-product-grid ul.products li.product::after {
+	content: '' !important;
+	position: absolute !important;
+	inset: 0 !important;
+	background: linear-gradient(180deg, rgba(0,0,0,0.05) 0%, transparent 30%, rgba(0,0,0,0.75) 70%, rgba(0,0,0,0.92) 100%) !important;
+	z-index: 1 !important;
+	pointer-events: none !important;
+}
+.elementor-element-c9cefc7 ul.products li.product .ast-woo-product-category,
+.bs-home-product-grid ul.products li.product .ast-woo-product-category {
+	position: absolute !important;
+	top: 20px !important;
+	left: 24px !important;
+	z-index: 2 !important;
+	font-size: 10px !important;
+	letter-spacing: 0.14em !important;
+	text-transform: uppercase !important;
+	color: rgba(255,255,255,0.6) !important;
+	font-family: 'Inter', sans-serif !important;
+	margin: 0 !important;
+}
+.elementor-element-c9cefc7 ul.products li.product h2,
+.elementor-element-c9cefc7 ul.products li.product .woocommerce-loop-product__title,
+.bs-home-product-grid ul.products li.product h2,
+.bs-home-product-grid ul.products li.product .woocommerce-loop-product__title {
+	position: absolute !important;
+	bottom: 60px !important;
+	left: 24px !important;
+	right: 24px !important;
+	z-index: 2 !important;
+	font-family: 'Anton', sans-serif !important;
+	font-size: 28px !important;
+	line-height: 1 !important;
+	color: #ffffff !important;
+	margin: 0 !important;
+	padding: 0 !important;
+	text-transform: uppercase !important;
+	background: transparent !important;
+}
+.elementor-element-c9cefc7 ul.products li.product .price,
+.bs-home-product-grid ul.products li.product .price {
+	position: absolute !important;
+	bottom: 24px !important;
+	left: 24px !important;
+	z-index: 2 !important;
+	color: rgba(255,255,255,0.6) !important;
+	font-size: 13px !important;
+	font-family: 'Inter', sans-serif !important;
+	margin: 0 !important;
+	background: transparent !important;
+}
+.elementor-element-c9cefc7 ul.products li.product .price .amount,
+.bs-home-product-grid ul.products li.product .price .amount {
+	color: rgba(255,255,255,0.6) !important;
+}
+.elementor-element-c9cefc7 ul.products li.product .button,
+.elementor-element-c9cefc7 ul.products li.product a.button,
+.bs-home-product-grid ul.products li.product .button,
+.bs-home-product-grid ul.products li.product a.button {
+	position: absolute !important;
+	bottom: 18px !important;
+	right: 20px !important;
+	z-index: 2 !important;
+	background: transparent !important;
+	color: rgba(255,255,255,0.8) !important;
+	border: 1px solid rgba(255,255,255,0.35) !important;
+	padding: 9px 14px !important;
+	font-size: 10px !important;
+	letter-spacing: 0.12em !important;
+	text-transform: uppercase !important;
+	font-family: 'Inter', sans-serif !important;
+	border-radius: 0 !important;
+	width: auto !important;
+	height: auto !important;
+	line-height: 1 !important;
+}
+.elementor-element-c9cefc7 ul.products li.product .onsale,
+.bs-home-product-grid ul.products li.product .onsale {
+	position: absolute !important;
+	top: 16px !important;
+	right: 16px !important;
+	z-index: 3 !important;
+	background: #5DCAA5 !important;
+	color: #04342C !important;
+	border-radius: 0 !important;
+	font-size: 10px !important;
+	padding: 6px 10px !important;
+	min-height: auto !important;
+	min-width: auto !important;
+	line-height: 1 !important;
+}
+.elementor-element-c9cefc7 ul.products li.product .star-rating,
+.bs-home-product-grid ul.products li.product .star-rating {
+	display: none !important;
+}
+.elementor-element-c9cefc7 ul.products li.product a,
+.bs-home-product-grid ul.products li.product a {
+	display: block !important;
+	position: static !important;
+}
+
+
+/* ==========================================================================
+   END · Bespoke Sport homepage styling
+   ========================================================================== */
