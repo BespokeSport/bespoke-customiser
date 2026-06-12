@@ -103,12 +103,17 @@ body.single-product .up-sells .product a {
 /* --------------------------------------------------------------------------
    3. HIDE THE EMPTY GALLERY BLOCK above the customiser
    -------------------------------------------------------------------------- */
-/* Astra/Woo renders the gallery slot even when the customiser replaces it.
-   This kills the white rectangle visible above the customiser in the
-   current build. Adjust the selector if your child theme uses different markup. */
-body.single-product .woocommerce-product-gallery,
-body.single-product .single-product-thumbnails,
-body.single-product .ast-woocommerce-container .product > .images {
+/* Hide the standard WC product gallery ONLY on customiser products —
+   the configurator UI replaces the gallery there. Pre-designed
+   products (Wales captain, Brampton, etc.) are standard variable
+   products that NEED the gallery, so they keep it.
+   The `bespoke-customiser-product` body class is added by
+   bespoke_wc_customiser_product_body_class() in customiser-
+   woocommerce.php whenever the product has a `_bespoke_product_type`
+   meta set. */
+body.bespoke-customiser-product .woocommerce-product-gallery,
+body.bespoke-customiser-product .single-product-thumbnails,
+body.bespoke-customiser-product .ast-woocommerce-container .product > .images {
   display: none !important;
 }
 

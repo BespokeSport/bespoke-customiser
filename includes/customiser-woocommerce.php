@@ -217,6 +217,34 @@ function bespoke_wc_customise_text_js() {
  */
 add_action( 'wp_enqueue_scripts', 'bespoke_wc_enqueue_product_page_styles' );
 
+/**
+ * Add a `bespoke-customiser-product` body class ONLY on single-
+ * product pages where the product has a `_bespoke_product_type` meta
+ * set (i.e. it goes through the customiser workflow).
+ *
+ * Used by bespoke-product-page.css to scope a few rules — most
+ * importantly the gallery-hide rule — that should only fire on
+ * customiser products. Without this class, the standard WC product
+ * gallery on pre-designed products (Wales / Brampton / etc.) would
+ * be hidden because the PDP CSS replaces the gallery with the
+ * configurator on customiser products.
+ */
+add_filter( 'body_class', 'bespoke_wc_customiser_product_body_class' );
+function bespoke_wc_customiser_product_body_class( $classes ) {
+    if ( ! function_exists( 'is_product' ) || ! is_product() ) {
+        return $classes;
+    }
+    global $post;
+    if ( ! $post ) {
+        return $classes;
+    }
+    $type = get_post_meta( $post->ID, '_bespoke_product_type', true );
+    if ( $type ) {
+        $classes[] = 'bespoke-customiser-product';
+    }
+    return $classes;
+}
+
 function bespoke_wc_enqueue_product_page_styles() {
     if ( ! function_exists( 'is_product' ) || ! is_product() ) {
         return;
