@@ -196,13 +196,24 @@ function bespoke_wc_customise_text_js() {
 }
 
 /**
- * Enqueue the drop-in product page stylesheet on every single-product
- * page where the product has a customiser type set. Gives the page the
- * dark theme + title/price/tabs/notice-card styling that matches the
- * customiser's own design language.
+ * Enqueue the drop-in product page stylesheet on EVERY single-product
+ * page. Used to only fire on products with a `_bespoke_product_type`
+ * meta key set — which meant pre-designed products (Wales captain
+ * armband, Brampton, etc.) got no styling and reverted to Astra's
+ * stock light look on a dark site. They're standard WooCommerce
+ * variable products (size + thickness only, no customiser workflow)
+ * but still need the BEspoke visual treatment.
  *
  * The CSS targets body.single-product so it only applies on WC product
  * pages — won't bleed into the shop archive, cart, or anywhere else.
+ * Customiser-specific rules inside the file (.bespoke-customiser-root
+ * etc.) target elements that only exist on customiser products, so
+ * applying the full stylesheet to a pre-designed product is harmless
+ * for those rules — they simply don't match anything.
+ *
+ * Per-product opt-out: filter `bespoke_apply_product_page_styles`
+ * returning false for any product that should keep the theme default
+ * (a third-party product, a legacy listing, etc).
  */
 add_action( 'wp_enqueue_scripts', 'bespoke_wc_enqueue_product_page_styles' );
 
@@ -214,8 +225,11 @@ function bespoke_wc_enqueue_product_page_styles() {
     if ( ! $post ) {
         return;
     }
-    $type = get_post_meta( $post->ID, '_bespoke_product_type', true );
-    if ( ! $type ) {
+    // Per-product opt-out hook. Default is true (apply styling) so
+    // every product page picks up the dark theme automatically; pass
+    // false from the filter to revert a specific product.
+    $apply = apply_filters( 'bespoke_apply_product_page_styles', true, $post );
+    if ( ! $apply ) {
         return;
     }
     // BESPOKE_PLUGIN_URL is defined by the main plugin bootstrap.
