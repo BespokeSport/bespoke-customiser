@@ -1328,6 +1328,37 @@ function bespoke_render_admin_corner_flags( $d, $item ) {
 
 
 /* =========================================================================
+   BOTTLES — cart + admin renderers
+   Single sublimated bottle: one badge, one name, one number, design +
+   colours. Mirrors corner_flags but adds the squad number row.
+   ========================================================================= */
+function bespoke_render_cart_bottles( $item_data, $d ) {
+    if ( ! empty( $d['design'] ) ) {
+        $item_data[] = [ 'name' => 'Design', 'value' => esc_html( $d['design'] ) ];
+    }
+    if ( ! empty( $d['left']['name'] ) ) {
+        $item_data[] = [ 'name' => 'Name', 'value' => esc_html( $d['left']['name'] ) ];
+    }
+    if ( ! empty( $d['left']['number'] ) ) {
+        $item_data[] = [ 'name' => 'Number', 'value' => esc_html( $d['left']['number'] ) ];
+    }
+    $item_data[] = [
+        'name'  => 'Club badge',
+        'value' => ! empty( $d['badge']['url'] ) ? 'Uploaded' : 'Not added',
+    ];
+    return $item_data;
+}
+function bespoke_render_admin_bottles( $d, $item ) {
+    echo bespoke_render_admin_generic_card( 'Bottle', $d, [
+        'show_text' => [
+            'left_name'   => 'Name',
+            'left_number' => 'Number',
+        ],
+    ] );
+}
+
+
+/* =========================================================================
    GENERIC ADMIN ORDER CARD
    Reused by every product type added above so we don't replicate the
    ~200-line shin-pad layout for each. Returns HTML.
