@@ -2554,6 +2554,59 @@ function surpriseForward(){
   _applySurpriseSnapshot(_surpriseHistory[_surpriseIndex]);
 }
 
+/* ============================================================
+   CONTRAST HELPERS — pick text colour that reads on the bg + every
+   pattern colour the text might end up sitting on.
+
+   WCAG-style relative luminance + contrast ratio. Used by
+   surpriseMe() so that as the palette + pattern layers change, the
+   name and number text colour automatically picks whichever
+   candidate (white, near-black, or the palette's curated accents)
+   has the highest minimum contrast against the entire composition.
+   Both name and number get the SAME colour so they look collective.
+   ============================================================ */
+function _bcpLuminance(hex){
+  hex = (hex || '').replace('#','').trim();
+  if (hex.length === 3) hex = hex.split('').map(function(c){return c+c;}).join('');
+  if (!/^[0-9a-fA-F]{6}$/.test(hex)) return 0.5;
+  var r = parseInt(hex.substr(0,2),16) / 255;
+  var g = parseInt(hex.substr(2,2),16) / 255;
+  var b = parseInt(hex.substr(4,2),16) / 255;
+  var lin = function(c){ return c <= 0.03928 ? c/12.92 : Math.pow((c+0.055)/1.055, 2.4); };
+  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+}
+function _bcpContrast(hex1, hex2){
+  var L1 = _bcpLuminance(hex1);
+  var L2 = _bcpLuminance(hex2);
+  var lighter = Math.max(L1, L2);
+  var darker  = Math.min(L1, L2);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+function _bcpPickTextColor(bg, patternColors, candidates){
+  var fields = [bg].concat(patternColors || []).filter(Boolean);
+  if (!fields.length) return '#FFFFFF';
+  var bestColor = '#FFFFFF';
+  var bestScore = -1;
+  for (var i = 0; i < candidates.length; i++) {
+    var c = candidates[i];
+    if (!c) continue;
+    // Score = the LOWEST contrast against any background field.
+    // Pick the candidate whose worst-case contrast is highest, so
+    // text remains readable no matter which pattern stripe it
+    // happens to overlap.
+    var minContrast = Infinity;
+    for (var j = 0; j < fields.length; j++) {
+      var r = _bcpContrast(c, fields[j]);
+      if (r < minContrast) minContrast = r;
+    }
+    if (minContrast > bestScore) {
+      bestScore = minContrast;
+      bestColor = c;
+    }
+  }
+  return bestColor;
+}
+
 function surpriseMe(){
   if (!window.ALL_DESIGNS || !window.ALL_DESIGNS.length) return;
 
@@ -2606,13 +2659,24 @@ function surpriseMe(){
     patColors.push(palette.patterns[i % palette.patterns.length]);
   }
 
+  // Pick a single text colour for both name AND number so they
+  // look collective. Candidates: pure white, near-black, and the
+  // palette's curated name / num accents (preserves designer
+  // intent when those happen to have strong contrast against the
+  // chosen bg + pattern layers). _bcpPickTextColor scores each by
+  // its WORST-case contrast against the entire composition and
+  // returns the highest scorer.
+  var textColor = _bcpPickTextColor(palette.bg, patColors, [
+    '#FFFFFF', '#1A1A1A', palette.name, palette.num
+  ]);
+
   // Update state
   S.design     = design.id;
   S.bgColor    = palette.bg;
   S.patColor   = patColors[0];
   S.patColors  = patColors;
-  S.nameColor  = palette.name;
-  S.numColor   = palette.num;
+  S.nameColor  = textColor;
+  S.numColor   = textColor;
   // Curated palettes are solid-only — clear any stale gradients the
   // customer set manually, otherwise the renderer would keep showing
   // the gradient over the new solid colours and look wrong.
