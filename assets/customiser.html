@@ -3453,10 +3453,15 @@ var PLAYER_CARD_TEXT_COLOR = '#FFFFFF';
 // Display font for every player-card text element. Anton is already
 // preloaded by customiser-global-fonts.php so it's safe to assume.
 var PLAYER_CARD_TEXT_FONT  = "'Anton', Impact, 'Arial Black', sans-serif";
-// SVG baselines sit roughly 78% down from the top of the text box for
-// Anton at large sizes. Tweak if the text floats above / sits below
-// the slot rectangle.
-var PLAYER_CARD_BASELINE_FRAC = 0.78;
+
+// Per-element font sizes (pixels in the 1200×1200 viewbox). Tunable.
+// Stat value + label use the SAME size so they read as a matched pair
+// and sit on the same visual line. Bump the value slightly larger via
+// PLAYER_CARD_STAT_VALUE_SIZE if you want them to dominate the label.
+var PLAYER_CARD_OVR_SIZE        = 95;   // big rating top-left
+var PLAYER_CARD_POSITION_SIZE   = 60;   // position badge (RB / CDM / GK)
+var PLAYER_CARD_STAT_VALUE_SIZE = 58;   // "99"
+var PLAYER_CARD_STAT_LABEL_SIZE = 58;   // "PAC"
 
 function isPlayerCard(){
   return bespokeProductType() === 'player_cards';
@@ -3620,12 +3625,18 @@ function applyPlayerCardOverlay(stepId){
     if (anchor === 'start') x = slot.x - slot.w / 2;
     if (anchor === 'end')   x = slot.x + slot.w / 2;
     // For 'middle', x = slot.x (already the centre).
-    // Baseline = centre_y + h * (BASELINE_FRAC - 0.5). With
-    // BASELINE_FRAC ≈ 0.78 that lands the baseline ≈ 28% below the
-    // vertical centre — roughly correct for Anton cap-height glyphs.
+    //
+    // y = slot.y (the centre). dominant-baseline='central' tells the
+    // renderer to place the visual centre of the glyph at the y
+    // coordinate — so any two text elements with the same slot.y land
+    // on the SAME visual line regardless of font-size or bbox height.
+    // Replaces the old `slot.y + h × baseline_fraction` arithmetic
+    // that gave different baselines for the value slot (h=58) vs the
+    // label slot (h=84) and made stats look mis-aligned.
     t.setAttribute('x', x);
-    t.setAttribute('y', slot.y + slot.h * (PLAYER_CARD_BASELINE_FRAC - 0.5));
+    t.setAttribute('y', slot.y);
     t.setAttribute('text-anchor', anchor);
+    t.setAttribute('dominant-baseline', 'central');
     t.setAttribute('font-family', PLAYER_CARD_TEXT_FONT);
     t.setAttribute('font-size', String(opts.size || slot.h));
     t.setAttribute('fill', opts.color || PLAYER_CARD_TEXT_COLOR);
@@ -3700,21 +3711,19 @@ function applyPlayerCardOverlay(stepId){
     layer.appendChild(badgeImg);
   }
 
-  // 3. OVR — ALWAYS render (FIFA cards always show a rating). Falls
-  //    back to '0' while no stats are entered so the slot is visible
-  //    from the moment the customer lands on the card. Updates live
-  //    as they type stats — computePlayerOVR triggers a re-render
-  //    via syncAll().
+  // 3. OVR — ALWAYS render. Falls back to '0' while no stats are
+  //    entered so the slot is visible from the moment the customer
+  //    lands on the card; updates live as they type stats.
   layer.appendChild(textAtSlot(PLAYER_CARD_SLOTS.ovr, String(S.playerOVR || 0), {
     anchor: 'middle',
-    size: PLAYER_CARD_SLOTS.ovr.h * 0.95
+    size: PLAYER_CARD_OVR_SIZE
   }));
 
   // 4. Position (e.g. "RB").
   if (S.playerPosition) {
     layer.appendChild(textAtSlot(PLAYER_CARD_SLOTS.position, S.playerPosition, {
       anchor: 'middle',
-      size: PLAYER_CARD_SLOTS.position.h * 0.95
+      size: PLAYER_CARD_POSITION_SIZE
     }));
   }
 
@@ -3735,6 +3744,27 @@ function applyPlayerCardOverlay(stepId){
     flagImg.setAttribute('width', fSlot.w);
     flagImg.setAttribute('height', fSlot.h);
     flagImg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    // Fallback: if the bundled flag PNG isn't on the server (e.g. the
+    // /assets/flags/ folder hasn't been uploaded to staging yet), the
+    // image fires an error event and the slot shows the SVG broken-
+    // image glyph. Catch that, drop the broken image, and render the
+    // country name as text so the customer still sees something
+    // meaningful in the slot.
+    var _flagCountry = S.playerFlag;
+    var _flagSlotRef = fSlot;
+    flagImg.addEventListener('error', function(){
+      if (flagImg.parentNode) flagImg.parentNode.removeChild(flagImg);
+      // Defer the text render so we don't mutate the layer mid-render
+      // (some browsers fire the error synchronously during append).
+      setTimeout(function(){
+        var stillPlayerCard = (typeof isPlayerCard === 'function' && isPlayerCard());
+        if (!stillPlayerCard) return;
+        layer.appendChild(textAtSlot(_flagSlotRef, _flagCountry, {
+          anchor: 'middle',
+          size: _flagSlotRef.h * 0.45
+        }));
+      }, 0);
+    });
     layer.appendChild(flagImg);
   }
 
@@ -3750,12 +3780,12 @@ function applyPlayerCardOverlay(stepId){
     if (statVal > 0) {
       layer.appendChild(textAtSlot(statSlot.value, String(statVal), {
         anchor: 'end',
-        size: statSlot.value.h * 0.95
+        size: PLAYER_CARD_STAT_VALUE_SIZE
       }));
     }
     layer.appendChild(textAtSlot(statSlot.label, statLabels[si], {
       anchor: 'start',
-      size: statSlot.label.h * 0.55
+      size: PLAYER_CARD_STAT_LABEL_SIZE
     }));
   }
 }
