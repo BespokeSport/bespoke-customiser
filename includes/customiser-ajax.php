@@ -680,6 +680,35 @@ function bespoke_handle_add_to_cart() {
                                 ? esc_url_raw( $_POST['bespoke_preview_url'] )
                                 : '',
 
+            // ── Player card fields (Stage 1) ─────────────────────────────────
+            // Only meaningful when type === 'player_cards'; null/blank on
+            // every other product type. Sanitised through the same
+            // local-upload gate as the club badge so a malicious customer
+            // can't smuggle an off-site URL into the admin order screen.
+            // Stat labels follow the active set chosen by position:
+            //   outfield → PAC / DRI / SHO / DEF / PAS / PHY
+            //   GK       → DIV / REF / HAN / SPE / KIC / POS
+            // Sent verbatim from JS so production knows which attribute
+            // each numeric value maps to without re-deriving from position.
+            'player_card' => [
+                'photo' => [
+                    'url'      => bespoke_is_local_upload_url( $_POST['bespoke_player_photo_url'] ?? '' )
+                                    ? esc_url_raw( $_POST['bespoke_player_photo_url'] )
+                                    : '',
+                    'filename' => sanitize_file_name( $_POST['bespoke_player_photo_filename'] ?? '' ),
+                ],
+                'flag'           => sanitize_text_field( $_POST['bespoke_player_flag']           ?? '' ),
+                'position'       => sanitize_text_field( $_POST['bespoke_player_position']       ?? '' ),
+                'position_label' => sanitize_text_field( $_POST['bespoke_player_position_label'] ?? '' ),
+                'ovr'            => max( 0, min( 99, (int) ( $_POST['bespoke_player_ovr'] ?? 0 ) ) ),
+                'stats'          => array_map( function( $i ) {
+                    return [
+                        'label' => sanitize_text_field( $_POST[ 'bespoke_player_stat_' . $i . '_label' ] ?? '' ),
+                        'value' => max( 0, min( 99, (int) ( $_POST[ 'bespoke_player_stat_' . $i . '_value' ] ?? 0 ) ) ),
+                    ];
+                }, [ 1, 2, 3, 4, 5, 6 ] ),
+            ],
+
         ],
     ];
 

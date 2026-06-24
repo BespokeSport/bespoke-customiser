@@ -472,6 +472,128 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
   color: #5DCAA5 !important;
 }
 
+/* ============================================================
+   PLAYER CARDS — Stage 1 UI
+   Hidden by default; applyPlayerCardUI() flips [data-pc-only]
+   blocks to display when the product is player_cards.
+   ============================================================ */
+.player-select {
+  width: 100%;
+  background: #161616;
+  border: 1.5px solid #2A2A2A;
+  border-radius: 10px;
+  color: #F5F5F0;
+  padding: 13px 16px;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.3;
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1.5l5 5 5-5' stroke='%235DCAA5' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  padding-right: 40px;
+  cursor: pointer;
+  transition: border-color .15s ease;
+}
+.player-select:focus {
+  outline: 0;
+  border-color: #5DCAA5;
+}
+
+/* OVR display card — large, FIFA-style rating with subline */
+.player-ovr-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 20px;
+  background: linear-gradient(135deg, #1A1A1A 0%, #232323 100%);
+  border: 1.5px solid #2A2A2A;
+  border-radius: 12px;
+}
+.player-ovr-num {
+  font-family: 'Anton', Impact, sans-serif;
+  font-size: 44px;
+  line-height: 1;
+  color: #5DCAA5;
+  letter-spacing: -0.01em;
+  min-width: 64px;
+  text-align: center;
+}
+.player-ovr-lbl {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #888;
+}
+.player-ovr-hint {
+  font-size: 12px;
+  color: #888;
+  line-height: 1.4;
+  flex: 1;
+  margin-left: auto;
+  text-align: right;
+}
+
+/* 2 × 3 grid of stat cells — value on the LEFT, label on the RIGHT,
+   mirroring the rendered card layout. */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+.stat-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #161616;
+  border: 1.5px solid #2A2A2A;
+  border-radius: 10px;
+  padding: 4px 14px 4px 4px;
+  transition: border-color .15s ease;
+}
+.stat-cell:focus-within {
+  border-color: #5DCAA5;
+}
+.stat-input {
+  width: 56px;
+  background: transparent;
+  border: 0;
+  color: #F5F5F0;
+  font-family: 'Anton', Impact, sans-serif;
+  font-size: 26px;
+  line-height: 1;
+  text-align: center;
+  padding: 10px 4px;
+  -moz-appearance: textfield;
+}
+.stat-input::-webkit-outer-spin-button,
+.stat-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.stat-input:focus {
+  outline: 0;
+}
+.stat-label {
+  font-family: 'Anton', Impact, sans-serif;
+  font-size: 18px;
+  letter-spacing: 0.04em;
+  color: #F5F5F0;
+  text-transform: uppercase;
+  cursor: pointer;
+  flex: 1;
+}
+
+/* Mobile tightening for stat grid */
+@media (max-width: 480px) {
+  .player-ovr-num { font-size: 36px; min-width: 52px; }
+  .player-ovr-hint { font-size: 11px; }
+  .stat-input { width: 48px; font-size: 22px; }
+  .stat-label { font-size: 16px; }
+}
+
 </style>
 </head>
 <body>
@@ -522,7 +644,25 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
     <!-- 3. Preview + drag hint (mobile only — hidden by media query on desktop) -->
     <div class="preview-box"><div id="pb0"></div></div>
     <div class="drag-hint"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="#888" stroke-width="1.5"><circle cx="10" cy="10" r="7"/><path d="M10 6v8M6 10h8"/></svg> Drag badge to reposition · Pinch or scroll to resize</div>
-    <!-- 4. Upload zone -->
+    <!-- 4. PLAYER PHOTO upload — player-card only. Sits ABOVE the
+         club-badge upload so customers see it first. Hidden on every
+         other product type via the data-pc-only attribute (toggled
+         by applyPlayerCardUI()). -->
+    <div data-pc-only style="display:none;">
+      <div class="sec-label">Upload player photo</div>
+      <label class="upload-zone" id="player-photo-zone">
+        <input type="file" accept="image/*" id="player-photo-file" onchange="handlePlayerPhoto(event)"/>
+        <div class="upload-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#5DCAA5" stroke-width="2" stroke-linecap="round"><circle cx="10" cy="7" r="3"/><path d="M4 17c0-3 3-5 6-5s6 2 6 5"/></svg></div>
+        <div class="upload-title">Tap to upload photo</div>
+        <div class="upload-sub">Head &amp; shoulders. Plain background works best.</div>
+      </label>
+      <div class="badge-row" id="player-photo-row" style="display:none;">
+        <img id="player-photo-thumb" style="width:36px;height:36px;object-fit:cover;border-radius:4px;" src="" alt=""/>
+        <span style="font-size:13px;color:#F5F5F0;flex:1;" id="player-photo-fname"></span>
+        <button onclick="removePlayerPhoto()" style="background:none;border:none;cursor:pointer;color:#555555;font-size:20px;line-height:1;padding:0 4px;">×</button>
+      </div>
+    </div>
+    <!-- 5. Club badge upload zone -->
     <div class="sec-label">Upload your club badge</div>
     <label class="upload-zone" id="upload-zone"><input type="file" accept="image/*" id="badge-file" onchange="handleBadge(event)"/>
       <div class="upload-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#5DCAA5" stroke-width="2" stroke-linecap="round"><path d="M10 3v10M6 7l4-4 4 4"/><path d="M4 15h12"/></svg></div>
@@ -585,6 +725,90 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
     <p class="hint">Leave blank for no name on your pads.</p>
     <!-- Add-back panel for names (Stage 2 delete + re-add). -->
     <div class="add-back-panel" id="add-back-name"></div>
+
+    <!-- PLAYER CARD only: country flag + on-field position dropdowns.
+         Position controls whether the stats grid (s2) shows GK or
+         outfield abbreviations — see onPlayerPosition(). -->
+    <div data-pc-only style="display:none;">
+      <div class="sec-label" style="margin-top:18px;">Country flag</div>
+      <select id="player-flag" class="player-select" onchange="onPlayerFlag(this.value)">
+        <option value="">Select country…</option>
+        <option value="GB-ENG">🏴󠁧󠁢󠁥󠁮󠁧󠁿 England</option>
+        <option value="GB-SCT">🏴󠁧󠁢󠁳󠁣󠁴󠁿 Scotland</option>
+        <option value="GB-WLS">🏴󠁧󠁢󠁷󠁬󠁳󠁿 Wales</option>
+        <option value="GB-NIR">🇬🇧 Northern Ireland</option>
+        <option value="IE">🇮🇪 Ireland</option>
+        <option value="GB">🇬🇧 United Kingdom</option>
+        <option value="FR">🇫🇷 France</option>
+        <option value="DE">🇩🇪 Germany</option>
+        <option value="ES">🇪🇸 Spain</option>
+        <option value="IT">🇮🇹 Italy</option>
+        <option value="PT">🇵🇹 Portugal</option>
+        <option value="NL">🇳🇱 Netherlands</option>
+        <option value="BE">🇧🇪 Belgium</option>
+        <option value="HR">🇭🇷 Croatia</option>
+        <option value="PL">🇵🇱 Poland</option>
+        <option value="DK">🇩🇰 Denmark</option>
+        <option value="SE">🇸🇪 Sweden</option>
+        <option value="NO">🇳🇴 Norway</option>
+        <option value="CH">🇨🇭 Switzerland</option>
+        <option value="AT">🇦🇹 Austria</option>
+        <option value="CZ">🇨🇿 Czechia</option>
+        <option value="GR">🇬🇷 Greece</option>
+        <option value="TR">🇹🇷 Türkiye</option>
+        <option value="UA">🇺🇦 Ukraine</option>
+        <option value="RS">🇷🇸 Serbia</option>
+        <option value="BR">🇧🇷 Brazil</option>
+        <option value="AR">🇦🇷 Argentina</option>
+        <option value="UY">🇺🇾 Uruguay</option>
+        <option value="CO">🇨🇴 Colombia</option>
+        <option value="MX">🇲🇽 Mexico</option>
+        <option value="US">🇺🇸 United States</option>
+        <option value="CA">🇨🇦 Canada</option>
+        <option value="JP">🇯🇵 Japan</option>
+        <option value="KR">🇰🇷 South Korea</option>
+        <option value="AU">🇦🇺 Australia</option>
+        <option value="NZ">🇳🇿 New Zealand</option>
+        <option value="MA">🇲🇦 Morocco</option>
+        <option value="EG">🇪🇬 Egypt</option>
+        <option value="NG">🇳🇬 Nigeria</option>
+        <option value="GH">🇬🇭 Ghana</option>
+        <option value="SN">🇸🇳 Senegal</option>
+        <option value="CI">🇨🇮 Ivory Coast</option>
+        <option value="ZA">🇿🇦 South Africa</option>
+        <option value="CM">🇨🇲 Cameroon</option>
+      </select>
+
+      <div class="sec-label" style="margin-top:14px;">On-field position</div>
+      <select id="player-position" class="player-select" onchange="onPlayerPosition(this.value)">
+        <option value="">Select position…</option>
+        <optgroup label="Goalkeeper">
+          <option value="GK">GK — Goalkeeper</option>
+        </optgroup>
+        <optgroup label="Defender">
+          <option value="CB">CB — Centre Back</option>
+          <option value="RB">RB — Right Back</option>
+          <option value="LB">LB — Left Back</option>
+          <option value="RWB">RWB — Right Wing Back</option>
+          <option value="LWB">LWB — Left Wing Back</option>
+        </optgroup>
+        <optgroup label="Midfielder">
+          <option value="CDM">CDM — Defensive Midfielder</option>
+          <option value="CM">CM — Central Midfielder</option>
+          <option value="CAM">CAM — Attacking Midfielder</option>
+          <option value="RM">RM — Right Midfielder</option>
+          <option value="LM">LM — Left Midfielder</option>
+        </optgroup>
+        <optgroup label="Forward">
+          <option value="RW">RW — Right Winger</option>
+          <option value="LW">LW — Left Winger</option>
+          <option value="ST">ST — Striker</option>
+          <option value="CF">CF — Centre Forward</option>
+        </optgroup>
+      </select>
+      <p class="hint">Choosing Goalkeeper swaps the stat labels on the next step from PAC/SHO/PAS/DRI/DEF/PHY to DIV/HAN/KIC/REF/SPE/POS.</p>
+    </div>
+
     <div class="nav-row"><button class="btn-back" onclick="goTo(0)">←</button><button class="btn-next" onclick="goTo(2)">Next: add number →</button></div>
   </div>
 
@@ -621,6 +845,49 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
     <p class="hint">Leave blank for no number on your pads.</p>
     <!-- Add-back panel for numbers (Stage 2 delete + re-add). -->
     <div class="add-back-panel" id="add-back-num"></div>
+
+    <!-- PLAYER CARD only: stats grid + auto OVR.
+         Labels swap between outfield (PAC/SHO/PAS/DRI/DEF/PHY) and
+         goalkeeper (DIV/HAN/KIC/REF/SPE/POS) when the position
+         dropdown on s1 changes. OVR re-calcs live on every keystroke. -->
+    <div data-pc-only style="display:none;">
+      <div class="sec-label" style="margin-top:6px;">Overall rating</div>
+      <div class="player-ovr-card">
+        <div class="player-ovr-num" id="player-ovr">--</div>
+        <div class="player-ovr-lbl">OVR</div>
+        <div class="player-ovr-hint">Averages live as you type the six stats below</div>
+      </div>
+
+      <div class="sec-label" style="margin-top:14px;">Player stats <span class="opt-tag">0 – 99</span></div>
+      <div class="stats-grid">
+        <div class="stat-cell">
+          <input type="number" min="0" max="99" id="stat-1" class="stat-input" inputmode="numeric" placeholder="00" oninput="onPlayerStat(1, this.value)"/>
+          <label class="stat-label" id="stat-label-1" for="stat-1">PAC</label>
+        </div>
+        <div class="stat-cell">
+          <input type="number" min="0" max="99" id="stat-2" class="stat-input" inputmode="numeric" placeholder="00" oninput="onPlayerStat(2, this.value)"/>
+          <label class="stat-label" id="stat-label-2" for="stat-2">DRI</label>
+        </div>
+        <div class="stat-cell">
+          <input type="number" min="0" max="99" id="stat-3" class="stat-input" inputmode="numeric" placeholder="00" oninput="onPlayerStat(3, this.value)"/>
+          <label class="stat-label" id="stat-label-3" for="stat-3">SHO</label>
+        </div>
+        <div class="stat-cell">
+          <input type="number" min="0" max="99" id="stat-4" class="stat-input" inputmode="numeric" placeholder="00" oninput="onPlayerStat(4, this.value)"/>
+          <label class="stat-label" id="stat-label-4" for="stat-4">DEF</label>
+        </div>
+        <div class="stat-cell">
+          <input type="number" min="0" max="99" id="stat-5" class="stat-input" inputmode="numeric" placeholder="00" oninput="onPlayerStat(5, this.value)"/>
+          <label class="stat-label" id="stat-label-5" for="stat-5">PAS</label>
+        </div>
+        <div class="stat-cell">
+          <input type="number" min="0" max="99" id="stat-6" class="stat-input" inputmode="numeric" placeholder="00" oninput="onPlayerStat(6, this.value)"/>
+          <label class="stat-label" id="stat-label-6" for="stat-6">PHY</label>
+        </div>
+      </div>
+      <p class="hint">Stats are value first, label second — matches the rendered card layout.</p>
+    </div>
+
     <div class="nav-row"><button class="btn-back" onclick="goTo(1)">←</button><button class="btn-next" onclick="goTo(3)">Next: choose design →</button></div>
   </div>
 
@@ -782,7 +1049,24 @@ var S = {
   sameName:true, sameNum:true,
   badge:null, badgeURL:null, design:'vanguard',
   padSize:bespokeDefaultSize(), orderNotes:"", badgeSize:DEFSZ.badgeSize, nameSize:DEFSZ.nameSize, numSize:DEFSZ.numSize, nameFontFamily:'"Arial Black", Arial, sans-serif', numFontFamily:'"Arial Black", Arial, sans-serif', useBgAlt:false, hidden:{badgeL:false,badgeR:false,nameL:false,nameR:false,numL:false,numR:false}, selected:null, rot:{badgeL:0,badgeR:0,nameL:0,nameR:0,numL:0,numR:0},
-  pos: JSON.parse(JSON.stringify(DEF))
+  pos: JSON.parse(JSON.stringify(DEF)),
+
+  /* ---- PLAYER CARDS — Stage 1 state ---------------------------------
+     Populated by the player-card UI controls (handlePlayerPhoto,
+     onPlayerFlag, onPlayerPosition, onPlayerStat). All optional —
+     stay null/empty on every other product type.
+
+     playerStats indexes match the on-screen grid order:
+       outfield: [0]=PAC [1]=DRI [2]=SHO [3]=DEF [4]=PAS [5]=PHY
+       goalkeeper: [0]=DIV [1]=REF [2]=HAN [3]=SPE [4]=KIC [5]=POS
+     The position dropdown swaps the labels visually; the stored
+     values stay in the same array slots so production knows which
+     attribute each number represents based on S.playerPosition. */
+  playerPhoto:    null,   // { url, filename } when uploaded
+  playerFlag:     '',     // country code, e.g. 'GB-ENG' / 'BR'
+  playerPosition: '',     // specific position, e.g. 'RB' / 'GK'
+  playerStats:    [0,0,0,0,0,0],
+  playerOVR:      0
 };
 var PROG=[20,40,60,80,100,100,100];
 var previews={};
@@ -2833,6 +3117,18 @@ var BESPOKE_STEP_CONFIG = {
   // below) — without that, the customiser falls back to the shinpads
   // default and renders 2 of everything for left + right.
   bottles:            ['badge', 'name', 'number', 'design', 'colours'],
+  // Player Cards — FIFA-style player keepsake card. Uses the same
+  // 5 step screens as everything else BUT each screen shows
+  // player-card-specific UI alongside (or instead of) the standard
+  // controls. See applyPlayerCardUI() and the [data-pc-only] HTML
+  // blocks. Step screens map to:
+  //   badge   → player photo upload + club badge upload (dual zone)
+  //   name    → player name + country flag dropdown + position dropdown
+  //   number  → 6-stat grid (PAC/SHO/PAS/DRI/DEF/PHY OR DIV/HAN/
+  //             KIC/REF/SPE/POS for GK) + auto-calculated OVR
+  //   design  → card design (layered PNG, same gallery as everything else)
+  //   colours → card colour customisation
+  player_cards:       ['badge', 'name', 'number', 'design', 'colours'],
   // Future:
   // shinpad_sleeves: ['badge', 'name', 'number', 'design', 'colours'],
   // etc.
@@ -2855,6 +3151,7 @@ var BESPOKE_ZONES_CONFIG = {
   pennant:            1,
   corner_flags:       1,
   bottles:            1,
+  player_cards:       1,
   armbands:           { badge: 2, text: 1 }
 };
 function _bespokeZonesEntry(){
@@ -3019,6 +3316,127 @@ function applyStepConfig(){
       }
     }
   }
+  // Reveal the player-card-specific UI blocks when the active product
+  // is player_cards (and hide them on every other product). Runs at
+  // the end of applyStepConfig so it lands after all step tabs +
+  // screens have been positioned.
+  try { applyPlayerCardUI(); } catch(_){}
+}
+
+/* ============================================================
+   PLAYER CARDS — Stage 1 handlers
+   ============================================================
+   isPlayerCard()         : convenience — am I on a player_cards product?
+   applyPlayerCardUI()    : toggles every [data-pc-only] block on/off
+                            based on product type. Called from the
+                            existing applyStepConfig() pipeline.
+   handlePlayerPhoto()    : upload handler for the player photo zone in s0
+   removePlayerPhoto()    : clears uploaded photo + restores upload zone
+   onPlayerFlag()         : stores selected country code
+   onPlayerPosition()     : stores chosen position + swaps stat labels
+                            (outfield vs goalkeeper)
+   onPlayerStat()         : clamps value to 0-99, stores it, recalcs OVR
+   computePlayerOVR()     : average of the 6 stats, rounded; '--' when
+                            none filled
+   ============================================================ */
+
+var PLAYER_STAT_LABELS = {
+  outfield: ['PAC','DRI','SHO','DEF','PAS','PHY'],
+  gk:       ['DIV','REF','HAN','SPE','KIC','POS']
+};
+
+function isPlayerCard(){
+  return bespokeProductType() === 'player_cards';
+}
+
+function applyPlayerCardUI(){
+  var on = isPlayerCard();
+  // Show / hide every block marked data-pc-only.
+  var blocks = document.querySelectorAll('[data-pc-only]');
+  for (var i = 0; i < blocks.length; i++){
+    blocks[i].style.display = on ? '' : 'none';
+  }
+  // Apply the right stat labels based on the chosen position (or
+  // outfield by default if nothing selected yet).
+  if (on) _applyPlayerStatLabels();
+}
+
+function _applyPlayerStatLabels(){
+  var set = (S.playerPosition === 'GK')
+    ? PLAYER_STAT_LABELS.gk
+    : PLAYER_STAT_LABELS.outfield;
+  for (var i = 0; i < 6; i++){
+    var el = document.getElementById('stat-label-' + (i+1));
+    if (el) el.textContent = set[i];
+  }
+}
+
+function handlePlayerPhoto(e){
+  var file = e && e.target && e.target.files && e.target.files[0];
+  if (!file) return;
+  if (S.playerPhoto && S.playerPhoto.url) {
+    try { URL.revokeObjectURL(S.playerPhoto.url); } catch(_){}
+  }
+  S.playerPhoto = { url: URL.createObjectURL(file), filename: file.name };
+  var thumb = document.getElementById('player-photo-thumb');
+  var fname = document.getElementById('player-photo-fname');
+  var row   = document.getElementById('player-photo-row');
+  var zone  = document.getElementById('player-photo-zone');
+  if (thumb) thumb.src = S.playerPhoto.url;
+  if (fname) fname.textContent = file.name;
+  if (row)   row.style.display = 'flex';
+  if (zone)  zone.style.display = 'none';
+}
+
+function removePlayerPhoto(){
+  if (S.playerPhoto && S.playerPhoto.url) {
+    try { URL.revokeObjectURL(S.playerPhoto.url); } catch(_){}
+  }
+  S.playerPhoto = null;
+  var file = document.getElementById('player-photo-file');
+  if (file) file.value = '';
+  var row  = document.getElementById('player-photo-row');
+  var zone = document.getElementById('player-photo-zone');
+  if (row)  row.style.display = 'none';
+  if (zone) zone.style.display = '';
+}
+
+function onPlayerFlag(value){
+  S.playerFlag = String(value || '');
+}
+
+function onPlayerPosition(value){
+  S.playerPosition = String(value || '');
+  _applyPlayerStatLabels();
+}
+
+function onPlayerStat(idx, value){
+  if (idx < 1 || idx > 6) return;
+  var n = parseInt(value, 10);
+  if (!isFinite(n) || n < 0) n = 0;
+  if (n > 99) n = 99;
+  // Clamp visible input value so we don't accept '100'.
+  var input = document.getElementById('stat-' + idx);
+  if (input && input.value !== '' && parseInt(input.value, 10) > 99) {
+    input.value = '99';
+  }
+  S.playerStats[idx - 1] = n;
+  computePlayerOVR();
+}
+
+function computePlayerOVR(){
+  var nonZero = 0;
+  var sum = 0;
+  for (var i = 0; i < S.playerStats.length; i++){
+    var v = S.playerStats[i];
+    if (v > 0) { nonZero++; sum += v; }
+  }
+  // Match FIFA convention — average across ALL 6 slots (not just filled
+  // ones) so a partly-filled card scores honestly rather than spiking.
+  var ovr = nonZero === 0 ? 0 : Math.round(sum / 6);
+  S.playerOVR = ovr;
+  var el = document.getElementById('player-ovr');
+  if (el) el.textContent = ovr > 0 ? ovr : '--';
 }
 
 // Wrap goTo so any caller trying to navigate to a hidden step is
@@ -3490,6 +3908,36 @@ function bespokeAddToCart() {
       .catch(function() { return {url:'', filename: S.badge}; });
   }
 
+  // Step 1a (player cards only): Upload player photo through the same
+  // badge endpoint — it's an image-upload helper that returns a URL
+  // inside our uploads dir. Stored back into S.playerPhoto.serverUrl
+  // so the cart-payload appender (further down) can attach the real
+  // server URL instead of the local blob: URL — the PHP side gates
+  // bespoke_player_photo_url through bespoke_is_local_upload_url(),
+  // so an un-uploaded blob: URL would be rejected and the photo would
+  // never reach the admin order screen.
+  var playerPhotoPromise = Promise.resolve(null);
+  if (isPlayerCard() && S.playerPhoto && S.playerPhoto.url && S.playerPhoto.filename) {
+    playerPhotoPromise = fetch(S.playerPhoto.url)
+      .then(function(r){ return r.blob(); })
+      .then(function(blob) {
+        var formData = new FormData();
+        formData.append('action', 'bespoke_upload_badge');
+        formData.append('nonce', cfg.nonce);
+        formData.append('badge', blob, S.playerPhoto.filename);
+        return fetch(cfg.ajaxUrl, { method:'POST', body:formData });
+      })
+      .then(function(r){ return r.json(); })
+      .then(function(data) {
+        if (data && data.success && data.data && data.data.url) {
+          S.playerPhoto.serverUrl = data.data.url;
+          return data.data;
+        }
+        return null;
+      })
+      .catch(function(){ return null; });
+  }
+
   // Step 1b: Capture and upload preview AFTER badge upload so we can embed the server URL.
   // The capturePreviewSVG override returns a Promise (PNG preferred, SVG fallback).
   // Wrap in Promise.resolve() so this works whether the function returns a Blob
@@ -3513,8 +3961,11 @@ function bespokeAddToCart() {
     });
   });
 
-  // Step 2: Add to cart with all design data
-  combinedPromise.then(function(result) {
+  // Step 2: Add to cart with all design data — ALSO wait for the
+  // player-photo upload to finish so its server URL is on
+  // S.playerPhoto.serverUrl before the form-data appender reads it.
+  Promise.all([combinedPromise, playerPhotoPromise]).then(function(parts) {
+    var result     = parts[0];
     var badgeData  = result.badgeData;
     var previewUrl = result.previewUrl;
     var formData = new FormData();
@@ -3613,6 +4064,46 @@ function bespokeAddToCart() {
     formData.append('bespoke_number_x',      S.pos.numL.x);
     formData.append('bespoke_number_y',      S.pos.numL.y);
     formData.append('bespoke_number_size',   S.numSize);
+
+    /* ---- PLAYER CARDS — Stage 1 payload ----------------------------
+       Sent only when at least one player-card field has been touched.
+       All fields are optional; PHP renderer treats absent fields as
+       blank when assembling the admin spec card. The photo, flag,
+       position and stats land in cart-item-meta + order-item-meta the
+       same way badge / name / number do, so production sees them on
+       the admin order screen even if no card preview is rendered
+       (Stage 3 work). */
+    if (isPlayerCard()) {
+      if (S.playerPhoto && S.playerPhoto.filename) {
+        // Prefer the server URL (set by playerPhotoPromise above) so the
+        // PHP bespoke_is_local_upload_url() gate accepts it. Fall back to
+        // an empty URL if the upload failed — the filename still rides
+        // along so production sees the customer DID try to upload.
+        formData.append('bespoke_player_photo_url',      S.playerPhoto.serverUrl || '');
+        formData.append('bespoke_player_photo_filename', S.playerPhoto.filename);
+      }
+      formData.append('bespoke_player_flag',     S.playerFlag     || '');
+      formData.append('bespoke_player_position', S.playerPosition || '');
+      // Friendly label for the position so admin sees "Right Back"
+      // not just "RB". Looked up from the dropdown <option> text.
+      var _posSel = document.getElementById('player-position');
+      var _posLabel = '';
+      if (_posSel && _posSel.selectedOptions && _posSel.selectedOptions[0]) {
+        _posLabel = _posSel.selectedOptions[0].text || '';
+      }
+      formData.append('bespoke_player_position_label', _posLabel);
+      // Stat labels follow the active label set (outfield vs GK) so
+      // production knows which attribute each number maps to without
+      // re-deriving from position server-side.
+      var _statSet = (S.playerPosition === 'GK')
+        ? PLAYER_STAT_LABELS.gk
+        : PLAYER_STAT_LABELS.outfield;
+      for (var _si = 0; _si < 6; _si++) {
+        formData.append('bespoke_player_stat_' + (_si+1) + '_label', _statSet[_si]);
+        formData.append('bespoke_player_stat_' + (_si+1) + '_value', String(S.playerStats[_si] || 0));
+      }
+      formData.append('bespoke_player_ovr', String(S.playerOVR || 0));
+    }
 
     // Notes
     var notesEl = document.getElementById('order-notes');
