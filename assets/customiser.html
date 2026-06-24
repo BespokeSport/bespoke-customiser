@@ -3372,15 +3372,19 @@ var PLAYER_STAT_LABELS = {
    customiser uses. Single source of truth — if the card art is
    re-laid-out, tweak the numbers here and the renderer follows.
 
-   For text slots the supplied (x, y) is the TOP-LEFT corner of the
-   text bounding box. SVG <text> y is the baseline, so we add
-   `h * BASELINE_FRAC` at render time to drop the baseline near the
-   bottom of the slot. (BASELINE_FRAC ≈ 0.78 works well for Anton.)
+   IMPORTANT: (x, y) is the CENTRE of the bounding box, not the
+   top-left corner. Numbers come from Illustrator's central axis
+   point. The renderer helpers below convert centre → top-left
+   for images and → anchor-position for text.
 
-   For "value" / right-aligned text the renderer uses
-   text-anchor='end' and positions x at the RIGHT edge of the slot
-   (left edge + width). For "label" / left-aligned text it uses
-   text-anchor='start' and the supplied left x as-is.
+   For text:
+     - anchor='start' (left-aligned label) → x = cx - w/2
+     - anchor='middle' (centred text)      → x = cx
+     - anchor='end'   (right-aligned value) → x = cx + w/2
+     - baseline y = cy + h * (BASELINE_FRAC - 0.5)
+       BASELINE_FRAC ≈ 0.78 works well for Anton.
+
+   For images: top-left x = cx - w/2, top-left y = cy - h/2.
    ============================================================ */
 var PLAYER_CARD_SLOTS = {
   // Top-left column of metadata (OVR, position, flag, badge)
@@ -3574,16 +3578,23 @@ function applyPlayerCardOverlay(stepId){
   }
   layer.innerHTML = '';
 
-  // Local helpers — closed over `ns` + the layer.
+  // Local helpers — closed over `ns` + the layer. Slot (x, y) is
+  // the CENTRE of the bounding box (Illustrator central axis), not
+  // the top-left corner.
   function textAtSlot(slot, str, opts){
     opts = opts || {};
     var t = document.createElementNS(ns, 'text');
     var anchor = opts.anchor || 'start';
+    // Convert centre x → SVG anchor x based on text-anchor.
     var x = slot.x;
-    if (anchor === 'end')    x = slot.x + slot.w;
-    if (anchor === 'middle') x = slot.x + slot.w / 2;
+    if (anchor === 'start') x = slot.x - slot.w / 2;
+    if (anchor === 'end')   x = slot.x + slot.w / 2;
+    // For 'middle', x = slot.x (already the centre).
+    // Baseline = centre_y + h * (BASELINE_FRAC - 0.5). With
+    // BASELINE_FRAC ≈ 0.78 that lands the baseline ≈ 28% below the
+    // vertical centre — roughly correct for Anton cap-height glyphs.
     t.setAttribute('x', x);
-    t.setAttribute('y', slot.y + slot.h * PLAYER_CARD_BASELINE_FRAC);
+    t.setAttribute('y', slot.y + slot.h * (PLAYER_CARD_BASELINE_FRAC - 0.5));
     t.setAttribute('text-anchor', anchor);
     t.setAttribute('font-family', PLAYER_CARD_TEXT_FONT);
     t.setAttribute('font-size', String(opts.size || slot.h));
@@ -3596,8 +3607,9 @@ function applyPlayerCardOverlay(stepId){
     var img = document.createElementNS(ns, 'image');
     img.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', href);
     img.setAttribute('href', href);
-    img.setAttribute('x', slot.x);
-    img.setAttribute('y', slot.y);
+    // Convert centre (slot.x, slot.y) → top-left.
+    img.setAttribute('x', slot.x - slot.w / 2);
+    img.setAttribute('y', slot.y - slot.h / 2);
     img.setAttribute('width', slot.w);
     img.setAttribute('height', slot.h);
     // 'slice' = cover (centre-crop to fill the slot, never letterbox)
@@ -3620,8 +3632,9 @@ function applyPlayerCardOverlay(stepId){
     var clip = document.createElementNS(ns, 'clipPath');
     clip.id = clipId;
     var clipRect = document.createElementNS(ns, 'rect');
-    clipRect.setAttribute('x', ps.x);
-    clipRect.setAttribute('y', ps.y);
+    // ps.x / ps.y are CENTRE coords — clipRect needs the top-left.
+    clipRect.setAttribute('x', ps.x - ps.w / 2);
+    clipRect.setAttribute('y', ps.y - ps.h / 2);
     clipRect.setAttribute('width', ps.w);
     clipRect.setAttribute('height', ps.h);
     clip.appendChild(clipRect);
