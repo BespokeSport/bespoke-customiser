@@ -1567,7 +1567,10 @@ function updatePreview(stepId) {
   var bl = document.getElementById('badge-layer-'+stepId);
   if(bl) {
     bl.innerHTML = '';
-    if(S.badgeURL) {
+    // Player cards render the badge in a fixed slot via the
+    // applyPlayerCardOverlay() call at the end of this function —
+    // skip the draggable badge render here to avoid a double badge.
+    if(S.badgeURL && !(typeof isPlayerCard === 'function' && isPlayerCard())) {
       var hs = S.badgeSize/2;
       var _badges = [{key:'badgeL',x:S.pos.badgeL.x,y:S.pos.badgeL.y},
        {key:'badgeR',x:S.pos.badgeR.x,y:S.pos.badgeR.y}];
@@ -1688,6 +1691,13 @@ function updatePreview(stepId) {
     ];
     if (bespokeTextZones() === 1) {
       items = items.filter(function(it){ return it.key === 'nameL' || it.key === 'numL'; });
+    }
+    // Player cards replace numbers with the six-stat grid drawn by
+    // applyPlayerCardOverlay(). Keep nameL (the customer positions
+    // their name with the existing Save Placement system) and drop
+    // every numeric slot.
+    if (typeof isPlayerCard === 'function' && isPlayerCard()) {
+      items = items.filter(function(it){ return it.key === 'nameL'; });
     }
     // Drop any text items the customer has explicitly hidden via the
     // delete X button (Stage 2: per-element delete).
@@ -1934,6 +1944,16 @@ function updatePreview(stepId) {
         _wrap.appendChild(_clone);
         tl.appendChild(_wrap);
       });
+    }
+  }
+
+  // ── Player Cards overlay ───────────────────────────────────────────
+  // Draws photo + OVR + position + flag + badge-at-slot + 6 stats on
+  // top of the design layer. Runs last so it sits above the badge and
+  // text layers. No-op on every other product type.
+  if (typeof applyPlayerCardOverlay === 'function') {
+    try { applyPlayerCardOverlay(stepId); } catch(e) {
+      if (window.console && console.error) console.error('[player-card overlay]', e);
     }
   }
 }
@@ -3345,6 +3365,65 @@ var PLAYER_STAT_LABELS = {
   gk:       ['DIV','REF','HAN','SPE','KIC','POS']
 };
 
+/* ============================================================
+   PLAYER CARD slot coordinates (designer-supplied)
+   ============================================================
+   All values are in the 1200 × 1200 SVG viewbox the rest of the
+   customiser uses. Single source of truth — if the card art is
+   re-laid-out, tweak the numbers here and the renderer follows.
+
+   For text slots the supplied (x, y) is the TOP-LEFT corner of the
+   text bounding box. SVG <text> y is the baseline, so we add
+   `h * BASELINE_FRAC` at render time to drop the baseline near the
+   bottom of the slot. (BASELINE_FRAC ≈ 0.78 works well for Anton.)
+
+   For "value" / right-aligned text the renderer uses
+   text-anchor='end' and positions x at the RIGHT edge of the slot
+   (left edge + width). For "label" / left-aligned text it uses
+   text-anchor='start' and the supplied left x as-is.
+   ============================================================ */
+var PLAYER_CARD_SLOTS = {
+  // Top-left column of metadata (OVR, position, flag, badge)
+  ovr:      { x: 431.5,    y: 225,      w: 100, h: 100   },
+  position: { x: 431.5,    y: 335,      w: 75,  h: 75    },
+  flag:     { x: 431.5,    y: 440,      w: 100, h: 62.7  },
+  badge:    { x: 431.5,    y: 550,      w: 100, h: 62.7  },
+  // Player photo — right of the metadata column, fills the upper-right
+  // of the card. Renderer uses preserveAspectRatio='xMidYMid slice'
+  // so any uploaded image is centre-cropped to fill the slot.
+  photo:    { x: 702.2791, y: 415.4468, w: 285, h: 410   },
+  // Six stats in a 2 × 3 grid. Each entry has the VALUE coordinates
+  // (right-aligned bounding box) AND the LABEL coordinates
+  // (left-aligned bounding box). y is the top of each; the renderer
+  // bumps it to the baseline.
+  stats: [
+    { value: { x: 409.3442, y: 815.1468, w: 54.1787, h: 58.835 },
+      label: { x: 513.0862, y: 815.1468, w: 54.1787, h: 84.2007 } },
+    { value: { x: 409.3442, y: 894.4681, w: 54.1787, h: 58.835 },
+      label: { x: 513.0862, y: 894.4681, w: 54.1787, h: 84.2007 } },
+    { value: { x: 409.3442, y: 973.7894, w: 54.1787, h: 58.835 },
+      label: { x: 513.0862, y: 973.7894, w: 54.1787, h: 84.2007 } },
+    { value: { x: 674.6851, y: 815.1468, w: 54.1787, h: 58.835 },
+      label: { x: 778.4263, y: 815.1468, w: 54.1787, h: 84.2007 } },
+    { value: { x: 674.6851, y: 894.4681, w: 54.1787, h: 58.835 },
+      label: { x: 778.4263, y: 894.4681, w: 54.1787, h: 84.2007 } },
+    { value: { x: 674.6851, y: 973.7894, w: 54.1787, h: 58.835 },
+      label: { x: 778.4263, y: 973.7894, w: 54.1787, h: 84.2007 } }
+  ]
+};
+
+// Default colour for OVR / position / stats text. White on dark card
+// art matches the FIFA-style example. Easy to make per-design later
+// (different card art might want black text on light backgrounds).
+var PLAYER_CARD_TEXT_COLOR = '#FFFFFF';
+// Display font for every player-card text element. Anton is already
+// preloaded by customiser-global-fonts.php so it's safe to assume.
+var PLAYER_CARD_TEXT_FONT  = "'Anton', Impact, 'Arial Black', sans-serif";
+// SVG baselines sit roughly 78% down from the top of the text box for
+// Anton at large sizes. Tweak if the text floats above / sits below
+// the slot rectangle.
+var PLAYER_CARD_BASELINE_FRAC = 0.78;
+
 function isPlayerCard(){
   return bespokeProductType() === 'player_cards';
 }
@@ -3386,6 +3465,7 @@ function handlePlayerPhoto(e){
   if (fname) fname.textContent = file.name;
   if (row)   row.style.display = 'flex';
   if (zone)  zone.style.display = 'none';
+  if (typeof syncAll === 'function') { try { syncAll(); } catch(_){} }
 }
 
 function removePlayerPhoto(){
@@ -3399,15 +3479,18 @@ function removePlayerPhoto(){
   var zone = document.getElementById('player-photo-zone');
   if (row)  row.style.display = 'none';
   if (zone) zone.style.display = '';
+  if (typeof syncAll === 'function') { try { syncAll(); } catch(_){} }
 }
 
 function onPlayerFlag(value){
   S.playerFlag = String(value || '');
+  if (typeof syncAll === 'function') { try { syncAll(); } catch(_){} }
 }
 
 function onPlayerPosition(value){
   S.playerPosition = String(value || '');
   _applyPlayerStatLabels();
+  if (typeof syncAll === 'function') { try { syncAll(); } catch(_){} }
 }
 
 function onPlayerStat(idx, value){
@@ -3437,6 +3520,181 @@ function computePlayerOVR(){
   S.playerOVR = ovr;
   var el = document.getElementById('player-ovr');
   if (el) el.textContent = ovr > 0 ? ovr : '--';
+  // Live-refresh the preview overlays so the new OVR appears
+  // immediately on every step's preview.
+  if (typeof syncAll === 'function') {
+    try { syncAll(); } catch(_){}
+  }
+}
+
+/* ============================================================
+   applyPlayerCardOverlay(stepId)
+   ============================================================
+   Renders all the player-card-specific content (photo, OVR,
+   position, flag, badge-at-slot, 6 stats with switching labels)
+   on top of the design layer. Called from updatePreview() ONLY
+   when the active product type is player_cards.
+
+   Architecture:
+     - Lives in its own SVG <g id="player-card-layer-N"> so it
+       can be wiped + rebuilt on every state change without
+       disturbing the background design, draggable name layer,
+       or mask overlay.
+     - The standard badge renderer in updatePreview() is
+       short-circuited on player cards so the badge only appears
+       once (at the fixed slot below, not at its draggable
+       position).
+     - The standard number text (numL / numR) is also short-
+       circuited; the 6-stat grid replaces it. nameL still
+       renders via the standard path so "Save Placement" keeps
+       working for the player name.
+   ============================================================ */
+function applyPlayerCardOverlay(stepId){
+  if (!isPlayerCard()) return;
+  var svg = previews[stepId];
+  if (!svg) return;
+  var ns = 'http://www.w3.org/2000/svg';
+
+  // Get or create the player-card overlay layer. Sits below the
+  // mask layer (if any) so a mask PNG can still draw on top, and
+  // pointer-events:none so it doesn't intercept drags on the
+  // name layer underneath.
+  var layerId = 'player-card-layer-' + stepId;
+  var layer = document.getElementById(layerId);
+  if (!layer) {
+    layer = document.createElementNS(ns, 'g');
+    layer.id = layerId;
+    layer.style.pointerEvents = 'none';
+    var maskLayer = document.getElementById('mask-layer-' + stepId);
+    if (maskLayer && maskLayer.parentNode === svg) {
+      svg.insertBefore(layer, maskLayer);
+    } else {
+      svg.appendChild(layer);
+    }
+  }
+  layer.innerHTML = '';
+
+  // Local helpers — closed over `ns` + the layer.
+  function textAtSlot(slot, str, opts){
+    opts = opts || {};
+    var t = document.createElementNS(ns, 'text');
+    var anchor = opts.anchor || 'start';
+    var x = slot.x;
+    if (anchor === 'end')    x = slot.x + slot.w;
+    if (anchor === 'middle') x = slot.x + slot.w / 2;
+    t.setAttribute('x', x);
+    t.setAttribute('y', slot.y + slot.h * PLAYER_CARD_BASELINE_FRAC);
+    t.setAttribute('text-anchor', anchor);
+    t.setAttribute('font-family', PLAYER_CARD_TEXT_FONT);
+    t.setAttribute('font-size', String(opts.size || slot.h));
+    t.setAttribute('fill', opts.color || PLAYER_CARD_TEXT_COLOR);
+    t.setAttribute('font-weight', '400');
+    t.textContent = String(str || '');
+    return t;
+  }
+  function imageAtSlot(slot, href){
+    var img = document.createElementNS(ns, 'image');
+    img.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', href);
+    img.setAttribute('href', href);
+    img.setAttribute('x', slot.x);
+    img.setAttribute('y', slot.y);
+    img.setAttribute('width', slot.w);
+    img.setAttribute('height', slot.h);
+    // 'slice' = cover (centre-crop to fill the slot, never letterbox)
+    img.setAttribute('preserveAspectRatio', 'xMidYMid slice');
+    return img;
+  }
+
+  // 1. Player photo — clipped to the photo slot rect so a tall
+  //    portrait doesn't bleed outside the frame.
+  if (S.playerPhoto && S.playerPhoto.url) {
+    var ps = PLAYER_CARD_SLOTS.photo;
+    var clipId = 'pc-photo-clip-' + stepId;
+    var defs = svg.querySelector('defs');
+    if (!defs) {
+      defs = document.createElementNS(ns, 'defs');
+      svg.insertBefore(defs, svg.firstChild);
+    }
+    var oldClip = document.getElementById(clipId);
+    if (oldClip && oldClip.parentNode) oldClip.parentNode.removeChild(oldClip);
+    var clip = document.createElementNS(ns, 'clipPath');
+    clip.id = clipId;
+    var clipRect = document.createElementNS(ns, 'rect');
+    clipRect.setAttribute('x', ps.x);
+    clipRect.setAttribute('y', ps.y);
+    clipRect.setAttribute('width', ps.w);
+    clipRect.setAttribute('height', ps.h);
+    clip.appendChild(clipRect);
+    defs.appendChild(clip);
+    var photoImg = imageAtSlot(ps, S.playerPhoto.url);
+    photoImg.setAttribute('clip-path', 'url(#' + clipId + ')');
+    layer.appendChild(photoImg);
+  }
+
+  // 2. Club badge at FIXED slot (overrides the draggable badge).
+  if (S.badgeURL) {
+    layer.appendChild(imageAtSlot(PLAYER_CARD_SLOTS.badge, S.badgeURL));
+  }
+
+  // 3. OVR — only render when at least one stat is filled.
+  if (S.playerOVR > 0) {
+    layer.appendChild(textAtSlot(PLAYER_CARD_SLOTS.ovr, String(S.playerOVR), {
+      anchor: 'middle',
+      size: PLAYER_CARD_SLOTS.ovr.h * 0.95
+    }));
+  }
+
+  // 4. Position (e.g. "RB").
+  if (S.playerPosition) {
+    layer.appendChild(textAtSlot(PLAYER_CARD_SLOTS.position, S.playerPosition, {
+      anchor: 'middle',
+      size: PLAYER_CARD_SLOTS.position.h * 0.95
+    }));
+  }
+
+  // 5. Flag — Stage 3a uses the emoji from the dropdown's option text
+  //    (works in Chrome / Edge / Safari; Firefox falls back to a
+  //    blank-flag glyph). Stage 3b will swap to a bundled PNG flag set
+  //    keyed off the country code (S.playerFlag).
+  if (S.playerFlag) {
+    var flagSel = document.getElementById('player-flag');
+    var flagGlyph = S.playerFlag;
+    if (flagSel) {
+      for (var fi = 0; fi < flagSel.options.length; fi++) {
+        if (flagSel.options[fi].value === S.playerFlag) {
+          // Option label is e.g. "🇫🇷 France" — grab the first
+          // whitespace-delimited token as the emoji.
+          flagGlyph = (flagSel.options[fi].text || '').split(/\s+/)[0] || S.playerFlag;
+          break;
+        }
+      }
+    }
+    layer.appendChild(textAtSlot(PLAYER_CARD_SLOTS.flag, flagGlyph, {
+      anchor: 'middle',
+      size: PLAYER_CARD_SLOTS.flag.h * 0.9
+    }));
+  }
+
+  // 6. Six stats. Labels always render so the customer sees the
+  //    PAC/DRI/SHO/… (or DIV/REF/HAN/…) layout even before they've
+  //    typed any values. Values only render when > 0.
+  var statLabels = (S.playerPosition === 'GK')
+    ? PLAYER_STAT_LABELS.gk
+    : PLAYER_STAT_LABELS.outfield;
+  for (var si = 0; si < 6; si++){
+    var statSlot = PLAYER_CARD_SLOTS.stats[si];
+    var statVal  = S.playerStats[si];
+    if (statVal > 0) {
+      layer.appendChild(textAtSlot(statSlot.value, String(statVal), {
+        anchor: 'end',
+        size: statSlot.value.h * 0.95
+      }));
+    }
+    layer.appendChild(textAtSlot(statSlot.label, statLabels[si], {
+      anchor: 'start',
+      size: statSlot.label.h * 0.55
+    }));
+  }
 }
 
 // Wrap goTo so any caller trying to navigate to a hidden step is
