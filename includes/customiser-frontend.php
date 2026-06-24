@@ -101,6 +101,9 @@ function bespoke_render_customiser( $atts ) {
         ajaxUrl:     '<?php echo esc_js( $ajax_url ); ?>',
         nonce:       '<?php echo esc_js( $nonce ); ?>',
         uploadUrl:   '<?php echo esc_js( BESPOKE_PLUGIN_URL . 'includes/customiser-ajax.php' ); ?>',
+        // Plugin assets base URL — used by the player-card renderer to
+        // load the bundled country flag PNGs from /assets/flags/.
+        pluginAssetsUrl: '<?php echo esc_js( BESPOKE_PLUGIN_URL . 'assets/' ); ?>',
         // Per-product size buttons (admin "Customiser size buttons" field)
         sizes:       <?php echo wp_json_encode( $cust_sizes ); ?>,
         // Per-product placement geometry + admin "Save placement" editor wiring
