@@ -678,12 +678,18 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
          renderAddBackPanel() in the JS keeps the contents in sync with
          S.hidden. Empty when nothing is hidden. -->
     <div class="add-back-panel" id="add-back-badge"></div>
-    <div class="sec-label" style="margin-top:4px;">Badge size</div>
-    <div class="size-row">
-      <label>Small</label>
-      <input type="range" id="badge-size-slider" min="1" max="500" value="210" oninput="onBadgeSize(this.value)">
-      <label>Large</label>
-      <span class="size-val" id="badge-size-val">210</span>
+    <!-- Badge size slider — has no effect on player cards (badge
+         renders at a fixed slot defined in PLAYER_CARD_SLOTS.badge),
+         so the whole block is hidden via data-pc-hide for that
+         product type. Other products keep the slider as normal. -->
+    <div data-pc-hide>
+      <div class="sec-label" style="margin-top:4px;">Badge size</div>
+      <div class="size-row">
+        <label>Small</label>
+        <input type="range" id="badge-size-slider" min="1" max="500" value="210" oninput="onBadgeSize(this.value)">
+        <label>Large</label>
+        <span class="size-val" id="badge-size-val">210</span>
+      </div>
     </div>
     <div class="badge-note" data-bcp="note">
       <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="#5DCAA5" stroke-width="1.6" aria-hidden="true"><circle cx="10" cy="10" r="8"/><path d="M10 9v5M10 6h.01" stroke-linecap="round"/></svg>
@@ -844,37 +850,44 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
 
   <div class="screen" id="s2">
     <div class="preview-box"><div id="pb2"></div></div>
-    <div class="drag-hint"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="#888" stroke-width="1.5"><path d="M5 9l-3 1 3 1M15 9l3 1-3 1M9 5l1-3 1 3M9 15l1 3 1-3"/></svg> Drag number to reposition on each pad</div>
-    <div class="sec-label">Squad number <span class="opt-tag">optional</span></div>
-    <div class="toggle-row" onclick="toggleSameNum()"><div class="tog-track on" id="num-tog"><div class="tog-thumb"></div></div><div><div class="tog-label">Same number on both pads</div><div class="tog-sub">Turn off to set each pad separately</div></div></div>
-    <div id="num-same-block"><div class="text-row"><input type="text" id="num-both" maxlength="3" placeholder="e.g. 10" oninput="onNumBoth()"/></div></div>
-    <div id="num-split-block" style="display:none;">
-      <div class="pad-tabs"><button class="pad-tab active" id="nt2L" onclick="switchNT2('L')">Left pad</button><button class="pad-tab" id="nt2R" onclick="switchNT2('R')">Right pad</button></div>
-      <div id="n2Lb"><div class="text-row"><input type="text" id="num-L" maxlength="3" placeholder="e.g. 10" oninput="onNumSplit('L')"/></div></div>
-      <div id="n2Rb" style="display:none;"><div class="text-row"><input type="text" id="num-R" maxlength="3" placeholder="e.g. 11" oninput="onNumSplit('R')"/></div></div>
-    </div>
-    <div class="sec-label">Number size</div>
-    <div class="size-row">
-      <label>Small</label>
-      <input type="range" id="num-size-slider" min="60" max="240" value="155" oninput="onNumSize(this.value)">
-      <label>Large</label>
-      <span class="size-val" id="num-size-val">155</span>
-    </div>
-    <div class="sec-label">Font style</div>
-    <div class="font-nav">
-      <button class="font-nav-btn" onclick="scrollFonts(-1, 'num-font-grid')">&#8592;</button>
-      <div class="font-nav-wrap">
-        <div class="font-scroll" id="num-font-grid"></div>
+    <div class="drag-hint" data-pc-hide><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="#888" stroke-width="1.5"><path d="M5 9l-3 1 3 1M15 9l3 1-3 1M9 5l1-3 1 3M9 15l1 3 1-3"/></svg> Drag number to reposition on each pad</div>
+    <!-- Standard "Squad number" controls (toggle, input(s), size slider,
+         font picker, colour picker, hint, add-back panel) — hidden on
+         player_cards. Player cards don't have a squad number field;
+         the Overall Rating + 6-stat grid (data-pc-only block below)
+         takes the top of the step instead. -->
+    <div data-pc-hide>
+      <div class="sec-label">Squad number <span class="opt-tag">optional</span></div>
+      <div class="toggle-row" onclick="toggleSameNum()"><div class="tog-track on" id="num-tog"><div class="tog-thumb"></div></div><div><div class="tog-label">Same number on both pads</div><div class="tog-sub">Turn off to set each pad separately</div></div></div>
+      <div id="num-same-block"><div class="text-row"><input type="text" id="num-both" maxlength="3" placeholder="e.g. 10" oninput="onNumBoth()"/></div></div>
+      <div id="num-split-block" style="display:none;">
+        <div class="pad-tabs"><button class="pad-tab active" id="nt2L" onclick="switchNT2('L')">Left pad</button><button class="pad-tab" id="nt2R" onclick="switchNT2('R')">Right pad</button></div>
+        <div id="n2Lb"><div class="text-row"><input type="text" id="num-L" maxlength="3" placeholder="e.g. 10" oninput="onNumSplit('L')"/></div></div>
+        <div id="n2Rb" style="display:none;"><div class="text-row"><input type="text" id="num-R" maxlength="3" placeholder="e.g. 11" oninput="onNumSplit('R')"/></div></div>
       </div>
-      <button class="font-nav-btn" onclick="scrollFonts(1, 'num-font-grid')">&#8594;</button>
+      <div class="sec-label">Number size</div>
+      <div class="size-row">
+        <label>Small</label>
+        <input type="range" id="num-size-slider" min="60" max="240" value="155" oninput="onNumSize(this.value)">
+        <label>Large</label>
+        <span class="size-val" id="num-size-val">155</span>
+      </div>
+      <div class="sec-label">Font style</div>
+      <div class="font-nav">
+        <button class="font-nav-btn" onclick="scrollFonts(-1, 'num-font-grid')">&#8592;</button>
+        <div class="font-nav-wrap">
+          <div class="font-scroll" id="num-font-grid"></div>
+        </div>
+        <button class="font-nav-btn" onclick="scrollFonts(1, 'num-font-grid')">&#8594;</button>
+      </div>
+      <div class="sec-label">Number colour</div>
+      <div class="color-zones">
+        <div class="zone-row"><div class="zone-info"><div class="zone-lbl">Number text</div><div class="zone-sub">Squad number colour</div></div><div class="ct" id="ct-num" style="background:#FFFFFF;"><input type="color" value="#FFFFFF" id="cp-num" oninput="debouncedColor('num',this.value)"/></div></div>
+      </div>
+      <p class="hint">Leave blank for no number on your pads.</p>
+      <!-- Add-back panel for numbers (Stage 2 delete + re-add). -->
+      <div class="add-back-panel" id="add-back-num"></div>
     </div>
-    <div class="sec-label">Number colour</div>
-    <div class="color-zones">
-      <div class="zone-row"><div class="zone-info"><div class="zone-lbl">Number text</div><div class="zone-sub">Squad number colour</div></div><div class="ct" id="ct-num" style="background:#FFFFFF;"><input type="color" value="#FFFFFF" id="cp-num" oninput="debouncedColor('num',this.value)"/></div></div>
-    </div>
-    <p class="hint">Leave blank for no number on your pads.</p>
-    <!-- Add-back panel for numbers (Stage 2 delete + re-add). -->
-    <div class="add-back-panel" id="add-back-num"></div>
 
     <!-- PLAYER CARD only: stats grid + auto OVR.
          Labels swap between outfield (PAC/SHO/PAS/DRI/DEF/PHY) and
@@ -3469,10 +3482,19 @@ function isPlayerCard(){
 
 function applyPlayerCardUI(){
   var on = isPlayerCard();
-  // Show / hide every block marked data-pc-only.
-  var blocks = document.querySelectorAll('[data-pc-only]');
-  for (var i = 0; i < blocks.length; i++){
-    blocks[i].style.display = on ? '' : 'none';
+  // Show / hide every block marked data-pc-only — present ONLY on
+  // player_cards (photo upload, country flag, position dropdown,
+  // stats grid + OVR display).
+  var pcOnly = document.querySelectorAll('[data-pc-only]');
+  for (var i = 0; i < pcOnly.length; i++){
+    pcOnly[i].style.display = on ? '' : 'none';
+  }
+  // Hide every block marked data-pc-hide — present on every product
+  // EXCEPT player_cards (badge size slider — badge renders at a
+  // fixed slot, squad-number controls — replaced by stats grid).
+  var pcHide = document.querySelectorAll('[data-pc-hide]');
+  for (var j = 0; j < pcHide.length; j++){
+    pcHide[j].style.display = on ? 'none' : '';
   }
   // Apply the right stat labels based on the chosen position (or
   // outfield by default if nothing selected yet).
