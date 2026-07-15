@@ -860,42 +860,59 @@ function bespoke_attr_values_match( $customer_value, $variation_value ) {
  */
 function bespoke_match_variation( $product, $customer_values ) {
     if ( ! $product instanceof WC_Product_Variable ) return null;
-    foreach ( $product->get_available_variations() as $variation ) {
-        // Every CUSTOMER value must find a matching attribute in this
-        // variation. Attributes the customer never sends (e.g. grip
-        // socks have an "Outside or both" WC attribute the customiser
-        // doesn't ask about) don't block a match — they're resolved
-        // to a default via bespoke_resolve_variation_attributes()
-        // when the winning variation is committed.
-        //
-        // (Previously the loop went the other way: every variation
-        // attribute had to be found in customer_values. That rejected
-        // any product whose WC variations had MORE attributes than
-        // the customiser exposes — hence the "No matching product
-        // variation for XL" error on grip socks.)
-        $all_matched = true;
+    $variations = $product->get_available_variations();
+
+    // Small helper — returns the matched variation array in the
+    // format bespoke_match_variation returns, or null if not matched.
+    // $allow_any: when true, an "Any" (empty) attribute value counts
+    // as a match for the current customer value. When false, only
+    // specific non-empty attributes can match.
+    $try = function( $variation ) use ( $customer_values, $product, &$allow_any ) {
         foreach ( $customer_values as $cust ) {
             $found = false;
             foreach ( $variation['attributes'] as $attr_value ) {
-                if ( $attr_value === '' ) continue; // "Any" — doesn't count either way
+                if ( $attr_value === '' ) {
+                    if ( $allow_any ) { $found = true; break; }
+                    continue;
+                }
                 if ( bespoke_attr_values_match( $cust, $attr_value ) ) {
                     $found = true;
                     break;
                 }
             }
-            if ( ! $found ) { $all_matched = false; break; }
+            if ( ! $found ) return null;
         }
-        if ( $all_matched ) {
-            return [
-                'id'         => (int) $variation['variation_id'],
-                'attributes' => bespoke_resolve_variation_attributes(
-                    $product,
-                    $variation['attributes'],
-                    $customer_values
-                ),
-            ];
-        }
+        return [
+            'id'         => (int) $variation['variation_id'],
+            'attributes' => bespoke_resolve_variation_attributes(
+                $product, $variation['attributes'], $customer_values
+            ),
+        ];
+    };
+
+    // Pass 1 — STRICT: every customer value must match a SPECIFIC
+    // (non-Any) attribute. Prefers concrete variations over
+    // fallback "Any/Any" catch-alls, so a product that DOES have
+    // specific size + thickness variations returns the right one
+    // instead of the first Any/Any it stumbles on.
+    $allow_any = false;
+    foreach ( $variations as $v ) {
+        $match = $try( $v );
+        if ( $match ) return $match;
     }
+
+    // Pass 2 — LOOSE: "Any" attributes count as an implicit match
+    // for anything. Kicks in when the admin has configured the
+    // product as variable but every variation is Any/Any (armbands
+    // on staging today) — WC's "Any" semantic says the customer's
+    // value is valid, so the customiser accepts and stores it via
+    // resolve_variation_attributes() when it commits.
+    $allow_any = true;
+    foreach ( $variations as $v ) {
+        $match = $try( $v );
+        if ( $match ) return $match;
+    }
+
     return null;
 }
 
