@@ -1359,6 +1359,221 @@ function bespoke_render_admin_bottles( $d, $item ) {
 
 
 /* =========================================================================
+   PLAYER CARDS — cart + admin renderers
+   FIFA-style keepsake card with a stack of extra data beyond the standard
+   customiser fields: player photo (uploaded), country flag (from bundled
+   PNG set), on-field position (RB / GK etc.), 6 stats (PAC/SHO/… or
+   DIV/HAN/… for GK) with an auto-calculated OVR rating.
+
+   The customiser stashes all of this under $d['player_card'] alongside
+   the standard name / badge / preview fields. Both renderers below reach
+   into that sub-array.
+   ========================================================================= */
+function bespoke_render_cart_player_cards( $item_data, $d ) {
+    $pc = ( isset( $d['player_card'] ) && is_array( $d['player_card'] ) ) ? $d['player_card'] : [];
+    if ( ! empty( $d['design'] ) ) {
+        $item_data[] = [ 'name' => 'Design', 'value' => esc_html( $d['design'] ) ];
+    }
+    if ( ! empty( $d['left']['name'] ) ) {
+        $item_data[] = [ 'name' => 'Player name', 'value' => esc_html( $d['left']['name'] ) ];
+    }
+    $pos = ! empty( $pc['position_label'] ) ? $pc['position_label'] : ( $pc['position'] ?? '' );
+    if ( $pos !== '' ) {
+        $item_data[] = [ 'name' => 'Position', 'value' => esc_html( $pos ) ];
+    }
+    if ( ! empty( $pc['flag'] ) ) {
+        $item_data[] = [ 'name' => 'Country', 'value' => esc_html( $pc['flag'] ) ];
+    }
+    if ( ! empty( $pc['ovr'] ) ) {
+        $item_data[] = [ 'name' => 'Overall rating', 'value' => esc_html( (int) $pc['ovr'] ) ];
+    }
+    $item_data[] = [
+        'name'  => 'Player photo',
+        'value' => ! empty( $pc['photo']['url'] ) ? 'Uploaded' : 'Not added',
+    ];
+    $item_data[] = [
+        'name'  => 'Club badge',
+        'value' => ! empty( $d['badge']['url'] ) ? 'Uploaded' : 'Not added',
+    ];
+    return $item_data;
+}
+
+function bespoke_render_admin_player_cards( $d, $item ) {
+    $pc = ( isset( $d['player_card'] ) && is_array( $d['player_card'] ) ) ? $d['player_card'] : [];
+
+    // Flag PNG lives in the plugin at /assets/flags/{Country}.png.
+    // rawurlencode handles country names with spaces ("Czech Republic").
+    $flag_url = '';
+    if ( ! empty( $pc['flag'] ) && defined( 'BESPOKE_PLUGIN_URL' ) ) {
+        $flag_url = BESPOKE_PLUGIN_URL . 'assets/flags/' . rawurlencode( $pc['flag'] ) . '.png';
+    }
+
+    // Convenience — one line = one label/value pair in the spec table.
+    $row = function( $label, $value ) {
+        if ( $value === '' || $value === null ) $value = '—';
+        return '<tr>'
+             . '<td style="padding:5px 10px 5px 0;color:#666;white-space:nowrap;font-size:12px;vertical-align:top;">' . esc_html( $label ) . '</td>'
+             . '<td style="padding:5px 0;font-size:12px;font-weight:600;color:#1a1a1a;">' . $value . '</td>'
+             . '</tr>';
+    };
+    $section = function( $heading, $rows_html ) {
+        return '<div style="margin-bottom:14px;">'
+             . '<div style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.6px;padding-bottom:4px;margin-bottom:6px;border-bottom:1px solid #eee;">'
+             . esc_html( $heading ) . '</div>'
+             . '<table style="width:100%;border-collapse:collapse;">' . $rows_html . '</table>'
+             . '</div>';
+    };
+
+    ob_start();
+    ?>
+    <div style="margin-top:12px;padding:14px 16px;background:#f9f8f6;border:1px solid #e5e5e5;border-radius:6px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+        <div style="font-size:11px;font-weight:700;color:#2E7D32;text-transform:uppercase;letter-spacing:.6px;margin-bottom:14px;">
+            ✦ BEspoke Sport — Player Card Specification
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;">
+
+            <!-- LEFT COLUMN: Player + Stats + Product -->
+            <div>
+                <?php
+                // --- Player identity ---
+                $rows = '';
+                if ( ! empty( $d['left']['name'] ) ) {
+                    $rows .= $row( 'Name', esc_html( $d['left']['name'] ) );
+                }
+                $pos_label = ! empty( $pc['position_label'] ) ? $pc['position_label'] : ( $pc['position'] ?? '' );
+                if ( $pos_label !== '' ) {
+                    $rows .= $row( 'Position', esc_html( $pos_label ) );
+                }
+                if ( ! empty( $pc['flag'] ) ) {
+                    $flag_cell = '';
+                    if ( $flag_url ) {
+                        $flag_cell .= '<img src="' . esc_url( $flag_url ) . '" alt="" style="width:26px;height:auto;vertical-align:middle;margin-right:8px;border:1px solid #ddd;"/>';
+                    }
+                    $flag_cell .= esc_html( $pc['flag'] );
+                    $rows .= $row( 'Country', $flag_cell );
+                }
+                $ovr = isset( $pc['ovr'] ) ? (int) $pc['ovr'] : 0;
+                if ( $ovr > 0 ) {
+                    $rows .= $row( 'Overall',
+                        '<span style="font-size:20px;font-weight:800;color:#2E7D32;line-height:1;">' . $ovr . '</span>'
+                    );
+                }
+                if ( $rows ) echo $section( 'Player', $rows );
+
+                // --- Stats ---
+                $stats = ( isset( $pc['stats'] ) && is_array( $pc['stats'] ) ) ? $pc['stats'] : [];
+                $has_stat_value = false;
+                foreach ( $stats as $st ) {
+                    if ( ! empty( $st['value'] ) ) { $has_stat_value = true; break; }
+                }
+                if ( ! empty( $stats ) ) {
+                    $stat_rows = '';
+                    foreach ( $stats as $st ) {
+                        $lbl = isset( $st['label'] ) ? $st['label'] : '';
+                        $val = isset( $st['value'] ) ? (int) $st['value'] : 0;
+                        if ( $lbl === '' ) continue;
+                        $stat_rows .= $row( $lbl, '<span style="font-size:14px;font-weight:700;">' . $val . '</span>' );
+                    }
+                    if ( $stat_rows ) echo $section( 'Stats', $stat_rows );
+                }
+
+                // --- Product / Design ---
+                $product_rows = '';
+                if ( ! empty( $d['size'] ) ) {
+                    $product_rows .= $row( 'Size',   esc_html( $d['size'] ) );
+                }
+                if ( ! empty( $d['design'] ) ) {
+                    $product_rows .= $row( 'Design', esc_html( $d['design'] ) );
+                }
+                // Font (only if the customer changed it from the default)
+                $font_raw = $d['fonts']['name'] ?? '';
+                if ( $font_raw !== '' && $font_raw !== 'Arial Black' ) {
+                    $first = trim( explode( ',', $font_raw )[0] );
+                    $first = trim( $first, "\"' \t\n\r\0\x0B\\" );
+                    if ( $first !== '' ) {
+                        $product_rows .= $row( 'Text font', esc_html( $first ) );
+                    }
+                }
+                if ( $product_rows ) echo $section( 'Product', $product_rows );
+                ?>
+            </div>
+
+            <!-- RIGHT COLUMN: Photo + Badge + Notes -->
+            <div>
+                <?php
+                // --- Player photo ---
+                $photo_rows = '';
+                if ( ! empty( $pc['photo']['url'] ) ) {
+                    $photo_rows .= $row( 'Status', '<span style="color:#2E7D32;font-weight:700;">Uploaded</span>' );
+                    if ( ! empty( $pc['photo']['filename'] ) ) {
+                        $photo_rows .= $row( 'Filename',
+                            '<a href="' . esc_url( $pc['photo']['url'] ) . '" target="_blank" style="color:#0073aa;text-decoration:none;"><code>' . esc_html( $pc['photo']['filename'] ) . '</code></a>'
+                        );
+                    }
+                    $photo_rows .= $row( 'Preview',
+                        '<a href="' . esc_url( $pc['photo']['url'] ) . '" target="_blank">'
+                        . '<img src="' . esc_url( $pc['photo']['url'] ) . '" style="max-width:140px;max-height:200px;object-fit:contain;border:1px solid #ddd;border-radius:4px;background:#fff;display:block;margin-top:4px;"/>'
+                        . '</a>'
+                    );
+                } else {
+                    $photo_rows .= $row( 'Status', '<span style="color:#aaa;">Not added</span>' );
+                }
+                echo $section( 'Player photo', $photo_rows );
+
+                // --- Club badge ---
+                $badge_rows = '';
+                if ( ! empty( $d['badge']['url'] ) ) {
+                    $badge_rows .= $row( 'Status', '<span style="color:#2E7D32;font-weight:700;">Uploaded</span>' );
+                    if ( ! empty( $d['badge']['filename'] ) ) {
+                        $badge_rows .= $row( 'Filename',
+                            '<a href="' . esc_url( $d['badge']['url'] ) . '" target="_blank" style="color:#0073aa;text-decoration:none;"><code>' . esc_html( $d['badge']['filename'] ) . '</code></a>'
+                        );
+                    }
+                    $badge_rows .= $row( 'Preview',
+                        '<a href="' . esc_url( $d['badge']['url'] ) . '" target="_blank">'
+                        . '<img src="' . esc_url( $d['badge']['url'] ) . '" style="max-width:120px;max-height:120px;object-fit:contain;border:1px solid #ddd;border-radius:4px;background:#fff;padding:4px;display:block;margin-top:4px;"/>'
+                        . '</a>'
+                    );
+                } else {
+                    $badge_rows .= $row( 'Status', '<span style="color:#aaa;">Not added</span>' );
+                }
+                echo $section( 'Club badge', $badge_rows );
+
+                // --- Order notes ---
+                if ( ! empty( $d['notes'] ) ) {
+                    echo $section( 'Order notes',
+                        '<tr><td colspan="2" style="padding:6px 0;font-size:12px;color:#1a1a1a;background:#fff;border:1px solid #eee;border-radius:4px;padding:8px 10px;">'
+                        . nl2br( esc_html( $d['notes'] ) )
+                        . '</td></tr>'
+                    );
+                }
+                ?>
+            </div>
+        </div>
+
+        <!-- Full-width card preview snapshot the customiser uploaded
+             just before add-to-cart. Same treatment as every other
+             product's admin card so production sees what the customer
+             saw. -->
+        <?php if ( ! empty( $d['preview_url'] ) ) : ?>
+            <div style="margin-top:6px;">
+                <div style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.6px;padding-bottom:4px;margin-bottom:6px;border-bottom:1px solid #eee;">
+                    Card preview
+                </div>
+                <a href="<?php echo esc_url( $d['preview_url'] ); ?>" target="_blank">
+                    <img src="<?php echo esc_url( $d['preview_url'] ); ?>"
+                         style="max-height:320px;max-width:100%;object-fit:contain;border:1px solid #eee;border-radius:4px;padding:4px;background:#fff;display:block;"/>
+                </a>
+            </div>
+        <?php endif; ?>
+    </div>
+    <?php
+    echo ob_get_clean();
+}
+
+
+/* =========================================================================
    GENERIC ADMIN ORDER CARD
    Reused by every product type added above so we don't replicate the
    ~200-line shin-pad layout for each. Returns HTML.
