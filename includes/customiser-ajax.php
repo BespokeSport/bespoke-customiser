@@ -803,24 +803,45 @@ function bespoke_handle_add_to_cart() {
  * @return bool
  */
 function bespoke_attr_values_match( $customer_value, $variation_value ) {
-    // Strip ALL non-alphanumeric characters and lowercase for a
-    // forgiving comparison. Handles:
-    //   "5cm Band"   ↔ "5cm band"   (label case mismatch)
-    //   "5cm-band"   ↔ "5cm Band"   (slug vs label — WC stores global
-    //                                taxonomy attributes as the term
-    //                                slug, per-product attributes as
-    //                                the typed value)
+    if ( $customer_value === '' || $variation_value === '' ) return false;
+
+    // Fast path — case + non-alphanumeric normalised exact match.
+    // Handles label-case + separator mismatches like:
+    //   "5cm Band"   ↔ "5cm band"   (case)
+    //   "5cm-band"   ↔ "5cm band"   (slug vs label)
     //   "24cm"       ↔ "24 cm"      (whitespace inside the value)
     $normalize = function( $v ) {
         return strtolower( preg_replace( '/[^a-z0-9]/i', '', (string) $v ) );
     };
-    $c = $normalize( $customer_value );
-    $v = $normalize( $variation_value );
-    if ( $c === '' || $v === '' ) return false;
-    if ( $c === $v ) return true;
-    // Substring either way — covers "5cm band" customer / "5cm" variation
-    // OR "5cm" customer / "5cm band" variation.
-    return ( strpos( $c, $v ) !== false || strpos( $v, $c ) !== false );
+    $c_norm = $normalize( $customer_value );
+    $v_norm = $normalize( $variation_value );
+    if ( $c_norm === '' || $v_norm === '' ) return false;
+    if ( $c_norm === $v_norm ) return true;
+
+    // Word-boundary match — split each value into alphanumeric words
+    // and accept a match if ANY word appears verbatim in BOTH lists.
+    //
+    //   customer "5cm"          ↔ variation "5cm band"       → word "5cm" in both  ✓
+    //   customer "XL"           ↔ variation "UK 10-12 (XL)"  → word "xl"  in both  ✓
+    //   customer "With Frill"   ↔ variation "with-frill"     → words {with,frill} in both ✓
+    //
+    // AND rejects the pathological substring cases the previous
+    // strpos-based logic accepted:
+    //
+    //   customer "L"            ↔ variation "UK 10-12 (XL)"  → "l" not in words   ✗
+    //   customer "S"            ↔ variation "Silver"         → "s" not in words   ✗
+    $words = function( $v ) {
+        $parts = preg_split( '/[^a-z0-9]+/i', (string) $v );
+        return array_values( array_filter( array_map( 'strtolower', $parts ), function( $x ) { return $x !== ''; } ) );
+    };
+    $wc = $words( $customer_value );
+    $wv = $words( $variation_value );
+    foreach ( $wc as $c_word ) {
+        foreach ( $wv as $v_word ) {
+            if ( $c_word === $v_word ) return true;
+        }
+    }
+    return false;
 }
 
 /**
@@ -840,19 +861,31 @@ function bespoke_attr_values_match( $customer_value, $variation_value ) {
 function bespoke_match_variation( $product, $customer_values ) {
     if ( ! $product instanceof WC_Product_Variable ) return null;
     foreach ( $product->get_available_variations() as $variation ) {
-        $ok = true;
-        foreach ( $variation['attributes'] as $attr_key => $attr_value ) {
-            if ( $attr_value === '' ) continue; // "Any" — matches anything
+        // Every CUSTOMER value must find a matching attribute in this
+        // variation. Attributes the customer never sends (e.g. grip
+        // socks have an "Outside or both" WC attribute the customiser
+        // doesn't ask about) don't block a match — they're resolved
+        // to a default via bespoke_resolve_variation_attributes()
+        // when the winning variation is committed.
+        //
+        // (Previously the loop went the other way: every variation
+        // attribute had to be found in customer_values. That rejected
+        // any product whose WC variations had MORE attributes than
+        // the customiser exposes — hence the "No matching product
+        // variation for XL" error on grip socks.)
+        $all_matched = true;
+        foreach ( $customer_values as $cust ) {
             $found = false;
-            foreach ( $customer_values as $cust ) {
+            foreach ( $variation['attributes'] as $attr_value ) {
+                if ( $attr_value === '' ) continue; // "Any" — doesn't count either way
                 if ( bespoke_attr_values_match( $cust, $attr_value ) ) {
                     $found = true;
                     break;
                 }
             }
-            if ( ! $found ) { $ok = false; break; }
+            if ( ! $found ) { $all_matched = false; break; }
         }
-        if ( $ok ) {
+        if ( $all_matched ) {
             return [
                 'id'         => (int) $variation['variation_id'],
                 'attributes' => bespoke_resolve_variation_attributes(
