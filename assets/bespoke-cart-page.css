@@ -369,6 +369,31 @@ body.woocommerce-cart .cart-collaterals .cart_totals {
   border-radius: 14px !important;
   padding: 28px !important;
   position: sticky; top: 24px;
+  /* WC's stock woocommerce-layout.min.css sets .cart_totals to
+     `float: right` with no explicit width. Combined with our sticky
+     sidebar layout this collapsed the totals box to ~182px
+     (shrink-to-fit around the table) inside a 380px column —
+     labels + values wrapped one character per line.  Force it to
+     fill the sidebar and drop the float. */
+  float: none !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+/* Same fix for the OUTER collaterals wrapper — WC gives it `float:
+   left` which can interact badly with our grid column layout. */
+body.woocommerce-cart .cart-collaterals {
+  float: none !important;
+  width: auto !important;
+  box-sizing: border-box !important;
+}
+/* Cross-sells + Related products inside cart-collaterals also
+   inherit stock WC `width: 48% / 30.75% / float: left`. They render
+   as a full-width block underneath the cart on our layout, so wipe
+   the WC constraints. */
+body.woocommerce-cart .cart-collaterals .cross-sells,
+body.woocommerce-cart .cart-collaterals .related {
+  float: none !important;
+  width: 100% !important;
 }
 body.woocommerce-cart .cart-collaterals .cart_totals > h2 {
   font-family: var(--bs-font-ui) !important;
