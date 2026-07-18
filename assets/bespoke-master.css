@@ -398,15 +398,24 @@ body.woocommerce-checkout .woocommerce-checkout-review-order-table .order-total 
 }
 
 /* --------------------------------------------------------------------------
-   Mobile · compact site header
+   Mobile · page-aware compact site header
    The Elementor header template renders ~120px tall on phones with a large
-   centred logo — a big bite of a small screen. Designer call (18 Jul 2026):
-   the bar should be barely thicker than the burger menu, even if the logo
-   goes tiny. Collapse the section / column padding and min-heights and cap
-   the logo height. Desktop header untouched. Verified at a real 390px
-   viewport (iframe): 120px → ~56px.
+   centred logo. Two tiers (designer call, 18 Jul 2026):
+
+   · BRAND pages (home, blog, contact, gallery …): keep the logo readable —
+     64px cap, header lands ≈ 84px. Still a third slimmer than stock.
+   · COMMERCE funnel (shop archive, product pages, cart, checkout): space
+     is precious — 40px logo, header ≈ 56px, barely thicker than the burger.
+
+   The stacked BE: mark is portrait, so it shrinks fast; if a horizontal
+   mobile lockup is designed later, add it in the Elementor header as a
+   second image widget (visible mobile-only, original desktop-only) and
+   these same caps apply to whichever is shown. Desktop header untouched.
+   Verified at a real 390px viewport (iframe).
    -------------------------------------------------------------------------- */
 @media (max-width: 980px) {
+  /* Structural collapse — both tiers. The template's padding/min-heights
+     are what inflated the bar to 120px. */
   header.elementor-location-header .elementor-section,
   header.elementor-location-header .elementor-container,
   header.elementor-location-header .elementor-column,
@@ -416,12 +425,36 @@ body.woocommerce-checkout .woocommerce-checkout-review-order-table .order-total 
     padding-bottom: 0 !important;
   }
   header.elementor-location-header .elementor-widget { margin: 0 !important; }
+  header.elementor-location-header { padding: 8px 0 !important; }
+
+  /* Tier 1 · default (brand pages): readable logo. max-width:none is
+     load-bearing — the Elementor image widget ships max-width:60%, which
+     silently throttles the height cap (the stacked mark rendered 38px
+     tall despite a 64px allowance). */
   header.elementor-location-header img {
-    max-height: 40px !important;
+    max-height: 64px !important;
+    max-width: none !important;
     height: auto !important;
     width: auto !important;
   }
-  header.elementor-location-header { padding: 6px 0 !important; }
+
+  /* Tier 2 · commerce funnel: tight bar */
+  body.post-type-archive-product header.elementor-location-header img,
+  body.woocommerce-shop         header.elementor-location-header img,
+  body.tax-product_cat          header.elementor-location-header img,
+  body.single-product           header.elementor-location-header img,
+  body.woocommerce-cart         header.elementor-location-header img,
+  body.woocommerce-checkout     header.elementor-location-header img {
+    max-height: 40px !important;
+  }
+  body.post-type-archive-product header.elementor-location-header,
+  body.woocommerce-shop         header.elementor-location-header,
+  body.tax-product_cat          header.elementor-location-header,
+  body.single-product           header.elementor-location-header,
+  body.woocommerce-cart         header.elementor-location-header,
+  body.woocommerce-checkout     header.elementor-location-header {
+    padding: 6px 0 !important;
+  }
 }
 
 
