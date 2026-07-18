@@ -596,10 +596,17 @@ body.woocommerce-cart .cross-sells .price { padding: 6px 18px 16px !important; c
   /* Preview on top, centred + enlarged. `> img` targets the SINGLE-product
      preview only; the double-sided dual-preview spans keep their own size. */
   body.woocommerce-cart table.cart td.product-thumbnail { grid-area: thumb !important; text-align: center !important; margin-bottom: 14px !important; }
-  /* Single-product preview: fill the card, capped so it doesn't get silly on
-     a tablet. `> img` = the single preview only. */
-  body.woocommerce-cart table.cart td.product-thumbnail > img { width: 100% !important; max-width: 320px !important; height: auto !important; border-radius: 10px !important; }
-  /* Double-sided dual previews (nested in spans): bigger too, stacked. */
+  /* WooCommerce wraps the thumbnail in a product link (td > a > img), so a
+     `> img` child selector never matched it — cover both the linked and the
+     bare cases. The link itself must go block so the image can fill it. */
+  body.woocommerce-cart table.cart td.product-thumbnail > a { display: block !important; }
+  body.woocommerce-cart table.cart td.product-thumbnail > img,
+  body.woocommerce-cart table.cart td.product-thumbnail > a > img {
+    display: block !important; width: 100% !important; max-width: 320px !important;
+    height: auto !important; border-radius: 10px !important; margin: 0 auto !important;
+  }
+  /* Double-sided dual previews (nested in spans, so NOT caught above): bigger
+     too, stacked. */
   body.woocommerce-cart table.cart td.product-thumbnail span img { width: 150px !important; max-width: 46vw !important; height: auto !important; }
   body.woocommerce-cart table.cart td.product-name { grid-area: name !important; min-width: 0 !important; }
   body.woocommerce-cart table.cart td.product-remove { grid-area: remove !important; justify-self: end !important; align-self: start !important; }
