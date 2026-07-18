@@ -397,6 +397,34 @@ body.woocommerce-checkout .woocommerce-checkout-review-order-table .order-total 
   font-weight: 800 !important;
 }
 
+/* --------------------------------------------------------------------------
+   Mobile · compact site header
+   The Elementor header template renders ~120px tall on phones with a large
+   centred logo — a big bite of a small screen. Designer call (18 Jul 2026):
+   the bar should be barely thicker than the burger menu, even if the logo
+   goes tiny. Collapse the section / column padding and min-heights and cap
+   the logo height. Desktop header untouched. Verified at a real 390px
+   viewport (iframe): 120px → ~56px.
+   -------------------------------------------------------------------------- */
+@media (max-width: 980px) {
+  header.elementor-location-header .elementor-section,
+  header.elementor-location-header .elementor-container,
+  header.elementor-location-header .elementor-column,
+  header.elementor-location-header .elementor-widget-wrap {
+    min-height: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+  }
+  header.elementor-location-header .elementor-widget { margin: 0 !important; }
+  header.elementor-location-header img {
+    max-height: 40px !important;
+    height: auto !important;
+    width: auto !important;
+  }
+  header.elementor-location-header { padding: 6px 0 !important; }
+}
+
+
 /* ==========================================================================
    END · Bespoke Sport master / global page theme
    ========================================================================== */
