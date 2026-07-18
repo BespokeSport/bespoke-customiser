@@ -561,32 +561,45 @@ body.woocommerce-cart .cross-sells .price { padding: 6px 18px 16px !important; c
      column (it ended up wrapping one word per line). Verified live 18 Jul. */
   body.woocommerce-cart table.cart td::before { display: none !important; }
 
-  /* Stack ONLY the item rows into cards. Scoping to tr.cart_item (NOT every
-     tbody tr) is load-bearing: the old rule caught the coupon / Update-basket
-     row too, forcing it into the 3-column grid and crushing the button into a
-     one-letter-wide vertical sliver. */
+  /* Table + tbody collapse to plain blocks so each row can be its own card. */
+  body.woocommerce-cart table.cart,
+  body.woocommerce-cart table.cart tbody { display: block !important; width: 100% !important; }
   body.woocommerce-cart table.cart thead { display: none !important; }
+
+  /* Each item is a VERTICAL card — big preview on top, then name + remove,
+     the design details full-width, and quantity + price on the last row.
+     Stacking full-width (rather than beside a thumbnail) is what kills the
+     horizontal scroll: nothing competes for width, so the long "Label: value"
+     rows always fit the screen. Scoping the grid to tr.cart_item (NOT every
+     tbody tr) keeps the coupon / Update-basket row a normal block — the old
+     rule crushed that button into a vertical sliver. min-width:0 on the cells
+     lets them shrink instead of forcing the card wider than the viewport. */
   body.woocommerce-cart table.cart tbody tr.cart_item,
   body.woocommerce-cart table.cart tbody tr.woocommerce-cart-form__cart-item {
     display: grid !important;
-    grid-template-columns: 76px 1fr auto !important;
+    grid-template-columns: 1fr auto !important;
     grid-template-areas:
-      "thumb name  remove"
-      "thumb qty   subtotal" !important;
-    gap: 6px 12px !important;
-    padding: 16px !important;
+      "thumb thumb"
+      "name  remove"
+      "qty   subtotal" !important;
+    gap: 2px 12px !important;
+    padding: 18px 16px !important;
     border-bottom: 1px solid var(--bs-line) !important;
     align-items: start !important;
   }
   body.woocommerce-cart table.cart tbody tr.cart_item td,
-  body.woocommerce-cart table.cart tbody tr.woocommerce-cart-form__cart-item td { border: 0 !important; padding: 0 !important; }
-  body.woocommerce-cart table.cart td.product-thumbnail { grid-area: thumb !important; align-self: start !important; }
-  body.woocommerce-cart table.cart td.product-thumbnail img { width: 76px !important; height: auto !important; }
-  body.woocommerce-cart table.cart td.product-name { grid-area: name !important; align-self: start !important; }
-  body.woocommerce-cart table.cart td.product-remove { grid-area: remove !important; justify-self: end !important; }
-  body.woocommerce-cart table.cart td.product-quantity { grid-area: qty !important; align-self: center !important; margin-top: 6px !important; }
-  body.woocommerce-cart table.cart td.product-subtotal { grid-area: subtotal !important; justify-self: end !important; align-self: center !important; margin-top: 6px !important; }
+  body.woocommerce-cart table.cart tbody tr.woocommerce-cart-form__cart-item td { border: 0 !important; padding: 0 !important; min-width: 0 !important; }
+  /* Preview on top, centred + enlarged. `> img` targets the SINGLE-product
+     preview only; the double-sided dual-preview spans keep their own size. */
+  body.woocommerce-cart table.cart td.product-thumbnail { grid-area: thumb !important; justify-self: center !important; text-align: center !important; margin-bottom: 12px !important; }
+  body.woocommerce-cart table.cart td.product-thumbnail > img { width: 180px !important; max-width: 62vw !important; height: auto !important; border-radius: 8px !important; }
+  body.woocommerce-cart table.cart td.product-name { grid-area: name !important; min-width: 0 !important; }
+  body.woocommerce-cart table.cart td.product-remove { grid-area: remove !important; justify-self: end !important; align-self: start !important; }
+  body.woocommerce-cart table.cart td.product-quantity { grid-area: qty !important; align-self: center !important; margin-top: 10px !important; }
+  body.woocommerce-cart table.cart td.product-subtotal { grid-area: subtotal !important; justify-self: end !important; align-self: center !important; margin-top: 10px !important; }
   body.woocommerce-cart table.cart td.product-price { display: none !important; }
+  /* Keep the label-left / value-right look on the design detail rows. */
+  body.woocommerce-cart .cart_item dl.variation dd { text-align: right !important; }
 
   /* Actions row (coupon + Update basket) — full-width block, NOT a card grid. */
   body.woocommerce-cart table.cart tr:not(.cart_item):not(.woocommerce-cart-form__cart-item) { display: block !important; width: 100% !important; }
