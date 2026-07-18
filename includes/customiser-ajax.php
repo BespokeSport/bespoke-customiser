@@ -575,6 +575,17 @@ function bespoke_parse_inside_face() {
             'x'        => 0,
             'y'        => 0,
         ],
+        // Second badge spot for THIS face — mode rides in the JSON blob,
+        // the uploaded file's URL in its own gated POST fields.
+        'badge2' => [
+            'mode'     => in_array( sanitize_key( $raw['badge2_mode'] ?? 'same' ), [ 'same', 'different', 'none' ], true )
+                            ? sanitize_key( $raw['badge2_mode'] ?? 'same' )
+                            : 'same',
+            'url'      => bespoke_is_local_upload_url( $_POST['bespoke_face_inside_badge2_url'] ?? '' )
+                            ? esc_url_raw( $_POST['bespoke_face_inside_badge2_url'] )
+                            : '',
+            'filename' => sanitize_file_name( $_POST['bespoke_face_inside_badge2_filename'] ?? '' ),
+        ],
         'hidden_elements' => $hidden,
         'sizes' => [
             'badge' => floatval( $siz['badge'] ?? 0 ),
@@ -730,6 +741,22 @@ function bespoke_handle_add_to_cart() {
                 'x'        => floatval( $_POST['bespoke_badge_x']    ?? 0 ),
                 'y'        => floatval( $_POST['bespoke_badge_y']    ?? 0 ),
                 'size'     => floatval( $_POST['bespoke_badge_size'] ?? 0 ),
+            ],
+
+            // ── Second badge spot (armbands) ─────────────────────────────────
+            // 'mode' says what the second badge position shows: another copy
+            // of the club badge ('same', default), its own uploaded image
+            // ('different' — e.g. a charity or sponsor logo), or nothing
+            // ('none' — badgeR also lands in hidden_elements). Same
+            // local-upload gating as the main badge.
+            'badge2' => [
+                'mode'     => in_array( sanitize_key( $_POST['bespoke_badge2_mode'] ?? 'same' ), [ 'same', 'different', 'none' ], true )
+                                ? sanitize_key( $_POST['bespoke_badge2_mode'] ?? 'same' )
+                                : 'same',
+                'url'      => bespoke_is_local_upload_url( $_POST['bespoke_badge2_url'] ?? '' )
+                                ? esc_url_raw( $_POST['bespoke_badge2_url'] )
+                                : '',
+                'filename' => sanitize_file_name( $_POST['bespoke_badge2_filename'] ?? '' ),
             ],
 
             // ── Element positions on the pad (SVG coordinate space) ───────────

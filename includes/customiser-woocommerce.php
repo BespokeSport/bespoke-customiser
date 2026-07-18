@@ -1320,6 +1320,17 @@ function bespoke_render_cart_armbands( $item_data, $d ) {
         'name'  => 'Club badge',
         'value' => ! empty( $d['badge']['url'] ) ? 'Uploaded' : 'Not added',
     ];
+    // Second badge spot — only rowed when it deviates from the default
+    // "same badge twice", so ordinary orders stay uncluttered.
+    $b2mode = $d['badge2']['mode'] ?? 'same';
+    if ( $b2mode === 'different' ) {
+        $item_data[] = [
+            'name'  => 'Second badge',
+            'value' => ! empty( $d['badge2']['url'] ) ? 'Uploaded' : 'Not added',
+        ];
+    } elseif ( $b2mode === 'none' ) {
+        $item_data[] = [ 'name' => 'Second badge', 'value' => 'None' ];
+    }
     $removed = bespoke_format_hidden( $d['hidden_elements'] ?? [] );
     if ( $removed !== '' ) {
         $item_data[] = [ 'name' => 'Removed', 'value' => esc_html( $removed ) ];
@@ -1838,6 +1849,25 @@ function bespoke_render_admin_generic_card( $product_label, $d, $opts = [] ) {
                     $badge_html .= $row( 'Status', '<span style="color:#aaa;">Not added</span>' );
                 }
                 echo $section( 'Club badge', $badge_html );
+
+                // Second badge spot (armbands club + charity/sponsor
+                // orders). Only shown when it deviates from the default
+                // "same badge in both positions".
+                $b2 = $d['badge2'] ?? null;
+                if ( is_array( $b2 ) && ( $b2['mode'] ?? 'same' ) !== 'same' ) {
+                    $b2_html = '';
+                    if ( ( $b2['mode'] ?? '' ) === 'none' ) {
+                        $b2_html .= $row( 'Status', '<span style="color:#aaa;">Empty — customer removed the second badge</span>' );
+                    } elseif ( ! empty( $b2['url'] ) ) {
+                        $b2_html .= $row( 'Status', '<span style="color:#2E7D32;font-weight:700;">Different badge uploaded</span>' );
+                        if ( ! empty( $b2['filename'] ) ) {
+                            $b2_html .= $row( 'Filename', '<a href="' . esc_url( $b2['url'] ) . '" target="_blank"><code>' . esc_html( $b2['filename'] ) . '</code></a>' );
+                        }
+                    } else {
+                        $b2_html .= $row( 'Status', 'Different badge chosen but no file received' );
+                    }
+                    echo $section( 'Second badge', $b2_html );
+                }
 
                 $colour_rows = '';
                 if ( ! empty( $d['colours']['background']   ) ) $colour_rows .= $row( 'Background',  $swatch( $d['colours']['background'] ) );
