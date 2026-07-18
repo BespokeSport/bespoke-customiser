@@ -705,5 +705,36 @@ body.woocommerce-cart .cart-collaterals .cart_totals > h2 { color: #141417 !impo
 
 
 /* ==========================================================================
+   MOBILE OVERRIDE PASS · Verified in a real 385px viewport (iframe) 18 Jul 2026
+   These MUST come after the desktop de-squash rules above: those are declared
+   without a media query, so at mobile widths both apply and the LATER one wins
+   the source-order tie. The earlier mobile block was losing that tie (gutters
+   stayed 20/24px) and the thumbnail <td> refused to stretch into its grid area
+   (kept its intrinsic ~96px), so the preview never grew. Fixed here.
+   ========================================================================== */
+@media (max-width: 980px) {
+  /* Slim the gutters — match the base rules' specificity (div.woocommerce)
+     and win by coming later in the file. */
+  body.woocommerce-cart article.type-page { padding-left: 10px !important; padding-right: 10px !important; }
+  body.woocommerce-cart div.woocommerce   { padding-left: 10px !important; padding-right: 10px !important; }
+
+  /* Force the thumbnail cell to span both grid columns and fill — a <td>
+     grid item would otherwise sit at its intrinsic ~96px and starve the
+     preview. */
+  body.woocommerce-cart table.cart td.product-thumbnail {
+    grid-column: 1 / -1 !important;
+    width: 100% !important;
+    justify-self: stretch !important;
+  }
+  body.woocommerce-cart table.cart td.product-thumbnail > a { display: block !important; width: 100% !important; }
+  body.woocommerce-cart table.cart td.product-thumbnail > a > img,
+  body.woocommerce-cart table.cart td.product-thumbnail > img {
+    display: block !important; width: 100% !important; max-width: 320px !important;
+    height: auto !important; margin: 0 auto !important;
+  }
+}
+
+
+/* ==========================================================================
    END · Bespoke Sport cart styling
    ========================================================================== */
