@@ -458,6 +458,54 @@ body.woocommerce-checkout .woocommerce-checkout-review-order-table .order-total 
 }
 
 
+/* --------------------------------------------------------------------------
+   Header cart button (injected into the Elementor header by
+   customiser-master.php). Sits top-right beside the search icon on desktop
+   and mobile; mint count bubble; hidden bubble when the basket is empty.
+   -------------------------------------------------------------------------- */
+.bcp-header-cart {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  margin: 0 4px;
+  color: #F5F5F0;
+  text-decoration: none;
+  transition: color .15s ease, transform .1s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.bcp-header-cart:hover,
+.bcp-header-cart:focus { color: #5DCAA5; }
+.bcp-header-cart:active { transform: translateY(1px); }
+.bcp-header-cart svg { display: block; }
+.bcp-header-cart .bcp-cart-count {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  box-sizing: border-box;
+  border-radius: 9px;
+  background: #5DCAA5;
+  color: #0D0D0D;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 18px;
+  text-align: center;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+.bcp-header-cart .bcp-cart-count[hidden],
+.bcp-header-cart .bcp-cart-count[data-count="0"] { display: none; }
+/* On the tight commerce-funnel mobile header, match the smaller scale. */
+@media (max-width: 980px) {
+  .bcp-header-cart { width: 36px; height: 36px; margin: 0 2px; }
+  .bcp-header-cart svg { width: 20px; height: 20px; }
+}
+
+
 /* ==========================================================================
    END · Bespoke Sport master / global page theme
    ========================================================================== */

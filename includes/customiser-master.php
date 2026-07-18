@@ -137,3 +137,96 @@ function bespoke_master_body_class( $classes ) {
 function bespoke_master_should_apply() {
 	return (bool) apply_filters( 'bespoke_apply_master_theme', true );
 }
+
+
+/* =========================================================================
+   HEADER CART BUTTON
+   The Elementor header template has no cart. Inject a cart icon + live
+   count into the header (top-right, beside the search icon) on every
+   page, desktop + mobile. We inject via a wp_footer script rather than
+   editing the Elementor template so it stays in version control and the
+   count is server-rendered fresh on every page load.
+   ========================================================================= */
+
+/**
+ * Current cart item count (0 when WooCommerce / the cart isn't ready).
+ */
+function bespoke_header_cart_count() {
+	if ( ! function_exists( 'WC' ) || ! WC()->cart ) {
+		return 0;
+	}
+	return (int) WC()->cart->get_cart_contents_count();
+}
+
+/**
+ * The cart button markup. Kept in one place so the wp_footer injector and
+ * the WooCommerce fragment refresh below emit an identical element.
+ */
+function bespoke_header_cart_button_html() {
+	$count = bespoke_header_cart_count();
+	$url   = function_exists( 'wc_get_cart_url' ) ? wc_get_cart_url() : home_url( '/cart/' );
+
+	$svg = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+		. '<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/>'
+		. '<path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>';
+
+	// Count bubble — hidden (via CSS) when empty.
+	$badge = '<span class="bcp-cart-count" data-count="' . esc_attr( $count ) . '"'
+		. ( $count > 0 ? '' : ' hidden' ) . '>' . esc_html( $count ) . '</span>';
+
+	return '<a class="bcp-header-cart" href="' . esc_url( $url ) . '" aria-label="View your basket">'
+		. $svg . $badge . '</a>';
+}
+
+/**
+ * Inject the button into the Elementor header on the front end.
+ * Placed in the column that holds the search icon (top-right, shown on
+ * desktop AND mobile) so it lives in the same spot on both.
+ */
+add_action( 'wp_footer', 'bespoke_header_cart_inject' );
+function bespoke_header_cart_inject() {
+	if ( is_admin() || ! bespoke_master_should_apply() ) {
+		return;
+	}
+	$html = wp_json_encode( bespoke_header_cart_button_html() );
+	?>
+	<script>
+	(function () {
+		function inject() {
+			var header = document.querySelector('header.elementor-location-header');
+			if (!header || header.querySelector('.bcp-header-cart')) return;
+			var wrap = document.createElement('span');
+			wrap.innerHTML = <?php echo $html; ?>;
+			var cart = wrap.firstElementChild;
+			// Prefer the column that holds the search icon (top-right on both
+			// desktop + mobile); fall back to the header's flex container.
+			var search = header.querySelector('[class*="elementor-widget-search"], [class*="search-form"], [class*="ast-search"], [class*="icon-search"]');
+			var col = search ? (search.closest('.elementor-column') || search.parentElement) : null;
+			if (col) { col.insertBefore(cart, col.firstChild); }
+			else {
+				var container = header.querySelector('.elementor-container') || header;
+				container.appendChild(cart);
+			}
+		}
+		if (document.readyState === 'loading') {
+			document.addEventListener('DOMContentLoaded', inject);
+		} else { inject(); }
+	})();
+	</script>
+	<?php
+}
+
+/**
+ * Keep the header count in sync when items are added through WooCommerce's
+ * own AJAX (shop loop "Add to cart" etc.). Our customiser add-to-cart
+ * redirects to /cart/, so that path refreshes the count via a normal page
+ * load; this covers the AJAX path too.
+ */
+add_filter( 'woocommerce_add_to_cart_fragments', 'bespoke_header_cart_fragment' );
+function bespoke_header_cart_fragment( $fragments ) {
+	$count = bespoke_header_cart_count();
+	$fragments['.bcp-header-cart .bcp-cart-count'] =
+		'<span class="bcp-cart-count" data-count="' . esc_attr( $count ) . '"'
+		. ( $count > 0 ? '' : ' hidden' ) . '>' . esc_html( $count ) . '</span>';
+	return $fragments;
+}
