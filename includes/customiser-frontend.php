@@ -1547,34 +1547,52 @@ function bespoke_render_customiser( $atts ) {
             .ast-primary-header-bar .site-branding img { max-height: 32px !important; width: auto !important; }
             .entry-title { font-size: clamp(22px, 5vw, 30px) !important; padding: 8px 0 !important; }
 
-            /* Reorder the Badge step on mobile:
-               Band thickness → Select size → Preview → Upload → Badge
-               size slider → For-cleanest-result note.
+            /* Reorder the Badge step on mobile — BADGE FIRST (designer
+               call, 18 Jul 2026), matching the new desktop DOM order:
+               [face switcher] → Upload badge (+ share toggle, second-
+               badge chooser, add-back) → Band thickness → Select size →
+               Preview → player-card photo block → Badge size slider →
+               For-cleanest-result note.
+
+               EVERY direct child must be listed here: a flex item with
+               no order defaults to 0 and jumps ABOVE all the ordered
+               ones — exactly why the badge cluster appeared at the top
+               for a moment on load (DOM order) and then "snapped back
+               down" once tagBadgeStep() applied this list, which
+               predated the badge-first reorder.
+
                Scoped to .active so we don't override the customiser's
-               display:none on inactive steps (would cause duplicate previews). */
+               display:none on inactive steps (would cause duplicate
+               previews). */
             #bespoke-customiser-root .screen.bcp-badge-step.active {
                 display: flex !important;
                 flex-direction: column !important;
             }
-            .bcp-badge-step > .bg-variant-row               { order:  1; }
-            .bcp-badge-step > .sec-label[data-bcp="size"]   { order:  2; }
-            .bcp-badge-step > .size-selector                { order:  3; }
-            .bcp-badge-step > .preview-box                  { order:  4; }
-            .bcp-badge-step > .drag-hint                    { order:  5; }
-            .bcp-badge-step > .sec-label[data-bcp="upload"] { order:  6; }
-            .bcp-badge-step > .upload-zone                  { order:  7; }
-            .bcp-badge-step > .badge-row                    { order:  8; }
-            .bcp-badge-step > .sec-label[data-bcp="bsize"]  { order:  9; }
-            .bcp-badge-step > .size-row                     { order: 10; }
-            .bcp-badge-step > .badge-note                   { order: 11; }
-            .bcp-badge-step > p                             { order: 12; }
-            .bcp-badge-step > .nav-row                      { order: 13; }
+            .bcp-badge-step > .bcp-face-switch              { order:  1; }
+            .bcp-badge-step > .sec-label[data-bcp="upload"] { order:  2; }
+            .bcp-badge-step > .upload-zone                  { order:  3; }
+            .bcp-badge-step > .badge-row                    { order:  4; }
+            .bcp-badge-step > #badge-share-row              { order:  5; }
+            .bcp-badge-step > #badge2-wrap                  { order:  6; }
+            .bcp-badge-step > .add-back-panel               { order:  7; }
+            .bcp-badge-step > .bg-variant-row               { order:  8; }
+            .bcp-badge-step > .sec-label[data-bcp="size"]   { order:  9; }
+            .bcp-badge-step > .size-selector                { order: 10; }
+            .bcp-badge-step > .preview-box                  { order: 11; }
+            .bcp-badge-step > .drag-hint                    { order: 12; }
+            .bcp-badge-step > [data-pc-only]                { order: 13; }
+            .bcp-badge-step > .sec-label[data-bcp="bsize"]  { order: 14; }
+            .bcp-badge-step > [data-pc-hide]                { order: 14; }
+            .bcp-badge-step > .size-row                     { order: 15; }
+            .bcp-badge-step > .badge-note                   { order: 16; }
+            .bcp-badge-step > p                             { order: 17; }
+            .bcp-badge-step > .nav-row                      { order: 18; }
         }
 
         /* Badge transparency advice — green callout under the badge size
            slider. Mint-tinted panel matching the customiser accent. Shows
            on desktop (natural DOM order, after the slider) and mobile
-           (order:3 above keeps it directly below the slider). */
+           (the order list above keeps it directly below the slider). */
         #bespoke-customiser-root .badge-note {
             display: flex !important;
             gap: 8px !important;
