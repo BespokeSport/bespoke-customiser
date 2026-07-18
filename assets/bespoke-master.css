@@ -300,6 +300,103 @@ body.bespoke-contact-styled .elementor-widget-wrap {
 }
 
 
+/* --------------------------------------------------------------------------
+   Checkout · PLACE ORDER button
+   The theme leaves it near-black on the dark checkout, so it reads as
+   disabled until hovered. Make it solid brand mint by default — it's the
+   single most important button on the site. (Lives here, not in
+   bespoke-cart-page.css, because that file only loads on /cart/.)
+   -------------------------------------------------------------------------- */
+body.woocommerce-checkout #place_order,
+body.woocommerce-checkout button#place_order.button.alt {
+  background: #5DCAA5 !important;
+  color: #0D0D0D !important;
+  border: none !important;
+  border-radius: 12px !important;
+  font-weight: 800 !important;
+  text-transform: uppercase !important;
+  letter-spacing: .08em !important;
+  padding: 18px 24px !important;
+  transition: filter .15s ease, transform .1s ease !important;
+}
+body.woocommerce-checkout #place_order:hover,
+body.woocommerce-checkout #place_order:focus {
+  background: #5DCAA5 !important;
+  color: #0D0D0D !important;
+  filter: brightness(1.08) !important;
+}
+body.woocommerce-checkout #place_order:active {
+  transform: translateY(1px) !important;
+}
+
+/* --------------------------------------------------------------------------
+   Checkout · YOUR ORDER review panel
+   The review table sat transparent over a light page-section background —
+   white text on pale grey, barely readable. Give the panel its own solid
+   dark card (mirroring the cart's Basket Totals card): light header strip
+   with dark text, white rows on #141417, meta as a label/value grid, and
+   the final total in brand mint. Verified live on staging 18 Jul 2026.
+   (Lives here because bespoke-cart-page.css only loads on /cart/.)
+   -------------------------------------------------------------------------- */
+body.woocommerce-checkout #order_review_heading,
+body.woocommerce-checkout #order_review {
+  background: #141417 !important;
+  border: none !important;
+}
+body.woocommerce-checkout #order_review_heading {
+  border-radius: 16px 16px 0 0 !important;
+  padding: 20px 22px 4px !important;
+  margin-bottom: 0 !important;
+  color: #fff !important;
+}
+body.woocommerce-checkout #order_review {
+  border-radius: 0 0 16px 16px !important;
+  padding: 10px 22px 22px !important;
+}
+/* Header strip: light banner + dark text, same treatment as the cart */
+body.woocommerce-checkout .woocommerce-checkout-review-order-table thead th {
+  background: #fbfbfb !important;
+  color: #141417 !important;
+  font-size: 11px !important;
+  letter-spacing: .06em !important;
+  text-transform: uppercase !important;
+  padding: 10px 12px !important;
+  white-space: nowrap !important;
+}
+/* Body rows: white text, subtle dividers, top-aligned */
+body.woocommerce-checkout .woocommerce-checkout-review-order-table td,
+body.woocommerce-checkout .woocommerce-checkout-review-order-table tfoot th {
+  color: #fff !important;
+  border-color: #2A2A2A !important;
+  padding: 12px 10px !important;
+  vertical-align: top !important;
+  background: transparent !important;
+}
+/* Item meta: label/value grid, values wrap freely, nothing clips */
+body.woocommerce-checkout .woocommerce-checkout-review-order-table dl.variation {
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr) !important;
+  column-gap: 8px !important;
+  row-gap: 2px !important;
+  margin: 6px 0 0 !important;
+  max-width: none !important;
+}
+body.woocommerce-checkout .woocommerce-checkout-review-order-table dl.variation dt {
+  float: none !important; width: auto !important; margin: 0 !important;
+  white-space: nowrap !important; color: #888 !important; font-weight: 500 !important;
+}
+body.woocommerce-checkout .woocommerce-checkout-review-order-table dl.variation dd {
+  margin: 0 !important; overflow: visible !important;
+  min-width: 0 !important; font-weight: 600 !important;
+}
+/* Totals: amounts never break; the final total pops in brand mint */
+body.woocommerce-checkout .woocommerce-checkout-review-order-table .amount { white-space: nowrap !important; }
+body.woocommerce-checkout .woocommerce-checkout-review-order-table .order-total .amount {
+  color: #5DCAA5 !important;
+  font-size: 20px !important;
+  font-weight: 800 !important;
+}
+
 /* ==========================================================================
    END · Bespoke Sport master / global page theme
    ========================================================================== */

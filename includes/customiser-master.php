@@ -63,6 +63,43 @@ function bespoke_master_enqueue() {
 }
 
 /* -------------------------------------------------------------------------
+ * 1b. Keep SiteGround Optimizer's hands OFF the plugin stylesheets.
+ *
+ * SG's "Minify CSS" writes a `.min.css` SIBLING next to each stylesheet
+ * and silently rewrites the page to load THAT instead of the file we
+ * enqueued. It has been caught serving a STALE .min.css long after the
+ * source file was re-uploaded (18 Jul 2026: the cart de-squash CSS was
+ * live on the server for hours while every visitor kept getting the old
+ * minified copy — "I uploaded it but nothing changed"). Purge SG Cache
+ * does NOT regenerate these siblings.
+ *
+ * Our stylesheets are a few KB each and versioned by filemtime — the
+ * bytes saved by minifying are nothing next to the cost of invisible
+ * deploys. Exclude every plugin style handle from minify AND combine so
+ * the browser always loads the exact file the designer uploaded.
+ * --------------------------------------------------------------------- */
+function bespoke_sgo_exclude_plugin_styles( $exclude ) {
+	$handles = [
+		'bespoke-master',
+		'bespoke-cart-page',
+		'bespoke-shop-page',
+		'bespoke-blog-page',
+		'bespoke-contact-page',
+		'bespoke-homepage',
+		'bespoke-product-page',
+		'bespoke-customiser',
+		'bespoke-global',
+		'bespoke-brand-fonts',
+	];
+	foreach ( $handles as $h ) {
+		$exclude[] = $h;
+	}
+	return $exclude;
+}
+add_filter( 'sgo_css_minify_exclude',  'bespoke_sgo_exclude_plugin_styles' );
+add_filter( 'sgo_css_combine_exclude', 'bespoke_sgo_exclude_plugin_styles' );
+
+/* -------------------------------------------------------------------------
  * 2. Body class — every selector in the master stylesheet is scoped to
  *    `body.bespoke-themed`, so without this class NOTHING in the
  *    master stylesheet fires. Anchoring the whole stylesheet on a

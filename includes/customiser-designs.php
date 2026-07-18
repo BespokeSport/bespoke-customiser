@@ -68,6 +68,7 @@ function bespoke_get_product_types() {
         'shinpads'           => 'Shin Pads',
         'gripsocks'          => 'Grip Socks',
         'armbands'           => 'Captain Armbands',
+        'double_sided_armbands' => 'Double Sided Captain Armbands',
         'armbands_predesign' => 'Pre-designed Armbands',
         'shinpad_sleeves'    => 'Shin Pad Sleeves',
         'bottles'            => 'Bottles',

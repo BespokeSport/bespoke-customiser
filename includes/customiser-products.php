@@ -170,11 +170,36 @@ add_action( 'wp_ajax_bespoke_upload_product_asset', function() {
        [ 'gripsocks' => [ 'badgeL' => ['x'=>.., 'y'=>..], ..., 'badgeSize'=>.. ] ]
    ========================================================================= */
 
+/**
+ * Some customiser product types are visual clones of another type — they
+ * reuse the parent's band photo, placement geometry and registered
+ * designs rather than having their own uploaded from scratch. Double-sided
+ * captain armbands share everything visual with single Captain Armbands
+ * (same physical band, printed on both faces), so they inherit the
+ * 'armbands' artwork automatically. The admin can still upload
+ * double-sided-specific assets later to override the inheritance.
+ *
+ * Returns the parent type to fall back to, or the type unchanged when it
+ * doesn't inherit from anything.
+ */
+function bespoke_inherit_product_type( $product_type ) {
+    $parents = [
+        'double_sided_armbands' => 'armbands',
+    ];
+    return isset( $parents[ $product_type ] ) ? $parents[ $product_type ] : $product_type;
+}
+
 function bespoke_get_product_geometry( $product_type ) {
     $all = get_option( 'bespoke_customiser_product_geometry', [] );
-    return ( is_array( $all ) && isset( $all[ $product_type ] ) && is_array( $all[ $product_type ] ) )
-        ? $all[ $product_type ]
-        : [];
+    if ( is_array( $all ) && isset( $all[ $product_type ] ) && is_array( $all[ $product_type ] ) ) {
+        return $all[ $product_type ];
+    }
+    // Inherit the parent type's placement when this type has none of its own.
+    $parent = bespoke_inherit_product_type( $product_type );
+    if ( $parent !== $product_type && isset( $all[ $parent ] ) && is_array( $all[ $parent ] ) ) {
+        return $all[ $parent ];
+    }
+    return [];
 }
 
 add_action( 'wp_ajax_bespoke_save_product_geometry', function() {
@@ -206,7 +231,11 @@ add_action( 'wp_ajax_bespoke_save_product_geometry', function() {
             ];
         }
     }
-    foreach ( [ 'badgeSize' => [ 80, 320 ], 'nameSize' => [ 40, 140 ], 'numSize' => [ 60, 220 ] ] as $key => $r ) {
+    // Keep these ranges in step with the customiser's own sliders + pinch /
+    // wheel clamps in customiser.html. nameSize runs to 300 so an armband's
+    // big captain's "C" (default 240) survives a Save placement instead of
+    // being silently clamped down.
+    foreach ( [ 'badgeSize' => [ 80, 500 ], 'nameSize' => [ 40, 300 ], 'numSize' => [ 60, 220 ] ] as $key => $r ) {
         if ( isset( $data[ $key ] ) ) {
             $clean[ $key ] = max( $r[0], min( $r[1], (int) $data[ $key ] ) );
         }
@@ -430,7 +459,17 @@ function bespoke_render_product_setup_page() {
  */
 function bespoke_get_product_assets( $product_type ) {
     $assets = get_option( 'bespoke_customiser_product_assets', [] );
-    return isset( $assets[ $product_type ] ) && is_array( $assets[ $product_type ] )
-        ? $assets[ $product_type ]
-        : [];
+    if ( isset( $assets[ $product_type ] ) && is_array( $assets[ $product_type ] ) ) {
+        return $assets[ $product_type ];
+    }
+    // Inherit the parent type's band photo / layers when this type has
+    // none of its own (e.g. double-sided armbands reuse the single-band
+    // artwork). See bespoke_inherit_product_type().
+    $parent = function_exists( 'bespoke_inherit_product_type' )
+        ? bespoke_inherit_product_type( $product_type )
+        : $product_type;
+    if ( $parent !== $product_type && isset( $assets[ $parent ] ) && is_array( $assets[ $parent ] ) ) {
+        return $assets[ $parent ];
+    }
+    return [];
 }

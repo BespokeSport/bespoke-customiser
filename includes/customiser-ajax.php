@@ -472,6 +472,121 @@ add_action( 'wp_ajax_nopriv_bespoke_add_to_cart', 'bespoke_handle_add_to_cart' )
  *   success + { cart_url }   on success
  *   error   + message string on failure
  */
+/**
+ * Parse + sanitise the INSIDE face of a double-sided armband from POST.
+ *
+ * The customiser sends the outside face as the usual flat bespoke_* fields
+ * (captured elsewhere in the $customisation array) and the inside face as a
+ * single JSON blob in bespoke_face_inside, plus its own uploaded badge +
+ * preview URLs. This mirrors the outside face's structure so the admin +
+ * cart renderers can treat both faces the same way.
+ *
+ * Returns null unless bespoke_face_mode === 'double', so it's a no-op for
+ * every other product and for single-face orders.
+ *
+ * @return array|null
+ */
+function bespoke_parse_inside_face() {
+    if ( ( $_POST['bespoke_face_mode'] ?? '' ) !== 'double' ) {
+        return null;
+    }
+
+    // $_POST is slashed by WP; unslash before json_decode so quotes/backslashes
+    // inside the blob survive.
+    $raw = json_decode( wp_unslash( $_POST['bespoke_face_inside'] ?? '' ), true );
+    if ( ! is_array( $raw ) ) {
+        $raw = [];
+    }
+
+    $hex = function( $v ) {
+        return sanitize_hex_color( is_string( $v ) ? $v : '' );
+    };
+    $grad = function( $g ) use ( $hex ) {
+        if ( is_array( $g ) && ! empty( $g['from'] ) && ! empty( $g['to'] ) ) {
+            $f = $hex( $g['from'] );
+            $t = $hex( $g['to'] );
+            if ( $f && $t ) {
+                return [ 'from' => $f, 'to' => $t ];
+            }
+        }
+        return null;
+    };
+
+    $text = ( isset( $raw['text'] )    && is_array( $raw['text'] ) )    ? $raw['text']    : [];
+    $col  = ( isset( $raw['colours'] ) && is_array( $raw['colours'] ) ) ? $raw['colours'] : [];
+    $fon  = ( isset( $raw['fonts'] )   && is_array( $raw['fonts'] ) )   ? $raw['fonts']   : [];
+    $siz  = ( isset( $raw['sizes'] )   && is_array( $raw['sizes'] ) )   ? $raw['sizes']   : [];
+
+    $patterns = [];
+    if ( isset( $col['patterns'] ) && is_array( $col['patterns'] ) ) {
+        foreach ( $col['patterns'] as $c ) {
+            $patterns[] = $hex( $c );
+        }
+    }
+    $pattern_gradients = [];
+    if ( isset( $col['pattern_gradients'] ) && is_array( $col['pattern_gradients'] ) ) {
+        foreach ( $col['pattern_gradients'] as $g ) {
+            $pattern_gradients[] = $grad( $g );
+        }
+    }
+    $hidden = [];
+    if ( isset( $raw['hidden_elements'] ) ) {
+        foreach ( explode( ',', (string) $raw['hidden_elements'] ) as $k ) {
+            $k = sanitize_key( $k );
+            if ( in_array( $k, [ 'badgeL', 'badgeR', 'nameL', 'nameR', 'numL', 'numR' ], true ) ) {
+                $hidden[] = $k;
+            }
+        }
+    }
+
+    return [
+        // Mirrors the outside face's $d['left'] so shared renderers can read
+        // $inside['left']['name'] the same way.
+        'left' => [
+            'name'   => sanitize_text_field( $text['name_left']   ?? '' ),
+            'number' => sanitize_text_field( $text['number_left'] ?? '' ),
+        ],
+        'right' => [
+            'name'   => sanitize_text_field( $text['name_right']   ?? '' ),
+            'number' => sanitize_text_field( $text['number_right'] ?? '' ),
+        ],
+        'design'  => sanitize_text_field( $raw['design'] ?? '' ),
+        'colours' => [
+            'background'        => $hex( $col['background']  ?? '' ),
+            'pattern'           => $hex( $col['pattern']     ?? '' ),
+            'patterns'          => $patterns,
+            'name_text'         => $hex( $col['name_text']   ?? '' ),
+            'number_text'       => $hex( $col['number_text'] ?? '' ),
+            'bg_gradient'       => $grad( $col['bg_gradient'] ?? null ),
+            'pattern_gradients' => $pattern_gradients,
+        ],
+        'fonts' => [
+            'name'   => sanitize_text_field( $fon['name']   ?? '' ),
+            'number' => sanitize_text_field( $fon['number'] ?? '' ),
+        ],
+        'badge' => [
+            'url'      => bespoke_is_local_upload_url( $_POST['bespoke_face_inside_badge_url'] ?? '' )
+                            ? esc_url_raw( $_POST['bespoke_face_inside_badge_url'] )
+                            : '',
+            'filename' => sanitize_file_name( $_POST['bespoke_face_inside_badge_filename'] ?? '' ),
+            // Badge sizing so the admin spec card's "Size" row isn't 0. Both
+            // faces share the same default placement, so x/y stay at 0.
+            'size'     => floatval( $siz['badge'] ?? 0 ),
+            'x'        => 0,
+            'y'        => 0,
+        ],
+        'hidden_elements' => $hidden,
+        'sizes' => [
+            'badge' => floatval( $siz['badge'] ?? 0 ),
+            'name'  => floatval( $siz['name']  ?? 0 ),
+            'num'   => floatval( $siz['num']   ?? 0 ),
+        ],
+        'preview_url' => bespoke_is_local_upload_url( $_POST['bespoke_face_inside_preview'] ?? '' )
+                            ? esc_url_raw( $_POST['bespoke_face_inside_preview'] )
+                            : '',
+    ];
+}
+
 function bespoke_handle_add_to_cart() {
 
     // ── Security ─────────────────────────────────────────────────────────────
@@ -709,6 +824,14 @@ function bespoke_handle_add_to_cart() {
                 }, [ 1, 2, 3, 4, 5, 6 ] ),
             ],
 
+            // ── Double-sided armband INSIDE face ─────────────────────────────
+            // The fields above describe the OUTSIDE face (primary design). For
+            // double-sided armbands the customer also designs a fully separate
+            // INSIDE face — its design arrives as one JSON blob plus its own
+            // uploaded badge + preview. null on every other product / when the
+            // customer didn't design a second face. See bespoke_parse_inside_face().
+            'face_inside' => bespoke_parse_inside_face(),
+
         ],
     ];
 
@@ -746,10 +869,28 @@ function bespoke_handle_add_to_cart() {
         } else {
             $match = bespoke_match_variation( $product, $customer_values );
             if ( ! $match ) {
+                // Self-diagnosing error — list which variation values
+                // the product actually has, so the admin can immediately
+                // see whether the customiser button label ("L") disagrees
+                // with the WC variation term ("Large") or vice versa.
+                // Without this, the admin has to open the product edit
+                // screen and hunt through the Variations tab.
+                $available = [];
+                foreach ( $product->get_available_variations() as $bv ) {
+                    foreach ( $bv['attributes'] as $av ) {
+                        if ( $av !== '' && ! in_array( $av, $available, true ) ) {
+                            $available[] = $av;
+                        }
+                    }
+                }
+                $avail_msg = ! empty( $available )
+                    ? ' Available variation values: ' . esc_html( implode( ', ', $available ) ) . '.'
+                    : ' This product has no variation values defined.';
                 wp_send_json_error(
                     'No matching product variation for "' .
                     esc_html( implode( ' / ', $customer_values ) ) .
-                    '". Set up a variation in WooCommerce that matches the customer\'s chosen options.'
+                    '".' . $avail_msg .
+                    ' Fix by either (a) matching the customiser size button label to a variation value, or (b) renaming the WC variation attribute value.'
                 );
             }
             $variation_id    = $match['id'];
@@ -923,11 +1064,14 @@ function bespoke_match_variation( $product, $customer_values ) {
  * matched variation explicitly allows Any — so we have to pick a
  * concrete value out of the attribute's options list.
  *
- * For each empty attribute we look up the product's attribute
- * definition, walk its options (term slugs + names for taxonomy
- * attributes, plain strings for per-product attributes) and return the
- * first option that bespoke_attr_values_match()es one of the customer's
- * values. Falls back to the first customer value when no match.
+ * For each empty attribute we look up the product's attribute definition,
+ * build the list of values THAT PRODUCT actually offers, and pick the one
+ * matching a customer choice — falling back to the product's first valid
+ * option for attributes the customiser never asks about (e.g. Pattern).
+ *
+ * Taxonomy attributes post the term SLUG but are matched against the slug
+ * OR name, and only terms assigned to this product count as valid. See the
+ * inline notes for why both of those matter.
  */
 function bespoke_resolve_variation_attributes( $product, $variation_attrs, $customer_values ) {
     $resolved = $variation_attrs;
@@ -946,48 +1090,73 @@ function bespoke_resolve_variation_attributes( $product, $variation_attrs, $cust
                 break;
             }
         }
-        // Compose the candidate option list from whichever attribute
-        // shape we're dealing with — taxonomy stores term IDs, custom
-        // stores strings.
-        $options = [];
+        // Build the candidate list. Each candidate carries BOTH:
+        //   'post'  — the exact value WC will accept for this attribute
+        //   'match' — the string(s) a customer value may look like
+        //
+        // These differ for taxonomy attributes: WC validates the posted
+        // value against the TERM SLUG, but a customer value ("Large")
+        // usually looks like the term NAME. Posting the name there fails
+        // with "Invalid value posted for <Attribute>", so we always post
+        // 'post' while comparing against 'match'.
+        //
+        // Equally important: only the terms ASSIGNED TO THIS PRODUCT are
+        // valid. WC checks against the product's own attribute options,
+        // NOT every term in the global taxonomy — so we read term IDs
+        // from get_options() rather than calling get_terms() on the whole
+        // taxonomy. (Picking a globally-valid but product-invalid term is
+        // exactly what produced "Invalid value posted for Pattern".)
+        $candidates = [];
         if ( $matched_def ) {
             if ( $matched_def->is_taxonomy() ) {
-                $terms = get_terms( [
-                    'taxonomy'   => $matched_def->get_name(),
-                    'hide_empty' => false,
-                ] );
-                if ( ! is_wp_error( $terms ) ) {
-                    foreach ( $terms as $t ) {
-                        $options[] = $t->slug;
-                        $options[] = $t->name;
+                $taxonomy = $matched_def->get_name();
+                foreach ( (array) $matched_def->get_options() as $term_id ) {
+                    $term = get_term( (int) $term_id, $taxonomy );
+                    if ( $term && ! is_wp_error( $term ) ) {
+                        $candidates[] = [
+                            'post'  => $term->slug,
+                            'match' => [ $term->slug, $term->name ],
+                        ];
                     }
                 }
             } else {
-                $options = $matched_def->get_options();
+                foreach ( (array) $matched_def->get_options() as $opt ) {
+                    $opt = (string) $opt;
+                    if ( $opt === '' ) continue;
+                    $candidates[] = [ 'post' => $opt, 'match' => [ $opt ] ];
+                }
             }
         }
         $picked = '';
         foreach ( $customer_values as $cv ) {
-            foreach ( $options as $opt ) {
-                if ( bespoke_attr_values_match( $cv, $opt ) ) {
-                    $picked = $opt;
-                    break 2;
+            foreach ( $candidates as $cand ) {
+                foreach ( $cand['match'] as $m ) {
+                    if ( bespoke_attr_values_match( $cv, $m ) ) {
+                        $picked = $cand['post'];
+                        break 3;
+                    }
                 }
             }
         }
         if ( $picked === '' ) {
             // Last-ditch fallback so the cart call doesn't bail with
             // "required field". Preferences:
-            //   1. First customer value (e.g. their chosen size) — even
-            //      if it didn't match an explicit option list.
-            //   2. First option from the parent attribute's options.
-            //      Covers products with no customiser-side choice axis
-            //      at all (e.g. corner flags configured as variable for
-            //      stock SKUs).
-            if ( ! empty( $customer_values ) ) {
+            //
+            //   1. This product's first valid option for the attribute.
+            //      Covers attributes UNRELATED to any customer choice —
+            //      e.g. a Pattern attribute (Cross / Stripes / Solid) on
+            //      a product where the customiser only collects size.
+            //      Falling back to a customer value here would post
+            //      "24cm" as the Pattern and WC would reject it.
+            //
+            //   2. First customer value. Only reached when the attribute
+            //      has NO options defined on the product at all, in which
+            //      case nothing we post can be valid — the customer value
+            //      at least makes WC's error name the real problem.
+            if ( ! empty( $candidates ) ) {
+                $picked = $candidates[0]['post'];
+            } elseif ( ! empty( $customer_values ) ) {
                 $picked = $customer_values[0];
-            } elseif ( ! empty( $options ) ) {
-                $picked = $options[0];
             }
         }
         $resolved[ $attr_key ] = $picked;

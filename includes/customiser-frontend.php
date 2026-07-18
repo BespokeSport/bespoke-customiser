@@ -269,6 +269,26 @@ function bespoke_render_customiser( $atts ) {
         ? bespoke_get_product_assets( $product_type )
         : [];
     if ( function_exists( 'bespoke_get_product_types' ) ) {
+        // Match designs registered for this product type. Types that
+        // inherit from a parent (double-sided armbands → armbands) also
+        // pick up the parent's registered designs, so the admin only has
+        // to register a design once against Captain Armbands.
+        $design_type_parent = function_exists( 'bespoke_inherit_product_type' )
+            ? bespoke_inherit_product_type( $product_type )
+            : $product_type;
+        if ( $design_type_parent !== $product_type ) {
+            $products_clause = [
+                'relation' => 'OR',
+                [ 'key' => '_bespoke_products', 'value' => '"' . $product_type . '"',        'compare' => 'LIKE' ],
+                [ 'key' => '_bespoke_products', 'value' => '"' . $design_type_parent . '"', 'compare' => 'LIKE' ],
+            ];
+        } else {
+            $products_clause = [
+                'key'     => '_bespoke_products',
+                'value'   => '"' . $product_type . '"',
+                'compare' => 'LIKE',
+            ];
+        }
         $q = new WP_Query( [
             'post_type'      => 'bespoke_design',
             'post_status'    => 'publish',
@@ -276,11 +296,7 @@ function bespoke_render_customiser( $atts ) {
             'meta_query'     => [
                 'relation' => 'AND',
                 [ 'key' => '_bespoke_active', 'value' => '1' ],
-                [
-                    'key'     => '_bespoke_products',
-                    'value'   => '"' . $product_type . '"',
-                    'compare' => 'LIKE',
-                ],
+                $products_clause,
             ],
             'meta_key' => '_bespoke_order',
             'orderby'  => 'meta_value_num',

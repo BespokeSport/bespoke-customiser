@@ -407,10 +407,111 @@ function bespoke_cart_item_thumbnail( $thumbnail, $cart_item, $cart_item_key ) {
         return $thumbnail;
     }
 
+    // Double-sided armbands carry a second preview for the inside face —
+    // stack both, labelled, so the cart shows everything being printed.
+    $inside_url = $cart_item['bespoke_customisation']['data']['face_inside']['preview_url'] ?? '';
+
+    if ( $inside_url ) {
+        $thumb = function( $url, $label ) {
+            return sprintf(
+                '<span style="display:block;">'
+                . '<img src="%s" alt="%s design" style="width:90px;height:90px;object-fit:contain;display:block;background:#fff;border-radius:6px;" />'
+                . '<span style="display:block;font-size:10px;line-height:1.4;text-align:center;opacity:.7;">%s</span>'
+                . '</span>',
+                esc_url( $url ), esc_attr( $label ), esc_html( $label )
+            );
+        };
+        return '<span style="display:inline-block;">'
+            . $thumb( $preview_url, 'Outside' )
+            . $thumb( $inside_url,  'Inside' )
+            . '</span>';
+    }
+
     return sprintf(
         '<img src="%s" alt="Your custom design" style="width:100px;height:100px;object-fit:contain;display:block;" />',
         esc_url( $preview_url )
     );
+}
+
+
+/* =========================================================================
+   2b. CUSTOMER-FACING ORDER SUMMARY
+   The order-received (thank-you) page and the customer emails only show
+   WooCommerce's own variation attributes (Pattern / Band Thickness / …) —
+   the customisation itself lives in the hidden _bespoke_customisation
+   blob. Append the same summary rows the customer saw in the cart, plus
+   the design preview image(s), so the confirmation actually shows what
+   they ordered.
+   ========================================================================= */
+
+add_action( 'woocommerce_order_item_meta_end', 'bespoke_order_item_customer_summary', 10, 4 );
+
+/**
+ * @param int                   $item_id
+ * @param WC_Order_Item_Product $item
+ * @param WC_Order              $order
+ * @param bool                  $plain_text  True in plain-text emails.
+ */
+function bespoke_order_item_customer_summary( $item_id, $item, $order, $plain_text = false ) {
+
+    if ( ! $item instanceof WC_Order_Item_Product ) {
+        return;
+    }
+    $raw = $item->get_meta( '_bespoke_customisation' );
+    if ( ! $raw ) {
+        return;
+    }
+    $customisation = json_decode( $raw, true );
+    if ( ! is_array( $customisation ) ) {
+        return;
+    }
+    $type = $customisation['type'] ?? '';
+    $d    = $customisation['data'] ?? [];
+
+    // Reuse the cart renderer so the confirmation matches what the
+    // customer saw in the cart (Design / Text / Club badge / Inside face…).
+    $renderer = 'bespoke_render_cart_' . $type;
+    $rows     = is_callable( $renderer ) ? call_user_func( $renderer, [], $d ) : [];
+
+    if ( $plain_text ) {
+        foreach ( $rows as $r ) {
+            echo "\n" . wp_strip_all_tags( $r['name'] ) . ': ' . wp_strip_all_tags( $r['value'] );
+        }
+        return;
+    }
+
+    echo '<div class="bespoke-order-summary" style="margin-top:10px;font-size:13px;line-height:1.7;">';
+    foreach ( $rows as $r ) {
+        echo '<div><span style="color:#888;">' . wp_kses_post( $r['name'] ) . ':</span> '
+            . '<strong>' . wp_kses_post( $r['value'] ) . '</strong></div>';
+    }
+
+    // Design preview(s). Double-sided armbands show Outside + Inside side
+    // by side; every other product shows its single preview, unlabelled.
+    $previews = [];
+    if ( ! empty( $d['preview_url'] ) ) {
+        $previews[] = [ 'url' => $d['preview_url'], 'label' => '' ];
+    }
+    if ( ! empty( $d['face_inside']['preview_url'] ) ) {
+        if ( $previews ) {
+            $previews[0]['label'] = 'Outside';
+        }
+        $previews[] = [ 'url' => $d['face_inside']['preview_url'], 'label' => 'Inside' ];
+    }
+    if ( $previews ) {
+        echo '<div style="margin-top:8px;">';
+        foreach ( $previews as $p ) {
+            echo '<span style="display:inline-block;vertical-align:top;margin:0 10px 6px 0;text-align:center;">'
+                . '<img src="' . esc_url( $p['url'] ) . '" alt="Design preview" '
+                . 'style="width:120px;height:120px;object-fit:contain;background:#fff;border-radius:8px;display:block;" />';
+            if ( $p['label'] !== '' ) {
+                echo '<span style="display:block;font-size:11px;margin-top:3px;opacity:.7;">' . esc_html( $p['label'] ) . '</span>';
+            }
+            echo '</span>';
+        }
+        echo '</div>';
+    }
+    echo '</div>';
 }
 
 
@@ -1232,6 +1333,52 @@ function bespoke_render_admin_armbands( $d, $item ) {
         'show_variant'  => 'Band thickness',
         'show_text'     => [ 'left_name' => 'Slogan / name' ],
     ] );
+}
+
+
+/* =========================================================================
+   DOUBLE-SIDED CAPTAIN ARMBANDS — cart + admin renderers
+   Two independent armband designs in one product: the primary $d is the
+   OUTSIDE face; $d['face_inside'] is the fully separate INSIDE face (same
+   shape as $d, produced by bespoke_parse_inside_face()).
+   ========================================================================= */
+
+function bespoke_render_cart_double_sided_armbands( $item_data, $d ) {
+    // Reuse the single-armband cart rows for the OUTSIDE face…
+    $item_data = bespoke_render_cart_armbands( $item_data, $d );
+    // …and flag that a separate inside design rides along.
+    if ( ! empty( $d['face_inside'] ) && is_array( $d['face_inside'] ) ) {
+        $inside = $d['face_inside'];
+        $item_data[] = [
+            'name'  => 'Inside face',
+            'value' => ! empty( $inside['left']['name'] )
+                        ? esc_html( $inside['left']['name'] ) . ' — separate design'
+                        : 'Separate design',
+        ];
+    }
+    return $item_data;
+}
+
+function bespoke_render_admin_double_sided_armbands( $d, $item ) {
+    $band = '<div style="font-size:11px;font-weight:700;color:#2E7D32;text-transform:uppercase;letter-spacing:.5px;margin:10px 0 -6px;">%s <span style="color:#999;font-weight:600;text-transform:none;letter-spacing:0;">%s</span></div>';
+
+    // OUTSIDE face — the primary design, rendered as a normal armband card.
+    printf( $band, 'Outside face', '(faces out)' );
+    bespoke_render_admin_armbands( $d, $item );
+
+    // INSIDE face — a fully separate design. It shares the outside's structure,
+    // so the generic card renders it directly (including its own preview image).
+    $inside = $d['face_inside'] ?? null;
+    if ( is_array( $inside ) ) {
+        printf( $band, 'Inside face', '(against the arm)' );
+        echo bespoke_render_admin_generic_card( 'Captain Armband — Inside', $inside, [
+            'size_label' => 'Diameter',
+            'show_text'  => [ 'left_name' => 'Slogan / name' ],
+        ] );
+    } else {
+        printf( $band, 'Inside face', '(against the arm)' );
+        echo '<p style="font-size:12px;color:#aaa;margin:8px 0;">No separate inside design was submitted.</p>';
+    }
 }
 
 
