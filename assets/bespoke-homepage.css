@@ -238,6 +238,22 @@ body .elementor-element-d5d3fd2 .elementor-heading-title.elementor-size-xl,
 }
 
 
+/* --------------------------------------------------------------------------
+   "Key Signings" product grid — 2-up on mobile
+   The Elementor WooCommerce Products widget (elementor-element-6f43d27) stays
+   3 columns on phones, squashing each card to ~106px and crushing the text.
+   Drop to 2 columns ≤767px (≈167px cards at 385px — verified in a real phone-
+   width iframe; comfortable, and keeps 14 products to 7 rows rather than 14).
+   NB: this widget also has a native responsive Columns control in Elementor
+   (Products widget → Layout → Columns → mobile device icon) if you ever want
+   to switch it to 1 yourself. -------------------------------------------- */
+@media (max-width: 767px) {
+  .elementor-element-6f43d27 ul.products.elementor-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+
 /* ==========================================================================
    END · Bespoke Sport homepage styling
    ========================================================================== */
