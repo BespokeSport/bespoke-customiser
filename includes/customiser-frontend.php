@@ -85,6 +85,20 @@ function bespoke_render_customiser( $atts ) {
         }
     }
 
+    // Product-type inheritance map for the front-end. A custom / child type
+    // (referee_armbands, or any admin-added type) collapses to the BASE type
+    // whose behaviour it clones, so bespokeBaseType() in the JS lights up the
+    // right step config / geometry / 3D mirror. Only differing entries appear.
+    $bespoke_inherit_map = [];
+    foreach ( array_keys( bespoke_get_product_types() ) as $bt ) {
+        if ( function_exists( 'bespoke_inherit_product_type' ) ) {
+            $base = bespoke_inherit_product_type( $bt );
+            if ( $base !== $bt ) {
+                $bespoke_inherit_map[ $bt ] = $base;
+            }
+        }
+    }
+
     ob_start();
     ?>
     <script>
@@ -97,6 +111,10 @@ function bespoke_render_customiser( $atts ) {
     window.BespokeConfig = {
         productId:   <?php echo intval( $product_id ); ?>,
         productType: '<?php echo esc_js( $product_type ); ?>',
+        // Custom / child types → the base type whose behaviour they clone.
+        // Read by bespokeBaseType() so referee_armbands (and any admin-added
+        // type) behaves like the product it inherits from.
+        inheritMap:  <?php echo wp_json_encode( $bespoke_inherit_map ); ?>,
         price:       '£<?php echo esc_js( number_format( $price, 2 ) ); ?>',
         ajaxUrl:     '<?php echo esc_js( $ajax_url ); ?>',
         nonce:       '<?php echo esc_js( $nonce ); ?>',

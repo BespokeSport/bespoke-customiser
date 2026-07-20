@@ -64,12 +64,13 @@ function bespoke_register_design_post_type() {
    ========================================================================= */
 
 function bespoke_get_product_types() {
-    return [
+    $core = [
         'shinpads'           => 'Shin Pads',
         'gripsocks'          => 'Grip Socks',
         'armbands'           => 'Captain Armbands',
         'double_sided_armbands' => 'Double Sided Captain Armbands',
         'armbands_predesign' => 'Pre-designed Armbands',
+        'referee_armbands'   => 'Referee Armbands',
         'shinpad_sleeves'    => 'Shin Pad Sleeves',
         'bottles'            => 'Bottles',
         'pennant'            => 'Pennant',
@@ -78,6 +79,44 @@ function bespoke_get_product_types() {
         'award_plate'        => 'Plate Trophy Award',
         'award_glassblock'   => 'Glassblock Trophy',
         'player_cards'       => 'Player Cards',
+    ];
+    // Merge in admin-managed types added via Product Setup → "Add a product
+    // type". A custom key never overrides a core one.
+    foreach ( bespoke_get_custom_product_types() as $key => $cfg ) {
+        if ( ! isset( $core[ $key ] ) && ! empty( $cfg['label'] ) ) {
+            $core[ $key ] = $cfg['label'];
+        }
+    }
+    return $core;
+}
+
+/**
+ * Admin-managed ("self-serve") product types added on the Product Setup page.
+ * Stored as option 'bespoke_customiser_custom_product_types':
+ *   [ 'team_mug' => [ 'label' => 'Team Mug', 'inherits' => 'bottles' ], … ]
+ * 'inherits' names an existing type whose customiser BEHAVIOUR the new type
+ * clones (see bespoke_inherit_product_type() and the front-end inheritMap);
+ * '' means the standard "upload a design + add text" flow.
+ */
+function bespoke_get_custom_product_types() {
+    $custom = get_option( 'bespoke_customiser_custom_product_types', [] );
+    return is_array( $custom ) ? $custom : [];
+}
+
+/**
+ * The base-behaviour options offered by the "Add a product type" tool. Each
+ * new type clones one of these; '' is the plain shin-pad-style flow. Kept to a
+ * curated set of clonable BASE behaviours (not one-off types like awards /
+ * player cards / double-sided, which carry product-specific code).
+ */
+function bespoke_get_inheritable_behaviours() {
+    return [
+        ''             => 'Standard — upload a design + add text',
+        'armbands'     => 'Curved band — like Captain Armbands (3D band, badge + text)',
+        'bottles'      => 'Bottle / cup wrap',
+        'shinpad_sleeves' => 'Sleeve — like Shin Pad Sleeves',
+        'pennant'      => 'Pennant',
+        'corner_flags' => 'Corner flags',
     ];
 }
 

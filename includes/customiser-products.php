@@ -185,7 +185,19 @@ add_action( 'wp_ajax_bespoke_upload_product_asset', function() {
 function bespoke_inherit_product_type( $product_type ) {
     $parents = [
         'double_sided_armbands' => 'armbands',
+        // Referee armbands are physically a captain armband — reuse the whole
+        // band flow (steps, 3D mirror, geometry) and its artwork, which the
+        // admin can override by uploading referee-specific artwork below.
+        'referee_armbands'      => 'armbands',
     ];
+    // Admin-created ("self-serve") types carry their own inherited base type.
+    if ( function_exists( 'bespoke_get_custom_product_types' ) ) {
+        foreach ( bespoke_get_custom_product_types() as $key => $cfg ) {
+            if ( ! isset( $parents[ $key ] ) && ! empty( $cfg['inherits'] ) ) {
+                $parents[ $key ] = $cfg['inherits'];
+            }
+        }
+    }
     return isset( $parents[ $product_type ] ) ? $parents[ $product_type ] : $product_type;
 }
 
@@ -282,6 +294,39 @@ function bespoke_render_product_setup_page() {
         }
     }
 
+    // Handle "Add a product type" (self-serve custom type).
+    if ( isset( $_POST['bespoke_add_type'] ) && check_admin_referer( 'bespoke_add_type_action' ) ) {
+        $label      = isset( $_POST['new_type_label'] )    ? sanitize_text_field( wp_unslash( $_POST['new_type_label'] ) ) : '';
+        $inherits   = isset( $_POST['new_type_inherits'] ) ? sanitize_key( $_POST['new_type_inherits'] )                   : '';
+        $key        = sanitize_key( str_replace( '-', '_', sanitize_title( $label ) ) );
+        $behaviours = function_exists( 'bespoke_get_inheritable_behaviours' ) ? bespoke_get_inheritable_behaviours() : [ '' => '' ];
+        $custom     = bespoke_get_custom_product_types();
+
+        if ( $label === '' || $key === '' ) {
+            add_settings_error( 'bespoke_product_assets', 'addtype', 'Please enter a name for the new product type.', 'error' );
+        } elseif ( $inherits !== '' && ! array_key_exists( $inherits, $behaviours ) ) {
+            add_settings_error( 'bespoke_product_assets', 'addtype', 'Please choose a valid "behaves like" option.', 'error' );
+        } elseif ( in_array( $key, array_keys( bespoke_get_product_types() ), true ) ) {
+            add_settings_error( 'bespoke_product_assets', 'addtype', 'A product type with that name already exists — pick a different name.', 'error' );
+        } else {
+            $custom[ $key ] = [ 'label' => $label, 'inherits' => $inherits ];
+            update_option( 'bespoke_customiser_custom_product_types', $custom );
+            add_settings_error( 'bespoke_product_assets', 'addtype', 'Added "' . esc_html( $label ) . '". Upload its artwork in the table below, then set it on the product (Product data → BEspoke customiser).', 'updated' );
+        }
+    }
+
+    // Handle "Remove" of a custom product type. (Uploaded artwork is left on
+    // disk — harmless if unused, and recoverable if the type is re-added.)
+    if ( isset( $_POST['bespoke_delete_type'] ) && check_admin_referer( 'bespoke_delete_type_action' ) ) {
+        $key    = isset( $_POST['type_key'] ) ? sanitize_key( $_POST['type_key'] ) : '';
+        $custom = bespoke_get_custom_product_types();
+        if ( $key && isset( $custom[ $key ] ) ) {
+            unset( $custom[ $key ] );
+            update_option( 'bespoke_customiser_custom_product_types', $custom );
+            add_settings_error( 'bespoke_product_assets', 'deltype', 'Product type removed.', 'updated' );
+        }
+    }
+
     $product_types = function_exists( 'bespoke_get_product_types' ) ? bespoke_get_product_types() : [];
     $assets        = get_option( 'bespoke_customiser_product_assets', [] );
     $upload_nonce  = wp_create_nonce( 'bespoke_product_asset_upload' );
@@ -296,6 +341,45 @@ function bespoke_render_product_setup_page() {
 
         <p style="color:#666;"><strong>Background (Alt)</strong> is optional — used for products that ship in two variants (e.g. the Pennant comes With Frill or No Frill). When this is set on the Pennant product specifically, the customiser shows a Frill / No Frill toggle to the customer and renders whichever background they pick. Leave blank for products that only have one background.</p>
         <p style="color:#666;"><strong>Mask (on top, optional)</strong> sits ABOVE the badge and text layers. Use a PNG of "the background minus the product silhouette" — i.e. opaque everywhere except where the band / pad shape is. Anything the customer drags outside the band gets covered by the mask, creating the illusion that the badge wraps around the back. Provide a matching <strong>Mask (Alt)</strong> if you've set a Background (Alt) — otherwise the same mask is used for both variants and the cut-out won't match the alt band size.</p>
+
+        <div style="background:#fff;border:1px solid #c3c4c7;border-left:4px solid #5DCAA5;padding:14px 18px;margin:18px 0;border-radius:4px;max-width:900px;">
+            <h2 style="margin-top:0;">➕ Add a product type</h2>
+            <p style="margin-top:4px;">Create a new customisable product yourself: give it a name, pick which existing product it should <strong>behave like</strong>, then click Add. It'll appear in the table below — upload its artwork there, then set it on the product's edit page (<em>Product data → BEspoke customiser</em>).</p>
+            <p style="color:#666;margin-top:4px;">Best for simple products (bands, mugs, flags). Genuinely new shapes or behaviours — new 3D forms, card layouts, curved trophy text — still need a developer.</p>
+            <form method="post" style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap;margin-top:10px;">
+                <?php wp_nonce_field( 'bespoke_add_type_action' ); ?>
+                <label>Product name<br>
+                    <input type="text" name="new_type_label" placeholder="e.g. Referee Armbands" style="min-width:240px;" required>
+                </label>
+                <label>Behaves like<br>
+                    <select name="new_type_inherits" style="min-width:280px;">
+                        <?php foreach ( ( function_exists( 'bespoke_get_inheritable_behaviours' ) ? bespoke_get_inheritable_behaviours() : [ '' => 'Standard' ] ) as $bval => $blabel ) : ?>
+                            <option value="<?php echo esc_attr( $bval ); ?>"><?php echo esc_html( $blabel ); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
+                <input type="submit" name="bespoke_add_type" class="button button-primary" value="Add product type">
+            </form>
+            <?php $custom_types = bespoke_get_custom_product_types(); if ( ! empty( $custom_types ) ) : ?>
+                <p style="margin:14px 0 4px;"><strong>Types you've added:</strong></p>
+                <ul style="margin:0;">
+                    <?php foreach ( $custom_types as $ckey => $ccfg ) :
+                        $binfo = ! empty( $ccfg['inherits'] ) ? ( 'behaves like <code>' . esc_html( $ccfg['inherits'] ) . '</code>' ) : 'standard flow';
+                        ?>
+                        <li style="margin-bottom:5px;">
+                            <strong><?php echo esc_html( isset( $ccfg['label'] ) ? $ccfg['label'] : $ckey ); ?></strong>
+                            <code style="font-size:11px;color:#666;"><?php echo esc_html( $ckey ); ?></code>
+                            <span style="color:#666;"> — <?php echo wp_kses( $binfo, [ 'code' => [] ] ); ?></span>
+                            <form method="post" style="display:inline;margin-left:8px;" onsubmit="return confirm('Remove this product type? Any uploaded artwork is kept.');">
+                                <?php wp_nonce_field( 'bespoke_delete_type_action' ); ?>
+                                <input type="hidden" name="type_key" value="<?php echo esc_attr( $ckey ); ?>">
+                                <input type="submit" name="bespoke_delete_type" class="button button-link-delete" value="Remove">
+                            </form>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+            <?php endif; ?>
+        </div>
 
         <style>
             /* Row tint for products that have a Background uploaded — at-a-glance
