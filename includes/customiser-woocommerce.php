@@ -1443,8 +1443,15 @@ function bespoke_render_admin_double_sided_armbands( $d, $item ) {
    ========================================================================= */
 
 function bespoke_render_cart_pennant( $item_data, $d ) {
-    // Style is shown by WC's own variation attribute display for
-    // variable-product pennants. We just add the design + text + badge.
+    // Frill choice, from the customiser's "Pennant style" toggle. Added
+    // explicitly rather than left to WC's variation display: the pennant is a
+    // SIMPLE product with no variation attributes, so WC surfaces nothing and
+    // the frill choice would never reach the customer's cart line OR their
+    // confirmation email (which reuses this renderer).
+    $item_data[] = [
+        'name'  => 'Style',
+        'value' => esc_html( bespoke_format_bg_variant( $d ) ),
+    ];
     if ( ! empty( $d['design'] ) ) {
         $item_data[] = [ 'name' => 'Design', 'value' => esc_html( $d['design'] ) ];
     }
