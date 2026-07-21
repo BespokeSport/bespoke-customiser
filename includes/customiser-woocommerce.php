@@ -570,12 +570,19 @@ function bespoke_display_cart_item_data( $item_data, $cart_item ) {
  */
 function bespoke_resolve_display_renderer( $prefix, $type ) {
     $type = (string) $type;
+    // Cleared unless we actually fall back — read by
+    // bespoke_render_admin_generic_card() to head the card with the REAL
+    // product name. Types with their own renderer keep their own heading.
+    $GLOBALS['bespoke_render_fallback_type'] = '';
     if ( $type === '' ) {
         return null;
     }
     if ( is_callable( $prefix . $type ) ) {
         return $prefix . $type;
     }
+    // Borrowing another type's renderer from here on — remember whose order
+    // this really is, so the spec card isn't headed with the lender's name.
+    $GLOBALS['bespoke_render_fallback_type'] = $type;
     if ( function_exists( 'bespoke_inherit_product_type' ) ) {
         $base = bespoke_inherit_product_type( $type );
         if ( $base && $base !== $type && is_callable( $prefix . $base ) ) {
@@ -1784,6 +1791,19 @@ function bespoke_render_admin_player_cards( $d, $item ) {
                     Only rows whose value is non-empty render.
    ========================================================================= */
 function bespoke_render_admin_generic_card( $product_label, $d, $opts = [] ) {
+
+    // When this type is BORROWING another type's renderer (referee armbands
+    // using the captain-armband card, or anything added via "Add a product
+    // type"), head the card with the real product name — otherwise a referee
+    // order reads "CAPTAIN ARMBAND SPECIFICATION" and production can pull the
+    // wrong item. Types with their own renderer are untouched.
+    $fallback_type = $GLOBALS['bespoke_render_fallback_type'] ?? '';
+    if ( $fallback_type && function_exists( 'bespoke_get_product_types' ) ) {
+        $all_types = bespoke_get_product_types();
+        if ( ! empty( $all_types[ $fallback_type ] ) ) {
+            $product_label = $all_types[ $fallback_type ];
+        }
+    }
 
     $row = function( $label, $value ) {
         if ( $value === '' || $value === null ) $value = '—';
