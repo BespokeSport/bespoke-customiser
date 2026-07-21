@@ -1075,13 +1075,38 @@ function bespoke_match_variation( $product, $customer_values ) {
     // on staging today) — WC's "Any" semantic says the customer's
     // value is valid, so the customiser accepts and stores it via
     // resolve_variation_attributes() when it commits.
-    $allow_any = true;
+    // Returning the FIRST loose match is wrong when SEVERAL variations match
+    // loosely: an "Any" attribute happily swallows a value that should have
+    // matched a specific one. On referee bands (Length is "Any" on every
+    // variation, so pass 1 can never succeed) the customer's "8cm band" was
+    // absorbed by the Any-Length of the 5cm variation — so an 8cm order
+    // silently became a 5cm one, at the 5cm price. Instead, score each loose
+    // match by how many customer values matched a SPECIFIC (non-Any)
+    // attribute and keep the best, so the variation that genuinely carries
+    // the customer's choice wins. With only one loose match this is
+    // identical to the old behaviour.
+    $allow_any  = true;
+    $best       = null;
+    $best_score = -1;
     foreach ( $variations as $v ) {
         $match = $try( $v );
-        if ( $match ) return $match;
+        if ( ! $match ) continue;
+        $score = 0;
+        foreach ( $customer_values as $cust ) {
+            foreach ( $v['attributes'] as $attr_value ) {
+                if ( $attr_value !== '' && bespoke_attr_values_match( $cust, $attr_value ) ) {
+                    $score++;
+                    break;
+                }
+            }
+        }
+        if ( $score > $best_score ) {
+            $best_score = $score;
+            $best       = $match;
+        }
     }
 
-    return null;
+    return $best;
 }
 
 /**
