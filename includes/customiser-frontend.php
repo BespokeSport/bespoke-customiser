@@ -99,6 +99,17 @@ function bespoke_render_customiser( $atts ) {
         }
     }
 
+    // Does THIS product type have placement saved of its OWN, or is it
+    // inheriting a parent's? Referee bands inherit the captain armband's saved
+    // placement, but need their own smaller default text size — so the JS only
+    // applies that default when the geometry is inherited, letting a real
+    // "Save placement" on referee bands win.
+    $bespoke_geom_all = get_option( 'bespoke_customiser_product_geometry', [] );
+    $bespoke_geometry_is_own = ( is_array( $bespoke_geom_all )
+        && isset( $bespoke_geom_all[ $product_type ] )
+        && is_array( $bespoke_geom_all[ $product_type ] )
+        && ! empty( $bespoke_geom_all[ $product_type ] ) );
+
     ob_start();
     ?>
     <script>
@@ -126,6 +137,9 @@ function bespoke_render_customiser( $atts ) {
         sizes:       <?php echo wp_json_encode( $cust_sizes ); ?>,
         // Per-product placement geometry + admin "Save placement" editor wiring
         geometry:        <?php echo wp_json_encode( function_exists( 'bespoke_get_product_geometry' ) ? bespoke_get_product_geometry( $product_type ) : [] ); ?>,
+        // true = this product type has its OWN saved placement; false = it's
+        // inheriting a parent's (see the referee-band text defaults in the JS).
+        geometryIsOwn:   <?php echo $bespoke_geometry_is_own ? 'true' : 'false'; ?>,
         canEditGeometry: <?php echo current_user_can( 'manage_options' ) ? 'true' : 'false'; ?>,
         adminAjaxUrl:    '<?php echo esc_js( admin_url( 'admin-ajax.php' ) ); ?>',
         geometryNonce:   '<?php echo esc_js( wp_create_nonce( 'bespoke_save_geometry' ) ); ?>',
