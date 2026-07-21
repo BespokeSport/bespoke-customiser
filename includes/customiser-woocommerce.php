@@ -470,8 +470,8 @@ function bespoke_order_item_customer_summary( $item_id, $item, $order, $plain_te
 
     // Reuse the cart renderer so the confirmation matches what the
     // customer saw in the cart (Design / Text / Club badge / Inside face…).
-    $renderer = 'bespoke_render_cart_' . $type;
-    $rows     = is_callable( $renderer ) ? call_user_func( $renderer, [], $d ) : [];
+    $renderer = bespoke_resolve_display_renderer( 'bespoke_render_cart_', $type );
+    $rows     = $renderer ? call_user_func( $renderer, [], $d ) : [];
 
     if ( $plain_text ) {
         foreach ( $rows as $r ) {
@@ -537,14 +537,52 @@ function bespoke_display_cart_item_data( $item_data, $cart_item ) {
     $customisation = $cart_item['bespoke_customisation'];
     $type          = $customisation['type'] ?? '';
 
-    // Route to the correct renderer for this product type
-    $renderer = 'bespoke_render_cart_' . $type;
+    // Route to the correct renderer for this product type (falling back to the
+    // inherited base type, then the standard renderer — see the resolver).
+    $renderer = bespoke_resolve_display_renderer( 'bespoke_render_cart_', $type );
 
-    if ( is_callable( $renderer ) ) {
+    if ( $renderer ) {
         $item_data = call_user_func( $renderer, $item_data, $customisation['data'] );
     }
 
     return $item_data;
+}
+
+/**
+ * Pick the display renderer for a product type.
+ *
+ * Renderers are named bespoke_render_cart_{type} / bespoke_render_admin_{type}.
+ * Child types (referee_armbands) and anything added via Product Setup →
+ * "Add a product type" have no renderer of their own, and the dispatchers used
+ * to simply skip when the exact function was missing — so the cart line, the
+ * confirmation email AND the admin order screen showed NOTHING for them: no
+ * design, colours, text or badge, i.e. an order you couldn't print.
+ *
+ * Resolve in the same order the front end resolves behaviour:
+ *   1. the type's own renderer
+ *   2. the base type it inherits (referee_armbands → armbands)
+ *   3. the standard shin-pad renderer — which is what a type with no declared
+ *      base already renders as in the customiser, so the two stay consistent.
+ *
+ * @param  string $prefix 'bespoke_render_cart_' or 'bespoke_render_admin_'.
+ * @param  string $type   The stored customisation type.
+ * @return callable|null
+ */
+function bespoke_resolve_display_renderer( $prefix, $type ) {
+    $type = (string) $type;
+    if ( $type === '' ) {
+        return null;
+    }
+    if ( is_callable( $prefix . $type ) ) {
+        return $prefix . $type;
+    }
+    if ( function_exists( 'bespoke_inherit_product_type' ) ) {
+        $base = bespoke_inherit_product_type( $type );
+        if ( $base && $base !== $type && is_callable( $prefix . $base ) ) {
+            return $prefix . $base;
+        }
+    }
+    return is_callable( $prefix . 'shinpads' ) ? $prefix . 'shinpads' : null;
 }
 
 /**
@@ -699,9 +737,9 @@ function bespoke_display_admin_order_meta( $item_id, $item, $product ) {
     }
 
     $type     = $customisation['type'] ?? '';
-    $renderer = 'bespoke_render_admin_' . $type;
+    $renderer = bespoke_resolve_display_renderer( 'bespoke_render_admin_', $type );
 
-    if ( is_callable( $renderer ) ) {
+    if ( $renderer ) {
         call_user_func( $renderer, $customisation['data'], $item );
     }
 }
