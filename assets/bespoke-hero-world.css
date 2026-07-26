@@ -1,0 +1,219 @@
+/* ==========================================================================
+   BEspoke Sport · Scroll-driven "World" hero
+   --------------------------------------------------------------------------
+   Styles for the [bespoke_hero_world] shortcode (includes/customiser-hero-world.php).
+
+   Structure:
+     .bs-world            tall scroll track — its height IS the journey length
+       .bs-world-sticky   the pinned 100vh viewport
+         canvas           the rotating world (91 AVIF frames)
+         .bs-world-veil   dark gradient so the left-hand copy stays readable
+         .bs-world-copy   the four product cards (one visible at a time)
+         .bs-world-dots   progress dots
+   ========================================================================== */
+
+.bs-world{
+	position: relative;
+	/* --bs-world-scroll is set inline by the shortcode's `scroll` attribute.
+	   Taller = the world turns less per wheel-click (gentler). */
+	height: var(--bs-world-scroll, 1000vh);
+	background: #0D0D0D;
+}
+
+.bs-world-sticky{
+	position: sticky;
+	top: 0;
+	height: 100vh;
+	overflow: hidden;
+	background: #0D0D0D;
+}
+
+.bs-world-canvas,
+.bs-world-poster{
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	display: block;
+	object-fit: cover;
+}
+
+/* Dark wash from the left so white type stays legible over the pitch and
+   sky, while the right-hand side (where the product sits) stays clean. */
+.bs-world-veil{
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	background: linear-gradient(90deg,
+		rgba(13,13,13,.93) 0%,
+		rgba(13,13,13,.78) 26%,
+		rgba(13,13,13,.18) 48%,
+		transparent 62%);
+}
+
+/* --------------------------------------------------------------------------
+   COPY — all four cards stack in the same spot; only the active one shows.
+   -------------------------------------------------------------------------- */
+.bs-world-copy{
+	position: absolute;
+	left: 6vw;
+	top: 50%;
+	transform: translateY(-50%);
+	max-width: min(38vw, 520px);
+	z-index: 3;
+}
+
+.bs-world-eyebrow{
+	font-family: 'Anton', sans-serif;
+	font-size: 12px;
+	letter-spacing: .28em;
+	color: #5DCAA5;
+	margin-bottom: 14px;
+}
+
+.bs-world-card{
+	position: absolute;
+	left: 0;
+	top: 0;
+	width: 100%;
+	opacity: 0;
+	transform: translateY(26px);
+	pointer-events: none;
+	transition: opacity .5s ease, transform .5s ease;
+}
+.bs-world-card.on{
+	opacity: 1;
+	transform: translateY(0);
+	pointer-events: auto;
+}
+
+.bs-world-card h2{
+	font-family: 'Anton', sans-serif;
+	font-weight: 400;
+	font-size: clamp(38px, 4.6vw, 74px);
+	line-height: .95;
+	text-transform: uppercase;
+	color: #fff;
+	margin: 0 0 16px;
+}
+.bs-world-card h2 span{ color: #5DCAA5; }
+
+.bs-world-card p{
+	font-size: 16px;
+	line-height: 1.65;
+	color: #c9c9c9;
+	margin: 0 0 20px;
+	max-width: 420px;
+}
+
+.bs-world-price{
+	font-family: 'Anton', sans-serif;
+	font-size: 13px;
+	letter-spacing: .16em;
+	color: #8a8a8a;
+	margin-bottom: 22px;
+}
+.bs-world-price b{ color: #fff; font-size: 19px; }
+
+.bs-world-btn{
+	display: inline-block;
+	background: #5DCAA5;
+	color: #04342C;
+	font-family: 'Anton', sans-serif;
+	letter-spacing: .14em;
+	font-size: 14px;
+	padding: 16px 34px;
+	text-decoration: none;
+	text-transform: uppercase;
+	border-radius: 2px;
+	transition: transform .2s ease, background .2s ease;
+}
+.bs-world-btn:hover{ transform: translateY(-2px); background: #6fd8b4; color: #04342C; }
+
+/* --------------------------------------------------------------------------
+   PROGRESS
+   -------------------------------------------------------------------------- */
+.bs-world-dots{
+	position: absolute;
+	right: 3vw;
+	top: 50%;
+	transform: translateY(-50%);
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+	z-index: 4;
+}
+.bs-world-dot{
+	width: 9px; height: 9px;
+	border-radius: 50%;
+	background: #3a3a3a;
+	transition: background .35s ease, transform .35s ease;
+}
+.bs-world-dot.on{ background: #5DCAA5; transform: scale(1.5); }
+
+.bs-world-hint{
+	position: absolute;
+	left: 50%; bottom: 34px;
+	transform: translateX(-50%);
+	font-size: 11px;
+	letter-spacing: .24em;
+	text-transform: uppercase;
+	color: #5a5a5a;
+	z-index: 4;
+	transition: opacity .4s ease;
+}
+.bs-world-hint.gone{ opacity: 0; }
+
+.bs-world-meter{
+	position: absolute;
+	left: 0; bottom: 0;
+	height: 2px;
+	width: 0;
+	background: #5DCAA5;
+	z-index: 5;
+}
+
+/* --------------------------------------------------------------------------
+   REDUCED MOTION — no journey. Collapse to a single screen showing the first
+   frame, with the product cards laid out as ordinary stacked content.
+   -------------------------------------------------------------------------- */
+.bs-world.bs-world-static{ height: auto; }
+.bs-world.bs-world-static .bs-world-sticky{ position: relative; height: auto; min-height: 100vh; padding: 12vh 0; }
+.bs-world.bs-world-static .bs-world-copy{ position: relative; top: auto; transform: none; max-width: none; padding-right: 6vw; }
+.bs-world.bs-world-static .bs-world-card{ position: relative; opacity: 1; transform: none; pointer-events: auto; margin-bottom: 46px; }
+.bs-world.bs-world-static .bs-world-dots,
+.bs-world.bs-world-static .bs-world-hint,
+.bs-world.bs-world-static .bs-world-meter{ display: none; }
+
+/* --------------------------------------------------------------------------
+   MOBILE — copy moves to the top over a vertical wash, dots go horizontal.
+   NB: a dedicated portrait render is planned; this makes the desktop
+   sequence behave acceptably until it lands.
+   -------------------------------------------------------------------------- */
+@media (max-width: 900px){
+	.bs-world-veil{
+		background: linear-gradient(180deg,
+			rgba(13,13,13,.94) 0%,
+			rgba(13,13,13,.55) 38%,
+			transparent 62%);
+	}
+	.bs-world-copy{
+		left: 6vw; right: 6vw;
+		top: 8vh;
+		transform: none;
+		max-width: none;
+	}
+	.bs-world-card h2{ font-size: 34px; }
+	.bs-world-card p{ font-size: 14px; max-width: none; }
+	.bs-world-btn{ padding: 14px 26px; font-size: 13px; }
+	.bs-world-dots{
+		right: auto; left: 50%;
+		top: auto; bottom: 68px;
+		transform: translateX(-50%);
+		flex-direction: row;
+	}
+}
+
+/* ==========================================================================
+   END · World hero
+   ========================================================================== */
