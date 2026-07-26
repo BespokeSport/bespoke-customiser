@@ -51,17 +51,25 @@
 	object-fit: cover;
 }
 
-/* Dark wash from the left so white type stays legible over the pitch and
-   sky, while the right-hand side (where the product sits) stays clean. */
+/* Dark wash behind the LEFT-HAND COPY ONLY.
+   The render is the hero — the wash exists purely so white type stays
+   readable over sky and grass, and it must be completely gone before the
+   products. It fades out by ~46% of the width; the copy column ends around
+   44% (left:6vw + max-width 38vw), and the products begin right after. An
+   earlier version ran to 62% and visibly dulled them.
+
+   --bs-world-veil scales the whole thing (shortcode `veil` attribute):
+   1 = as designed, 0.5 = half strength, 0 = none at all. */
 .bs-world-veil{
 	position: absolute;
 	inset: 0;
 	pointer-events: none;
 	background: linear-gradient(90deg,
-		rgba(13,13,13,.93) 0%,
-		rgba(13,13,13,.78) 26%,
-		rgba(13,13,13,.18) 48%,
-		transparent 62%);
+		rgba(13,13,13, calc(0.95 * var(--bs-world-veil, 1)))  0%,
+		rgba(13,13,13, calc(0.90 * var(--bs-world-veil, 1))) 20%,
+		rgba(13,13,13, calc(0.60 * var(--bs-world-veil, 1))) 32%,
+		rgba(13,13,13, calc(0.16 * var(--bs-world-veil, 1))) 40%,
+		rgba(13,13,13, 0) 46%);
 }
 
 /* --------------------------------------------------------------------------
@@ -204,11 +212,14 @@
    sequence behave acceptably until it lands.
    -------------------------------------------------------------------------- */
 @media (max-width: 900px){
+	/* Copy sits at the top on mobile, so the wash runs vertically — and, as on
+	   desktop, clears before the product rather than washing over it. */
 	.bs-world-veil{
 		background: linear-gradient(180deg,
-			rgba(13,13,13,.94) 0%,
-			rgba(13,13,13,.55) 38%,
-			transparent 62%);
+			rgba(13,13,13, calc(0.94 * var(--bs-world-veil, 1)))  0%,
+			rgba(13,13,13, calc(0.80 * var(--bs-world-veil, 1))) 22%,
+			rgba(13,13,13, calc(0.35 * var(--bs-world-veil, 1))) 34%,
+			rgba(13,13,13, 0) 44%);
 	}
 	.bs-world-copy{
 		left: 6vw; right: 6vw;

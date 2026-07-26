@@ -107,11 +107,17 @@ function bespoke_hero_world_shortcode( $atts ) {
         // letterbox so the next section peeks above the fold, biased upward
         // so the tops of the floodlights aren't clipped.
         'focus'   => '27',
+        // Strength of the dark wash that sits behind the left-hand copy so
+        // white type stays readable. 1 = as designed, 0.5 = half, 0 = off.
+        // It always clears before the products — see the CSS. Turn it down
+        // if the render can carry the type on its own.
+        'veil'    => '1',
     ], $atts, 'bespoke_hero_world' );
 
     $scroll   = max( 300, (int) $atts['scroll'] );
     $height   = min( 100, max( 40, (int) $atts['height'] ) );
     $focus    = min( 100, max( 0, (int) $atts['focus'] ) ) / 100;
+    $veil     = min( 1, max( 0, (float) $atts['veil'] ) );
     $products = bespoke_hero_world_products();
     $base     = BESPOKE_PLUGIN_URL . 'assets/hero-world/';
     $stops    = wp_list_pluck( $products, 'frame' );
@@ -129,7 +135,7 @@ function bespoke_hero_world_shortcode( $atts ) {
     ob_start();
     ?>
     <section class="bs-world" id="<?php echo esc_attr( $uid ); ?>"
-             style="--bs-world-scroll: <?php echo esc_attr( $scroll ); ?>vh; --bs-world-vh: <?php echo esc_attr( $height ); ?>vh;">
+             style="--bs-world-scroll: <?php echo esc_attr( $scroll ); ?>vh; --bs-world-vh: <?php echo esc_attr( $height ); ?>vh; --bs-world-veil: <?php echo esc_attr( $veil ); ?>;">
       <div class="bs-world-sticky">
         <canvas class="bs-world-canvas" aria-hidden="true"></canvas>
 
