@@ -94,9 +94,20 @@ function bespoke_hero_world_shortcode( $atts ) {
     $atts = shortcode_atts( [
         'scroll'  => '1000',
         'eyebrow' => 'BE:UNIQUE — BE:CREATIVE',
+        // Visible height of the pinned window, in vh. The 16:9 frames are
+        // CROPPED to this (never squashed), so a letterbox costs nothing and
+        // needs no re-render — it just trims sky off the top and grass off
+        // the bottom. 100 = full screen; ~72-80 reads like a landing band.
+        'height'  => '78',
+        // Which part of the frame survives that crop, 0 = top edge,
+        // 50 = centre, 100 = bottom edge. Nudge down to keep more grass,
+        // up to keep more sky.
+        'focus'   => '50',
     ], $atts, 'bespoke_hero_world' );
 
     $scroll   = max( 300, (int) $atts['scroll'] );
+    $height   = min( 100, max( 40, (int) $atts['height'] ) );
+    $focus    = min( 100, max( 0, (int) $atts['focus'] ) ) / 100;
     $products = bespoke_hero_world_products();
     $base     = BESPOKE_PLUGIN_URL . 'assets/hero-world/';
     $stops    = wp_list_pluck( $products, 'frame' );
@@ -113,7 +124,8 @@ function bespoke_hero_world_shortcode( $atts ) {
 
     ob_start();
     ?>
-    <section class="bs-world" id="<?php echo esc_attr( $uid ); ?>" style="--bs-world-scroll: <?php echo esc_attr( $scroll ); ?>vh;">
+    <section class="bs-world" id="<?php echo esc_attr( $uid ); ?>"
+             style="--bs-world-scroll: <?php echo esc_attr( $scroll ); ?>vh; --bs-world-vh: <?php echo esc_attr( $height ); ?>vh;">
       <div class="bs-world-sticky">
         <canvas class="bs-world-canvas" aria-hidden="true"></canvas>
 
@@ -164,8 +176,10 @@ function bespoke_hero_world_shortcode( $atts ) {
       var reduce = window.matchMedia &&
                    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-      var cv    = root.querySelector('.bs-world-canvas');
-      var ctx   = cv.getContext('2d', { alpha:false });
+      var cv     = root.querySelector('.bs-world-canvas');
+      var ctx    = cv.getContext('2d', { alpha:false });
+      var sticky = root.querySelector('.bs-world-sticky');
+      var FOCUS  = <?php echo wp_json_encode( $focus ); ?>;
       var cards = [].slice.call(root.querySelectorAll('.bs-world-card'));
       var dots  = [].slice.call(root.querySelectorAll('.bs-world-dot'));
       var meter = root.querySelector('.bs-world-meter');
@@ -240,8 +254,10 @@ function bespoke_hero_world_shortcode( $atts ) {
       }
       function fit(){
         var dpr = Math.min(window.devicePixelRatio || 1, 2);
-        cv.width  = Math.round(root.clientWidth  * dpr);
-        cv.height = Math.round(window.innerHeight * dpr);
+        // Size the canvas to the PINNED WINDOW, not the viewport — the two
+        // differ whenever `height` is less than 100vh (the letterbox).
+        cv.width  = Math.round(sticky.clientWidth  * dpr);
+        cv.height = Math.round(sticky.clientHeight * dpr);
         shown = -1; draw();
       }
       function draw(){
@@ -251,13 +267,15 @@ function bespoke_hero_world_shortcode( $atts ) {
         shown = i;
         var cw=cv.width, ch=cv.height,
             ir=im.naturalWidth/im.naturalHeight, cr=cw/ch, dw,dh,dx,dy;
-        if (cr > ir){ dw=cw; dh=cw/ir; dx=0; dy=(ch-dh)/2; }
+        // Cover-fit: fill the window, crop the overflow, never distort.
+        // FOCUS decides which slice survives a letterbox crop.
+        if (cr > ir){ dw=cw; dh=cw/ir; dx=0; dy=(ch-dh)*FOCUS; }
         else        { dh=ch; dw=ch*ir; dy=0; dx=(cw-dw)/2; }
         ctx.drawImage(im,dx,dy,dw,dh);
       }
       function onScroll(){
         var r = root.getBoundingClientRect();
-        var total = root.offsetHeight - window.innerHeight;
+        var total = root.offsetHeight - sticky.offsetHeight;
         var p = Math.max(0, Math.min(1, -r.top / (total || 1)));
         var res = resolve(p);
         want = res.frame; draw();

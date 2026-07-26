@@ -18,12 +18,25 @@
 	   Taller = the world turns less per wheel-click (gentler). */
 	height: var(--bs-world-scroll, 1000vh);
 	background: #0D0D0D;
+
+	/* FULL-BLEED. Elementor wraps a shortcode widget in a padded, max-width
+	   container, which would letterbox the hero into the content column.
+	   These three lines break it back out to the full window width whatever
+	   the container is doing. (Setting the Elementor container to Full Width
+	   with zero padding is still the tidier fix — this makes it work either
+	   way.) */
+	width: 100vw;
+	max-width: 100vw;
+	margin-left: calc(50% - 50vw);
 }
 
 .bs-world-sticky{
 	position: sticky;
 	top: 0;
-	height: 100vh;
+	/* --bs-world-vh is the shortcode's `height` attribute. Less than 100vh
+	   gives the landing-band look; the 16:9 frames are CROPPED to fit, never
+	   squashed, so no re-render is needed to change this. */
+	height: var(--bs-world-vh, 78vh);
 	overflow: hidden;
 	background: #0D0D0D;
 }
