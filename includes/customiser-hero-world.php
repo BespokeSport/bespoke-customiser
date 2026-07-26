@@ -196,17 +196,24 @@ function bespoke_hero_world_shortcode( $atts ) {
       /* ---- Build the hold/turn timeline from the stop frames --------------
          Each product gets a HOLD (frame frozen, its card up) and each gap a
          TURN. Holds take slightly more of the scroll than turns so the copy
-         has time to be read. */
-      var SEG = [], HOLD = 1.25, TURN = 1.6, units = [];
+         has time to be read.
+
+         FIRST_HOLD is deliberately tiny. The opening frame has already been
+         sitting on screen while the visitor read it, so a full-length hold
+         there just means scrolling with nothing happening — the world felt
+         like it "kicked in late". A short first hold starts the rotation
+         almost immediately while every later stop keeps its reading time. */
+      var SEG = [], HOLD = 1.25, FIRST_HOLD = 0.18, TURN = 1.6, units = [];
       for (var s = 0; s < STOPS.length; s++){
-        units.push({ hold:true, i:s });
+        units.push({ hold:true, i:s, first:(s === 0) });
         if (s < STOPS.length - 1) units.push({ hold:false, i:s });
       }
+      function weight(u){ return u.hold ? (u.first ? FIRST_HOLD : HOLD) : TURN; }
       var totalW = 0;
-      units.forEach(function(u){ totalW += u.hold ? HOLD : TURN; });
+      units.forEach(function(u){ totalW += weight(u); });
       var acc = 0;
       units.forEach(function(u){
-        var w = (u.hold ? HOLD : TURN) / totalW;
+        var w = weight(u) / totalW;
         SEG.push({
           t0: acc, t1: acc + w,
           f0: u.hold ? STOPS[u.i] : STOPS[u.i],
@@ -279,8 +286,20 @@ function bespoke_hero_world_shortcode( $atts ) {
       }
       function onScroll(){
         var r = root.getBoundingClientRect();
-        var total = root.offsetHeight - sticky.offsetHeight;
-        var p = Math.max(0, Math.min(1, -r.top / (total || 1)));
+        var travel = root.offsetHeight - sticky.offsetHeight;
+
+        /* Anything above the hero — typically the site header sitting in
+           normal flow — has to scroll away before the sticky pins. Waiting
+           for that felt like a dead patch at the very start, so we fold that
+           run-up INTO the timeline: the world begins turning on the first
+           pixel of scroll, while the header is still sliding away.
+           Capped, so a hero placed further down a page behaves normally. */
+        var absTop = r.top + window.pageYOffset;
+        var pre    = Math.min(absTop, 400);
+        var startY = absTop - pre;
+
+        var p = Math.max(0, Math.min(1,
+                  (window.pageYOffset - startY) / ((travel + pre) || 1)));
         var res = resolve(p);
         want = res.frame; draw();
         for (var i=0;i<cards.length;i++){
