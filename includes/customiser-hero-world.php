@@ -96,13 +96,17 @@ function bespoke_hero_world_shortcode( $atts ) {
         'eyebrow' => 'BE:UNIQUE — BE:CREATIVE',
         // Visible height of the pinned window, in vh. The 16:9 frames are
         // CROPPED to this (never squashed), so a letterbox costs nothing and
-        // needs no re-render — it just trims sky off the top and grass off
-        // the bottom. 100 = full screen; ~72-80 reads like a landing band.
-        'height'  => '78',
-        // Which part of the frame survives that crop, 0 = top edge,
-        // 50 = centre, 100 = bottom edge. Nudge down to keep more grass,
-        // up to keep more sky.
-        'focus'   => '50',
+        // needs no re-render. 100 = full screen.
+        'height'  => '92',
+        // Which slice of the frame survives that crop: 0 = keep the very top,
+        // 50 = centre, 100 = keep the very bottom. Below 50 protects the sky
+        // and floodlights, which is what the composition needs.
+        //
+        // 92 / 27 were dialled in against the real homepage using
+        // FRAMING-TOOL.html (in the World Animation folder) — a slight
+        // letterbox so the next section peeks above the fold, biased upward
+        // so the tops of the floodlights aren't clipped.
+        'focus'   => '27',
     ], $atts, 'bespoke_hero_world' );
 
     $scroll   = max( 300, (int) $atts['scroll'] );

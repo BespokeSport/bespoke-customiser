@@ -36,7 +36,7 @@
 	/* --bs-world-vh is the shortcode's `height` attribute. Less than 100vh
 	   gives the landing-band look; the 16:9 frames are CROPPED to fit, never
 	   squashed, so no re-render is needed to change this. */
-	height: var(--bs-world-vh, 78vh);
+	height: var(--bs-world-vh, 92vh);
 	overflow: hidden;
 	background: #0D0D0D;
 }
