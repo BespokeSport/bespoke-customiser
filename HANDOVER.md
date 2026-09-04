@@ -78,6 +78,18 @@ There is **no automated deployment**. The cycle is:
 nothing extra. He can't diff; he relies on you being precise. If you changed four files,
 list four files.
 
+### Uploading a folder of files (the zip trap)
+When a change ships a whole FOLDER (the hero frame sequences), zip it and have Nick upload
+the zip and use File Manager's Extract. **SiteGround extracts into a new folder named after
+the zip**, so a zip that already contains `hero-world-m/` lands as
+`assets/hero-world-m/hero-world-m/` — one level too deep. This happened on 4 Sep 2026 and
+the symptom was subtle: the site looked fine, just wrong, because the hero's
+`file_exists()` check quietly fell back to the widescreen frames.
+
+**So:** after any folder upload, curl a file at the path the code expects before saying it
+is done. Zip the folder's CONTENTS rather than the folder itself, or tell him to move the
+inner folder up a level afterwards.
+
 ### Verification discipline
 - **Always verify on staging after he uploads.** Don't assume.
 - Use a **cache-busting query string** (`?v=123`) when re-checking, or you'll read a stale
@@ -303,11 +315,9 @@ sizes. Regenerate it after editing the PHP — it's a copy, not a link.
    become the default in `customiser-hero-world.php` **and** the CSS fallback.
 2. **The old Elementor hero** ("BUILT FOR YOUR BADGE") still sits on the homepage. Two
    heroes stacked. Needs a decision: replace it, or keep both.
-3. **Mobile hero** — built and verified locally (see §9), **not yet uploaded to staging**
-   as of 4 Sep 2026. Nick needs to upload `hero-world-m.zip` (in the World Animation
-   folder and on the NAS) into `assets/` and extract it, plus the hero PHP and CSS, then
-   check it on his actual phone. Tuning knobs if he wants changes are all in the
-   `@media (orientation: portrait)` block of the CSS (wash gradient, copy position).
+3. **Mobile hero** — DONE and live on staging (4 Sep 2026), verified on Nick's own phone.
+   Tuning knobs if he wants changes are all in the `@media (orientation: portrait)`
+   block of the CSS (wash gradient, copy position, dot height).
 
 ### Backlog
 4. **Migrate "BEspoke Global Styles"** — the last remaining Simple-CCJ entry — into the
