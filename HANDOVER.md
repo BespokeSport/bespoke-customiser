@@ -294,16 +294,42 @@ count changes, update `BESPOKE_HERO_FRAMES` / `BESPOKE_HERO_FRAMES_M` and the `f
 folder named after the zip, so `hero-world-m.zip` full of bare `.avif` files lands exactly
 right (see the zip trap in §4).
 
+**⚠ Never accept the animation as a video file.** The first portrait sequence arrived as
+`World Mobile V1.mp4` — H.264, 90 frames, 2.14MB, about **6 Mbps / 24KB per frame**, while
+the desktop sequence was rendered as **652KB JPG stills**. Extracting the frames from that
+video is lossless, but the damage is already baked in: at 3x zoom on comparable grass the
+video frames show smeared, waxy blades where the stills resolve individual ones. The AVIF
+stop frames encoded from it are *larger* than the video frames they came from, so the
+encoder is faithfully preserving H.264 artefacts. If a sequence turns up as a video, ask
+for stills before spending any time on it.
+
+**Render spec to give Nick** (he can output any pixel size from C4D):
+
+| | Size | Frames | Notes |
+|---|---|---|---|
+| Portrait (phones) | **1440 × 2560** | 91 (0–90) | 9:16. Covers every phone at 3x density. |
+| Widescreen (desktop) | **2560 × 1440** | 91 (0–90) | 16:9. Only helps retina/4K; lower priority. |
+
+Image sequence, **JPEG at maximum quality or PNG — never a video**. DPI/PPI in the render
+settings is irrelevant to the web and can be ignored; only pixel dimensions matter. Keep
+30 frames per 90° turn and the same four product stops. Asking for 91 portrait frames
+retires the odd `mframe => 89` special case.
+
+Bigger sources barely cost file size, because only the **four stop frames** are encoded at
+full resolution — the ~87 in-between frames are downscaled regardless, and downscaling
+from a larger original is cleaner than encoding a small one. Projected totals stay near
+7MB per set.
+
 **Encoding recipe** (`sharp`): stop frames q80 at full size with `4:4:4` chroma; the
 in-between frames q45 at 85% size with `4:2:0`. Weighting it this way matters — the eye
 only ever rests on the four stops. Measured against Nick's originals, the stop frames are
 close to indistinguishable; the mid-turn frames are visibly softer, but are only seen
 while the page is actually moving. Each set lands around 6-7MB.
 
-**Resolution ceiling.** The portrait render at 1080×1920 already matches a phone screen
-1:1, so rendering it larger gains nothing. The widescreen render at 1920×1080 IS a limit
-on high-density laptops and 4K monitors; 2560×1440 would help there, and is the only place
-a bigger render is worth the C4D hours.
+**Resolution ceiling.** At a 3x pixel-density cap a phone canvas reaches roughly 1300px
+wide, so 1080×1920 is marginally under and 1440×2560 clears it. The widescreen render at
+1920×1080 is well short on high-density laptops and 4K monitors. See the render spec table
+above.
 
 **Pixel density.** The canvas renders at the screen's real `devicePixelRatio` (capped at
 3), not a flat 2x — that flat cap was the single biggest cause of a soft-looking hero on
