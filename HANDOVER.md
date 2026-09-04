@@ -193,19 +193,31 @@ weeks (its `requireAlt` check read an undefined value).
 
 ## 7. Tooling notes (for you, on the new machine)
 
-- **There is no PHP locally.** To syntax-check PHP, use Node:
-  `npm install php-parser --no-save`, then parse and read `ast.errors`. **Always lint PHP
-  before telling Nick to upload — a syntax error white-screens his site.**
-- **`sharp`** (Node) is how the hero frames were converted to AVIF.
+- **There is no PHP locally.** `tools/` in the repo has what you need — run `npm install`
+  in that folder once:
+  - `node tools/phprun.mjs lint <file.php>` — a real PHP 8.3 parse check (php-wasm).
+    `php-parser` is installed too for a second opinion. **Always lint PHP before telling
+    Nick to upload — a syntax error white-screens his site.**
+  - `node tools/phprun.mjs render includes/customiser-hero-world.php out.html` — renders
+    the hero shortcode with the WordPress functions stubbed, so its markup and script can
+    be tested in a local page without a WordPress install.
+  - `node tools/serve.js <folder> <port>` — zero-dependency static server. The Browser
+    pane shows `file://` pages outside the project as static snapshots (no CSS, no
+    images), so anything with relative assets has to be served. `.claude/launch.json`
+    has a `hero-test` entry serving `C:\Users\nickl\Documents\GitHub` on port 8765.
+- **`sharp`** (Node) converts frames to AVIF; **`ffmpeg-static`** pulls frames out of an
+  MP4 losslessly (the portrait hero render arrived as a video).
 - **Browser tooling:** the in-app browser tools work well against staging. Two traps:
   - `javascript_tool` **does not await Promises** — use a "kick and poll" pattern (start
     async work storing to `window.__x`, then read it in a second call).
   - The MCP content filter **blocks returning raw page HTML/URLs** — return booleans,
     measurements and short strings only, never page content.
-- **Testing mobile:** the browser reports a desktop viewport and won't resize. Create an
-  `<iframe style="width:390px">` pointing at the same URL — its `@media` rules genuinely
-  apply and `iframe.contentWindow` is scriptable. This is how the mobile cart and armband
-  bugs were found.
+- **Testing mobile:** the Browser pane's `resize_window` (preset `mobile`, or an explicit
+  width/height) genuinely changes the viewport, so `@media` and `(orientation: portrait)`
+  rules apply. Trap: preset `desktop` only restores the pane's own size, which is itself
+  taller than wide — use an explicit 1280×720 for a landscape check. On a page you can't
+  resize, an `<iframe style="width:390px">` at the same URL still works (its
+  `contentWindow` is scriptable); that's how the mobile cart and armband bugs were found.
 
 ---
 
@@ -232,13 +244,39 @@ Shin Pads · Grip Socks · Shin Pad Sleeves · Captain Armbands · **Double-Side
 `[bespoke_hero_world]` — a pinned hero where a rendered world of products on a floodlit
 pitch rotates as you scroll, holding at each of four products with an info card.
 
-**Journey:** Armbands (frame 0) → Shin Pads (30) → Grip Socks (60) → GameChanger (90).
+**Journey:** Armbands (frame 0) → Shin Pads (30) → Grip Socks (60) → GameChanger (90 —
+89 in the portrait set).
 
 **Delivery decision — important.** Video was tried and **rejected**: browsers seek video by
 keyframe so scrubbing arrived in ~6-frame lumps, and H.264 visibly softened the night sky
-and grass. It uses **91 pre-rendered AVIF frames** in `assets/hero-world/` (4.5MB total;
-the same frames as WebP were ~21MB). Frames load by priority — frame 0 first (~191KB),
-then the other three stops, then outward from each stop.
+and grass. It uses **pre-rendered AVIF frames** (the same frames as WebP were ~21MB).
+Frames load by priority — the first stop first, then the other three stops, then outward
+from each stop.
+
+**Two renders, picked by orientation** (`matchMedia('(orientation: portrait)')`, and it
+swaps live if the phone is turned):
+- `assets/hero-world/` — widescreen 1920×1080, **91 frames** (0–90), 4.8MB.
+- `assets/hero-world-m/` — portrait 1080×1920, **90 frames** (0–89), 4.9MB. Nick's C4D
+  export came out one frame short, so the trophies stop on 89 (3° off square — invisible).
+  Stop frames are full size (q68); the in-between frames are 810×1440 (q45) — above what
+  a phone canvas draws at, and only ever seen in motion.
+- The portrait set is only offered if `hero-world-m/f0000.avif` exists on the server, so
+  phones fall back to the widescreen set (cover-cropped) rather than a blank canvas when
+  the folder hasn't been uploaded.
+- Portrait layout: copy sits at the **bottom** over the grass, wash runs upward and clears
+  at 44%. Bottom, not top, because the products' tops are ~27% down the portrait frame and
+  a copy block is ~35% of a phone's height — at the top it would land across the socks and
+  trophies. The dots sit up in the sky at 32% (mid-height crossed the right floodlight).
+- The copy block is a CSS grid (eyebrow on row 1, all four cards stacked on row 2). It
+  used to be absolutely positioned cards, which gave the block a 34px height — the eyebrow
+  sat across the headline and the button hung off the bottom of short windows.
+- Full-bleed width subtracts the scrollbar (`--bs-world-sbw`, set by the script) — plain
+  `100vw` includes it and pushed the hero 8px off the left edge on desktop.
+
+**Local test page:** `World Animation\MOBILE-TEST.html` is generated from the real
+shortcode (`tools/phprun.mjs render`) with the frame paths pointed at `web/` and `web-m/`;
+serve the GitHub folder (`hero-test` in launch.json) and open it at phone and 1280×720
+sizes. Regenerate it after editing the PHP — it's a copy, not a link.
 
 **Current settings (dialled in on the real site, don't change casually):**
 ```
@@ -265,10 +303,11 @@ then the other three stops, then outward from each stop.
    become the default in `customiser-hero-world.php` **and** the CSS fallback.
 2. **The old Elementor hero** ("BUILT FOR YOUR BADGE") still sits on the homepage. Two
    heroes stacked. Needs a decision: replace it, or keep both.
-3. **Mobile hero render.** The desktop 16:9 sequence is cropped on phones. Nick will render
-   a **dedicated portrait version**. Spec to give him: same 4 stops, same 30 frames per 90°
-   turn, portrait (~1080×1920), linear keyframes, static camera, constant rotation speed.
-   Then load it via a `matchMedia` switch.
+3. **Mobile hero** — built and verified locally (see §9), **not yet uploaded to staging**
+   as of 4 Sep 2026. Nick needs to upload `hero-world-m.zip` (in the World Animation
+   folder and on the NAS) into `assets/` and extract it, plus the hero PHP and CSS, then
+   check it on his actual phone. Tuning knobs if he wants changes are all in the
+   `@media (orientation: portrait)` block of the CSS (wash gradient, copy position).
 
 ### Backlog
 4. **Migrate "BEspoke Global Styles"** — the last remaining Simple-CCJ entry — into the

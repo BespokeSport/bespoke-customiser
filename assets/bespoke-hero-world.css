@@ -5,9 +5,10 @@
 
    Structure:
      .bs-world            tall scroll track — its height IS the journey length
-       .bs-world-sticky   the pinned 100vh viewport
-         canvas           the rotating world (91 AVIF frames)
-         .bs-world-veil   dark gradient so the left-hand copy stays readable
+       .bs-world-sticky   the pinned viewport
+         canvas           the rotating world (AVIF frames — widescreen set on
+                          landscape screens, portrait set on portrait ones)
+         .bs-world-veil   dark gradient so the copy stays readable
          .bs-world-copy   the four product cards (one visible at a time)
          .bs-world-dots   progress dots
    ========================================================================== */
@@ -24,17 +25,23 @@
 	   These three lines break it back out to the full window width whatever
 	   the container is doing. (Setting the Elementor container to Full Width
 	   with zero padding is still the tidier fix — this makes it work either
-	   way.) */
-	width: 100vw;
-	max-width: 100vw;
-	margin-left: calc(50% - 50vw);
+	   way.)
+
+	   --bs-world-sbw is the vertical scrollbar's width, measured by the
+	   script (0 on phones and overlay scrollbars). 100vw INCLUDES the
+	   scrollbar, so without this the hero ran 15px too wide on desktop —
+	   8px lost off the left edge and a horizontal scrollbar on themes that
+	   don't hide overflow. */
+	width: calc(100vw - var(--bs-world-sbw, 0px));
+	max-width: calc(100vw - var(--bs-world-sbw, 0px));
+	margin-left: calc(50% - 50vw + var(--bs-world-sbw, 0px) / 2);
 }
 
 .bs-world-sticky{
 	position: sticky;
 	top: 0;
 	/* --bs-world-vh is the shortcode's `height` attribute. Less than 100vh
-	   gives the landing-band look; the 16:9 frames are CROPPED to fit, never
+	   gives the landing-band look; the frames are CROPPED to fit, never
 	   squashed, so no re-render is needed to change this. */
 	height: var(--bs-world-vh, 92vh);
 	overflow: hidden;
@@ -73,7 +80,12 @@
 }
 
 /* --------------------------------------------------------------------------
-   COPY — all four cards stack in the same spot; only the active one shows.
+   COPY — the eyebrow sits on row 1 and ALL FOUR cards share row 2 of a grid,
+   so they stack in the same spot and only the active one shows. Stacking
+   them on a grid cell (rather than position:absolute) means the block has a
+   real height: it centres properly on desktop and can sit on the bottom edge
+   on phones. (Absolute cards made the block 34px tall, which put the eyebrow
+   across the headline and hung the button off the bottom of short windows.)
    -------------------------------------------------------------------------- */
 .bs-world-copy{
 	position: absolute;
@@ -82,9 +94,13 @@
 	transform: translateY(-50%);
 	max-width: min(38vw, 520px);
 	z-index: 3;
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
 }
 
 .bs-world-eyebrow{
+	grid-row: 1;
+	grid-column: 1;
 	font-family: 'Anton', sans-serif;
 	font-size: 12px;
 	letter-spacing: .28em;
@@ -93,10 +109,9 @@
 }
 
 .bs-world-card{
-	position: absolute;
-	left: 0;
-	top: 0;
-	width: 100%;
+	grid-row: 2;
+	grid-column: 1;
+	position: relative;
 	opacity: 0;
 	transform: translateY(26px);
 	pointer-events: none;
@@ -200,42 +215,64 @@
    -------------------------------------------------------------------------- */
 .bs-world.bs-world-static{ height: auto; }
 .bs-world.bs-world-static .bs-world-sticky{ position: relative; height: auto; min-height: 100vh; padding: 12vh 0; }
-.bs-world.bs-world-static .bs-world-copy{ position: relative; top: auto; transform: none; max-width: none; padding-right: 6vw; }
+.bs-world.bs-world-static .bs-world-copy{ position: relative; top: auto; bottom: auto; transform: none; max-width: none; padding-right: 6vw; display: block; }
 .bs-world.bs-world-static .bs-world-card{ position: relative; opacity: 1; transform: none; pointer-events: auto; margin-bottom: 46px; }
 .bs-world.bs-world-static .bs-world-dots,
 .bs-world.bs-world-static .bs-world-hint,
 .bs-world.bs-world-static .bs-world-meter{ display: none; }
 
 /* --------------------------------------------------------------------------
-   MOBILE — copy moves to the top over a vertical wash, dots go horizontal.
-   NB: a dedicated portrait render is planned; this makes the desktop
-   sequence behave acceptably until it lands.
+   PORTRAIT SCREENS (phones, tablets held upright). The script swaps in the
+   portrait render (assets/hero-world-m/), where the product sits in the
+   upper-middle of the frame with grass below it — so the copy moves to the
+   BOTTOM, over the grass, behind a wash that runs upward and clears before
+   the product. The dots stay on the right edge.
+
+   Why the bottom and not the top: the products' tops sit ~27% down the
+   portrait frame and a copy block is ~35% of a phone's height, so at the top
+   it would land across the socks and trophies. Along the bottom it covers
+   grass only (and hides the previous product sliding out of shot below).
+   The socks' toes dip furthest and catch the faint end of the wash.
    -------------------------------------------------------------------------- */
-@media (max-width: 900px){
-	/* Copy sits at the top on mobile, so the wash runs vertically — and, as on
-	   desktop, clears before the product rather than washing over it. */
+@media (orientation: portrait){
+	/* Size against the SMALL viewport (URL bar showing) so the copy along
+	   the bottom isn't under the bar on first load. Browsers without svh
+	   keep the vh height set above. */
+	.bs-world-sticky{ height: calc(var(--bs-world-vhn, 92) * 1svh); }
+
 	.bs-world-veil{
-		background: linear-gradient(180deg,
+		background: linear-gradient(0deg,
 			rgba(13,13,13, calc(0.94 * var(--bs-world-veil, 1)))  0%,
-			rgba(13,13,13, calc(0.80 * var(--bs-world-veil, 1))) 22%,
-			rgba(13,13,13, calc(0.35 * var(--bs-world-veil, 1))) 34%,
+			rgba(13,13,13, calc(0.88 * var(--bs-world-veil, 1))) 20%,
+			rgba(13,13,13, calc(0.62 * var(--bs-world-veil, 1))) 33%,
 			rgba(13,13,13, 0) 44%);
 	}
 	.bs-world-copy{
 		left: 6vw; right: 6vw;
-		top: 8vh;
+		top: auto; bottom: 30px;
 		transform: none;
 		max-width: none;
 	}
-	.bs-world-card h2{ font-size: 34px; }
-	.bs-world-card p{ font-size: 14px; max-width: none; }
-	.bs-world-btn{ padding: 14px 26px; font-size: 13px; }
-	.bs-world-dots{
-		right: auto; left: 50%;
-		top: auto; bottom: 68px;
-		transform: translateX(-50%);
-		flex-direction: row;
-	}
+	.bs-world-eyebrow{ font-size: 11px; margin-bottom: 8px; }
+	.bs-world-card h2{ font-size: clamp(30px, 8.6vw, 44px); margin-bottom: 10px; }
+	.bs-world-card p{ font-size: 14px; line-height: 1.5; max-width: none; margin-bottom: 14px; }
+	/* Price and button share a row to keep the block short. */
+	.bs-world-price{ display: inline-block; margin: 0 16px 0 0; vertical-align: middle; }
+	.bs-world-btn{ padding: 13px 22px; font-size: 13px; vertical-align: middle; }
+	/* Dots sit up in the empty sky — at mid-height they'd cross the
+	   right-hand floodlight. */
+	.bs-world-dots{ right: 4vw; top: 32%; }
+	.bs-world-hint{ bottom: 9px; }
+}
+
+/* A phone held sideways: landscape layout, but there's little height, so
+   the side copy is trimmed to fit. */
+@media (orientation: landscape) and (max-height: 520px){
+	.bs-world-eyebrow{ font-size: 11px; margin-bottom: 8px; }
+	.bs-world-card h2{ font-size: 30px; margin-bottom: 10px; }
+	.bs-world-card p{ font-size: 13px; line-height: 1.45; margin-bottom: 12px; }
+	.bs-world-price{ margin-bottom: 12px; }
+	.bs-world-btn{ padding: 11px 22px; font-size: 12px; }
 }
 
 /* ==========================================================================

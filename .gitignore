@@ -1,15 +1,16 @@
-# OS junk
-Thumbs.db
-.DS_Store
-desktop.ini
 
 # Editor junk
-.vscode/
-.idea/
-*.swp
-*~
-
 # Local-only scratch files
+# OS junk
 *.bak
-*.tmp
 *.log
+*.swp
+*.tmp
+*~
+.DS_Store
+.idea/
+.vscode/
+Thumbs.db
+desktop.ini
+tools/node_modules/
+tools/package-lock.json
