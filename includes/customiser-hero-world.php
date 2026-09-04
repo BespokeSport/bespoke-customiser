@@ -34,9 +34,11 @@
  *                         (phones, tablets held upright). This render came
  *                         out of C4D one frame shorter, hence 89: that is 3°
  *                         short of square-on, which is invisible. Its stop
- *                         frames are full size; the in-between frames are
- *                         810×1440, which is already above what a phone
- *                         canvas draws at, and only seen in motion.
+ *                         frames are encoded at full size and full colour
+ *                         resolution; the in-between frames are smaller and
+ *                         more compressed, since they are only ever seen in
+ *                         motion. The canvas is capped to these native sizes
+ *                         — see fit() — so rendering never upscales them.
  *
  * The portrait set is only offered when its frames are actually on the
  * server, so a phone falls back to the widescreen render (cover-cropped)
@@ -224,10 +226,12 @@ function bespoke_hero_world_shortcode( $atts ) {
       var SETS = {
         wide: { base:  <?php echo wp_json_encode( $base ); ?>,
                 n:     <?php echo (int) BESPOKE_HERO_FRAMES; ?>,
+                w: 1920, h: 1080,
                 stops: <?php echo wp_json_encode( array_values( $stops ) ); ?> },
         tall: <?php echo $has_m
             ? '{ base: '   . wp_json_encode( $base_m )
             . ', n: '      . (int) BESPOKE_HERO_FRAMES_M
+            . ', w: 1080, h: 1920'
             . ', stops: '  . wp_json_encode( array_values( $stops_m ) ) . ' }'
             : 'null'; ?>
       };
@@ -252,6 +256,7 @@ function bespoke_hero_world_shortcode( $atts ) {
          request so a load that lands after an orientation swap can't write
          into the new set's slots. */
       var BASE, N, STOPS, SEG, imgs, ok, queue, gen = 0, flight = 0, want = 0, shown = -1;
+      var NATW = 0, NATH = 0;   // the active render's native pixel size
       var pad = function(n){ n = String(n); while (n.length < 4) n = '0' + n; return n; };
       var url = function(i){ return BASE + 'f' + pad(i) + '.avif'; };
 
@@ -328,6 +333,7 @@ function bespoke_hero_world_shortcode( $atts ) {
       function useSet(set){
         gen++;
         BASE = set.base; N = set.n; STOPS = set.stops;
+        NATW = set.w || 0; NATH = set.h || 0;
         SEG  = timeline(STOPS);
         imgs = new Array(N); ok = new Array(N);
         queue = reduce ? STOPS.slice(0,1) : order();
@@ -346,11 +352,34 @@ function bespoke_hero_world_shortcode( $atts ) {
         root.style.setProperty('--bs-world-sbw',
           Math.max(0, window.innerWidth - document.documentElement.clientWidth) + 'px');
 
-        var dpr = Math.min(window.devicePixelRatio || 1, 2);
+        /* Render at the SCREEN's real pixel density, not a flat 2x.
+           Phones are commonly 2.6x-3x; drawing at 2x and letting the browser
+           stretch the result was throwing away roughly a third of the detail
+           the frames actually carry, which read as a soft, slightly zoomed
+           picture even though the source was sharp. */
+        var dpr = Math.min(window.devicePixelRatio || 1, 3);
+
         // Size the canvas to the PINNED WINDOW, not the viewport — the two
         // differ whenever `height` is less than 100vh (the letterbox).
-        cv.width  = Math.round(sticky.clientWidth  * dpr);
-        cv.height = Math.round(sticky.clientHeight * dpr);
+        var cw = sticky.clientWidth * dpr, ch = sticky.clientHeight * dpr;
+
+        /* Never allocate more canvas than the frames can fill. The image is
+           cover-fitted, so it gets scaled by max(cw/NATW, ch/NATH); if that
+           is above 1 the extra canvas pixels are pure upscale — wasted memory
+           on a 4K monitor, and no sharper. Shrinking the canvas to match
+           looks identical (the browser does the same stretch, once) and keeps
+           a 3x cap safe on big screens. Floored at CSS size so it can never
+           end up below 1x. */
+        if (NATW && NATH){
+          var over = Math.max(cw / NATW, ch / NATH);
+          if (over > 1){
+            cw = Math.max(sticky.clientWidth,  cw / over);
+            ch = Math.max(sticky.clientHeight, ch / over);
+          }
+        }
+
+        cv.width  = Math.round(cw);
+        cv.height = Math.round(ch);
         shown = -1; draw();
       }
       function draw(){
