@@ -336,6 +336,24 @@ above.
 phones, worth far more than any compression setting. It is also capped to the frames' own
 resolution so a big monitor can't allocate a canvas of pure upscale.
 
+**Frame rate and smoothness.** At 30 frames per 90° the world turns 3° per frame, and the
+artwork travels about **64px across a 1080px-wide frame between adjacent frames** (measured
+by correlating frames 10 and 11). One turn spans roughly 1300px of scroll, so a frame
+changes about every 45px of finger movement — the picture moves faster than the finger,
+which is why a slow scroll shows a visible step. Doubling to 60fps (181 frames, 1.5° each)
+halves that jump and is the only lever that genuinely helps; changing the `scroll` length
+alters how often the jumps arrive, not how big they are.
+
+**Cross-fading between frames was tried and rejected.** Blending frame N with N+1 at
+partial alpha sounded like free smoothness, but at 64px of travel it produces an obvious
+double image, not motion blur — the armband's "C" simply appears twice. `BLEND-TEST.html`
+in the World Animation folder reproduces it, and `BLEND-COMPARISON.png` shows it. Don't
+re-propose this without re-checking that comparison.
+
+If a 60fps sequence is delivered, ship every frame only if the set stays near 7MB;
+otherwise encode every second frame and keep the rest in reserve — that needs no re-render,
+just a different encode pass and the matching `BESPOKE_HERO_FRAMES` / stop values.
+
 **Local test page:** `World Animation\MOBILE-TEST.html` is generated from the real
 shortcode (`tools/phprun.mjs render`) with the frame paths pointed at `web/` and `web-m/`;
 serve the GitHub folder (`hero-test` in launch.json) and open it at phone and 1280×720
