@@ -285,6 +285,31 @@ swaps live if the phone is turned):
 - Full-bleed width subtracts the scrollbar (`--bs-world-sbw`, set by the script) — plain
   `100vw` includes it and pushed the hero 8px off the left edge on desktop.
 
+**Re-rendering the artwork.** Nick renders in C4D and saves an image sequence; the site
+needs AVIF, so he cannot drop his files straight in. The cycle is: he saves the sequence
+and tells you the folder → you convert and number them `f0000.avif`… (`sharp`, see
+`tools/`) and zip them → he uploads and extracts. Keep 30 frames per 90° turn; if a frame
+count changes, update `BESPOKE_HERO_FRAMES` / `BESPOKE_HERO_FRAMES_M` and the `frame` /
+`mframe` stops. **Zip the files FLAT, with no containing folder** — SiteGround creates a
+folder named after the zip, so `hero-world-m.zip` full of bare `.avif` files lands exactly
+right (see the zip trap in §4).
+
+**Encoding recipe** (`sharp`): stop frames q80 at full size with `4:4:4` chroma; the
+in-between frames q45 at 85% size with `4:2:0`. Weighting it this way matters — the eye
+only ever rests on the four stops. Measured against Nick's originals, the stop frames are
+close to indistinguishable; the mid-turn frames are visibly softer, but are only seen
+while the page is actually moving. Each set lands around 6-7MB.
+
+**Resolution ceiling.** The portrait render at 1080×1920 already matches a phone screen
+1:1, so rendering it larger gains nothing. The widescreen render at 1920×1080 IS a limit
+on high-density laptops and 4K monitors; 2560×1440 would help there, and is the only place
+a bigger render is worth the C4D hours.
+
+**Pixel density.** The canvas renders at the screen's real `devicePixelRatio` (capped at
+3), not a flat 2x — that flat cap was the single biggest cause of a soft-looking hero on
+phones, worth far more than any compression setting. It is also capped to the frames' own
+resolution so a big monitor can't allocate a canvas of pure upscale.
+
 **Local test page:** `World Animation\MOBILE-TEST.html` is generated from the real
 shortcode (`tools/phprun.mjs render`) with the frame paths pointed at `web/` and `web-m/`;
 serve the GitHub folder (`hero-test` in launch.json) and open it at phone and 1280×720
