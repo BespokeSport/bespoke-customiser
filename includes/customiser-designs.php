@@ -594,6 +594,9 @@ function bespoke_design_layers_cb( $post ) {
                 // Default to editable (=== '1') when key is missing — existing
                 // designs created before this feature should stay editable.
                 $editable  = ( ! isset( $layer['editable'] ) || $layer['editable'] === '1' ) ? '1' : '0';
+                // Off by default: existing layers are all clipped to the
+                // product shape, which is right for patterns.
+                $outside   = ( isset( $layer['outside'] ) && $layer['outside'] === '1' ) ? '1' : '0';
             ?>
             <tr class="bespoke-layer-row" style="background:#fff;" data-layer-idx="<?php echo $i; ?>">
                 <td style="vertical-align:middle;text-align:center;padding:8px 4px;">
@@ -638,6 +641,16 @@ function bespoke_design_layers_cb( $post ) {
                         <span>Editable</span>
                     </label>
                     <p style="margin:4px 0 0 0;color:#888;font-size:11px;line-height:1.3;">Off = paints on the pad but the customer can't change its colour.</p>
+                    <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;margin-top:8px;">
+                        <input type="hidden" name="bespoke_layers[<?php echo $i; ?>][outside]" value="0" />
+                        <input type="checkbox"
+                               class="bespoke-layer-outside"
+                               name="bespoke_layers[<?php echo $i; ?>][outside]"
+                               value="1"
+                               <?php checked( $outside, '1' ); ?> />
+                        <span>Outside the shape</span>
+                    </label>
+                    <p style="margin:4px 0 0 0;color:#888;font-size:11px;line-height:1.3;">Tick for artwork that sits <em>around</em> the product rather than on it, like a printed frame. Normally every layer is trimmed to the product silhouette, which would hide it.</p>
                 </td>
                 <td>
                     <div class="bespoke-layer-file-cell">
@@ -736,6 +749,12 @@ function bespoke_design_layers_cb( $post ) {
                 + '<span>Editable</span>'
                 + '</label>'
                 + '<p style="margin:4px 0 0 0;color:#888;font-size:11px;line-height:1.3;">Off = paints on the pad but the customer can\'t change its colour.</p>'
+                + '<label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;margin-top:8px;">'
+                + '<input type="hidden" name="bespoke_layers[' + idx + '][outside]" value="0" />'
+                + '<input type="checkbox" class="bespoke-layer-outside" name="bespoke_layers[' + idx + '][outside]" value="1" />'
+                + '<span>Outside the shape</span>'
+                + '</label>'
+                + '<p style="margin:4px 0 0 0;color:#888;font-size:11px;line-height:1.3;">Tick for artwork that sits around the product rather than on it, like a printed frame.</p>'
                 + '</td>'
                 + '<td>'
                 + '<div class="bespoke-layer-file-cell">'
@@ -935,6 +954,11 @@ function bespoke_design_save_meta( $post_id, $post ) {
         // (value="0") so that an unchecked box still posts a value. PHP keeps
         // the LAST value when two POST keys collide → checked = "1", off = "0".
         $editable = ( isset( $layer['editable'] ) && $layer['editable'] === '1' ) ? '1' : '0';
+        // Same paired-hidden-input trick: ticked means this layer is NOT
+        // clipped to the product silhouette. Needed for artwork that sits
+        // AROUND the product rather than on it — the plate trophy's
+        // printed frame, where 85% of the file falls outside the plate.
+        $outside  = ( isset( $layer['outside'] ) && $layer['outside'] === '1' ) ? '1' : '0';
         // Parse the optional "Allowed colours" list — comma-separated hex
         // codes (#FEEF00, FF0000, etc.). Each entry is normalised to a
         // 6-digit uppercase hex with the # prefix. Invalid entries dropped.
@@ -968,6 +992,11 @@ function bespoke_design_save_meta( $post_id, $post ) {
             // should continue to default to editable on the front end.
             if ( $editable === '0' ) {
                 $entry['editable'] = '0';
+            }
+            // Only persisted when ON, so every existing design keeps the
+            // old behaviour of being clipped.
+            if ( $outside === '1' ) {
+                $entry['outside'] = '1';
             }
             $layers[] = $entry;
         }

@@ -922,7 +922,8 @@ function bespoke_render_customiser( $atts ) {
                         tint:     isPhotoUrl(layer.file_url) ? null : window.S.patColors[patIdx],
                         gradient: isPhotoUrl(layer.file_url) ? null
                                                             : ((window.S.patGradients && window.S.patGradients[patIdx]) || null),
-                        label:    'pattern-' + idx
+                        label:    'pattern-' + idx,
+                        outside:  layer.outside === '1'
                     });
                 });
 
@@ -1063,7 +1064,15 @@ function bespoke_render_customiser( $atts ) {
                                 var cloned = l.cloneNode(true);
                                 // Apply pad mask to pattern layers (not to
                                 // background or pad-base itself).
-                                if (padMaskId && stack[i] && stack[i].label && stack[i].label.indexOf('pattern-') === 0) {
+                                // Pattern layers are clipped to the pad
+                                // silhouette so they cannot overflow it —
+                                // unless the layer is flagged as sitting
+                                // OUTSIDE the shape. The plate trophy's
+                                // printed frame surrounds the plate, so
+                                // clipping it threw away 85% of the
+                                // artwork and made its colour picker look
+                                // like it did nothing at all.
+                                if (padMaskId && stack[i] && stack[i].label && stack[i].label.indexOf('pattern-') === 0 && !stack[i].outside) {
                                     cloned.setAttribute('mask', 'url(#' + padMaskId + ')');
                                 }
                                 // Armband band-width scaling — when the
