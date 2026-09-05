@@ -4174,6 +4174,17 @@ var BESPOKE_PRODUCT_LABELS = {
   // split on newlines, so \n gives a genuine second line. Size + colour for
   // this default live with the other per-product starting values up top.
   referee_armbands: { nameTitle: 'Text', nameDefault: 'U15\nREF', hintNoName: '' },
+  // Remembrance and other pre-designed bands are captain armbands with
+  // fixed artwork, so they pre-fill the captain's C exactly like the
+  // standard band. The customer sees it straight away and can clear the
+  // box, or switch the left/right badge and text spots off entirely, if
+  // their band is not for the captain.
+  //
+  // NB: these need their OWN entries even though both types inherit
+  // armbands — bespokeLabels() resolves by the raw product type, which is
+  // what lets referee bands default to "U15 / REF" instead of "C".
+  remembrance_armbands: { nameTitle: 'Text', nameDefault: 'C', hintNoName: '' },
+  armbands_predesign:   { nameTitle: 'Text', nameDefault: 'C', hintNoName: '' },
   thermal_cups:   { nameTitle: 'Text',   hintNoName: '' },
   water_bottles:  { nameTitle: 'Text',   hintNoName: '' }
 };
