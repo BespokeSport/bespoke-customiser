@@ -38,6 +38,7 @@ add_action( 'plugins_loaded', function() {
     if ( ! bespoke_check_woocommerce() ) return;
 
     $modules = [
+        'customiser-brand-base.php',    // brand foundation CSS (was the "BEspoke Global Styles" snippet)
         'customiser-designs.php',       // design management
         'customiser-products.php',      // per-product asset uploads (background + pad base)
         'customiser-fonts.php',         // custom font upload
