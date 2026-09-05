@@ -70,6 +70,12 @@ function bespoke_get_product_types() {
         'armbands'           => 'Captain Armbands',
         'double_sided_armbands' => 'Double Sided Captain Armbands',
         'armbands_predesign' => 'Pre-designed Armbands',
+        // Remembrance bands get their OWN section rather than sharing
+        // 'Pre-designed Armbands'. Nick's call, and a fair one: the
+        // designs list is per-type, so a shared bucket would mean poppy
+        // designs sitting alongside flags and Pride bands in the same
+        // picker. Behaves identically — see bespoke_inherit_product_type().
+        'remembrance_armbands' => 'Remembrance Armbands',
         'referee_armbands'   => 'Referee Armbands',
         'shinpad_sleeves'    => 'Shin Pad Sleeves',
         'bottles'            => 'Bottles',

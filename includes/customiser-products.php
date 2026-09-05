@@ -196,6 +196,7 @@ function bespoke_inherit_product_type( $product_type ) {
         // STEP LIST (badge + design only) and the design set, both keyed on
         // the raw type — see BESPOKE_STEP_CONFIG in customiser.html.
         'armbands_predesign'    => 'armbands',
+        'remembrance_armbands'  => 'armbands',
     ];
     // Admin-created ("self-serve") types carry their own inherited base type.
     if ( function_exists( 'bespoke_get_custom_product_types' ) ) {
