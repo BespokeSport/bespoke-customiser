@@ -1542,6 +1542,66 @@ function bespoke_render_admin_corner_flags( $d, $item ) {
    Single sublimated bottle: one badge, one name, one number, design +
    colours. Mirrors corner_flags but adds the squad number row.
    ========================================================================= */
+/* =========================================================================
+   TEAM MUG — a ring of football shirts round a mug.
+
+   Two halves to the spec. The COLOURS are picked in the customiser and
+   render on the preview like any other product. The SQUAD LIST does not:
+   the names and numbers go on the backs of shirts that are millimetres
+   tall on the finished mug, so drawing them would be a great deal of work
+   for something nobody could read. The list is captured as text instead,
+   and these renderers are the only place the workshop will ever see it —
+   so it is shown in full, line breaks intact, never truncated.
+   ========================================================================= */
+
+/** Split a squad list into trimmed, non-empty lines. */
+function bespoke_squad_lines( $squad ) {
+    $parts = preg_split( '/\\r\\n|\\r|\\n/', (string) $squad );
+    return array_values( array_filter( array_map( 'trim', (array) $parts ), function( $l ) {
+        return $l !== '';
+    } ) );
+}
+
+function bespoke_render_cart_team_mug( $item_data, $d ) {
+    if ( ! empty( $d['design'] ) ) {
+        $item_data[] = [ 'name' => 'Shirt style', 'value' => esc_html( $d['design'] ) ];
+    }
+    $squad = trim( (string) ( $d['squad'] ?? '' ) );
+    if ( $squad === '' ) {
+        $item_data[] = [ 'name' => 'Squad list', 'value' => 'Not added' ];
+        return $item_data;
+    }
+    // Count shown alongside so the customer can check it against the
+    // number of shirts they chose.
+    $lines = bespoke_squad_lines( $squad );
+    $item_data[] = [
+        'name'  => 'Squad list',
+        'value' => nl2br( esc_html( $squad ) ) . '<br><em>' . count( $lines ) . ' listed</em>',
+    ];
+    return $item_data;
+}
+
+function bespoke_render_admin_team_mug( $d, $item ) {
+    echo bespoke_render_admin_generic_card( 'Team Mug', $d );
+
+    // The squad list gets its own block rather than a table row: it is
+    // multi-line, it is what the workshop prints from, and it exists
+    // nowhere else on the order.
+    $squad = trim( (string) ( $d['squad'] ?? '' ) );
+    if ( $squad === '' ) {
+        return;
+    }
+    $lines = bespoke_squad_lines( $squad );
+
+    echo '<div style="margin:12px 0 0;padding:12px 14px;border:1px solid #c3c4c7;border-left:4px solid #5DCAA5;background:#fff;">';
+    echo '<strong style="display:block;margin-bottom:6px;">Squad list — print on shirt backs (' . count( $lines ) . ')</strong>';
+    echo '<ol style="margin:0 0 0 18px;padding:0;">';
+    foreach ( $lines as $line ) {
+        echo '<li style="margin:2px 0;">' . esc_html( $line ) . '</li>';
+    }
+    echo '</ol></div>';
+}
+
 function bespoke_render_cart_bottles( $item_data, $d ) {
     if ( ! empty( $d['design'] ) ) {
         $item_data[] = [ 'name' => 'Design', 'value' => esc_html( $d['design'] ) ];

@@ -822,6 +822,14 @@ function bespoke_handle_add_to_cart() {
                                 ? esc_url_raw( $_POST['bespoke_preview_url'] )
                                 : '',
 
+            // ── Team Mug squad list ─────────────────────────────────────────
+            // Free text the customer types on the squad step: one player per
+            // line, number first. Never rendered onto the artwork — the shirt
+            // backs are millimetres tall on the finished mug — so this is the
+            // ONLY record of it, and the workshop prints from it. Blank on
+            // every other product type.
+            'squad' => sanitize_textarea_field( wp_unslash( $_POST['bespoke_squad'] ?? '' ) ),
+
             // ── Player card fields (Stage 1) ─────────────────────────────────
             // Only meaningful when type === 'player_cards'; null/blank on
             // every other product type. Sanitised through the same

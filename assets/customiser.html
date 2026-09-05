@@ -1084,6 +1084,19 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
   <div class="screen" id="s1">
     <div class="preview-box"><div id="pb1"></div></div>
     <div class="drag-hint" id="drag-hint-name"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="#888" stroke-width="1.5"><path d="M5 9l-3 1 3 1M15 9l3 1-3 1M9 5l1-3 1 3M9 15l1 3 1-3"/></svg> <span id="drag-hint-name-text">Drag text to reposition</span></div>
+    <!-- TEAM MUG squad list. Shown INSTEAD of the usual text controls on
+         team_mug (see applyMugUI). It is deliberately not rendered on the
+         preview: the names and numbers go on the backs of shirts that are
+         only a few millimetres tall on the finished mug, so drawing them
+         would cost a lot of work for something nobody could read. The
+         list travels to the order instead, for the workshop to print. -->
+    <div data-mug-only style="display:none;">
+      <div class="sec-label">Squad list</div>
+      <p class="hint" style="margin-bottom:10px;">One player per line, number first — for example <strong>7 SMITH</strong>. These go on the backs of the shirts. They are not drawn on the preview.</p>
+      <div class="text-row"><textarea id="squad-list" rows="8" placeholder="1 JONES&#10;2 SMITH&#10;3 PATEL" oninput="onSquadList()"></textarea></div>
+      <p class="hint" id="squad-count">No players listed yet.</p>
+    </div>
+    <div data-mug-hide>
     <div class="sec-label"><span id="label-name-title">Text</span> <span class="opt-tag">optional</span></div>
     <div class="toggle-row" id="toggle-same-name-row" onclick="toggleSameName()"><div class="tog-track on" id="name-tog"><div class="tog-thumb"></div></div><div><div class="tog-label" id="label-same-name">Same on both</div><div class="tog-sub" id="label-same-name-sub">Turn off to set each separately</div></div></div>
     <div id="name-same-block"><div class="text-row"><textarea id="name-both" rows="1" placeholder="e.g. SMITH (press Enter for a new line)" oninput="onNameBoth()"></textarea><div class="char-count"><span id="nbc">0</span></div></div></div>
@@ -1095,6 +1108,8 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
     <!-- Colour picker sits directly under the text input (below the
          split tabs when they're active) so the customer can pick a
          colour without hunting for it under Size / Font. -->
+    </div><!-- /data-mug-hide -->
+    <div data-mug-hide>
     <div class="sec-label" id="label-name-colour">Text colour</div>
     <div class="color-zones">
       <div class="zone-row"><div class="zone-info"><div class="zone-lbl">Colour</div></div><div class="ct" id="ct-name" style="background:#FFFFFF;"><input type="color" value="#FFFFFF" id="cp-name" oninput="debouncedColor('name',this.value)"/></div></div>
@@ -1117,6 +1132,9 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
     <p class="hint" id="hint-no-name">Leave blank for no text.</p>
     <!-- Add-back panel for names (Stage 2 delete + re-add). -->
     <div class="add-back-panel" id="add-back-name"></div>
+    </div><!-- /data-mug-hide: everything above is the normal text step, and
+         is swapped out for the squad list on the Team Mug. The nav row below
+         stays visible either way. -->
 
     <div class="nav-row"><button class="btn-back" onclick="goTo(0)">←</button><button class="btn-next" onclick="goTo(2)">Next: add number →</button></div>
   </div>
@@ -1406,6 +1424,9 @@ var S = {
   // Double-sided armbands: one badge shared across Outside + Inside
   // (default ON — see toggleSameBadge / handleBadge). Band-level, so it
   // deliberately is NOT in BESPOKE_FACE_FIELDS and survives face switches.
+  // Team Mug squad list. Free text, never rendered — see the
+  // [data-mug-only] block on the text step.
+  squad:'',
   sameBadge:true,
   badge:null, badgeURL:null, design:DEFDESIGN,
   // Second badge spot (armbands): what position R shows. 'same' (default)
@@ -3369,6 +3390,43 @@ function setBadge2Mode(mode){
  * filters on and which flows through to the cart line and the admin order
  * as a removed element, so nothing downstream needs to change.
  */
+/** Is this the Team Mug? Its text step is a squad list, not artwork. */
+function isTeamMug(){
+  return (typeof bespokeProductType === 'function') && bespokeProductType() === 'team_mug';
+}
+
+/** Swap the text step between the normal controls and the squad list. */
+function applyMugUI(){
+  var on = isTeamMug();
+  [].forEach.call(document.querySelectorAll('[data-mug-only]'), function(el){
+    el.style.display = on ? '' : 'none';
+  });
+  [].forEach.call(document.querySelectorAll('[data-mug-hide]'), function(el){
+    el.style.display = on ? 'none' : '';
+  });
+  if (on) {
+    var tab = document.getElementById('lbl-1');
+    if (tab) tab.textContent = 'Squad';
+    var box = document.getElementById('squad-list');
+    if (box && window.S && S.squad && !box.value) box.value = S.squad;
+    onSquadList();
+  }
+}
+
+/** Keep S.squad in step with the box, and count the players listed. */
+function onSquadList(){
+  var box = document.getElementById('squad-list');
+  if (!box || !window.S) return;
+  S.squad = box.value;
+  var lines = S.squad.split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
+  var out = document.getElementById('squad-count');
+  if (out) {
+    out.textContent = lines.length === 0
+      ? 'No players listed yet.'
+      : lines.length + (lines.length === 1 ? ' player listed.' : ' players listed.');
+  }
+}
+
 function toggleBadgeLeft(){
   if (!window.S) return;
   if (!S.hidden) S.hidden = {};
@@ -4030,7 +4088,10 @@ var BESPOKE_STEP_CONFIG = {
   // Each "design" here is a shirt STYLE — plain, vertical stripes,
   // horizontal stripes. Fancy Product Designer offered no style choice at
   // all, so this is a gain rather than a like-for-like move.
-  team_mug:           ['design', 'colours'],
+  // 'name' is reused as the SQUAD LIST step — see the [data-mug-only]
+  // block on screen 1. Nothing is rendered onto the mug from it; the list
+  // travels to the order for the workshop to print on the shirt backs.
+  team_mug:           ['design', 'name', 'colours'],
   // Future:
   // shinpad_sleeves: ['badge', 'name', 'number', 'design', 'colours'],
   // etc.
@@ -4506,6 +4567,8 @@ function applyStepConfig(){
   // the end of applyStepConfig so it lands after all step tabs +
   // screens have been positioned.
   try { applyPlayerCardUI(); } catch(_){}
+  // Team Mug — swaps the text step for the squad list. No-op elsewhere.
+  try { applyMugUI(); } catch(_){}
   // Product-neutral defaults ("Text", "Background", "Text colour",
   // etc.) live in the HTML; per-product overrides are applied here
   // (shinpads keeps "Player name / Squad number / on both pads",
@@ -6096,6 +6159,7 @@ function _bespokeCommitAddToCart(cfg, btn, insideFace) {
         formData.append('bespoke_player_photo_filename', S.playerPhoto.filename);
       }
       formData.append('bespoke_player_flag',     S.playerFlag     || '');
+      formData.append('bespoke_squad', S.squad || '');
       formData.append('bespoke_player_position', S.playerPosition || '');
       // Friendly label for the position so admin sees "Right Back"
       // not just "RB". Looked up from the dropdown <option> text.
