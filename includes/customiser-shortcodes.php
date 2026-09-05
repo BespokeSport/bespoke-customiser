@@ -58,6 +58,7 @@ function bespoke_register_shortcodes() {
 	add_shortcode( 'bespoke_ticker',    'bespoke_shortcode_ticker' );
 	add_shortcode( 'bespoke_promise',   'bespoke_shortcode_promise' );
 	add_shortcode( 'bespoke_clubs_say', 'bespoke_shortcode_clubs_say' );
+	add_shortcode( 'bespoke_how',       'bespoke_shortcode_how' );
 }
 
 /* -------------------------------------------------------------------------
@@ -260,6 +261,83 @@ function bespoke_shortcode_clubs_say( $atts ) {
 }
 
 /* -------------------------------------------------------------------------
+ * 4b. [bespoke_how] — the three steps of ordering.
+ *
+ *    Written for the homepage slot under the rotating hero, where nothing
+ *    currently explains the process. The hero shows four products and four
+ *    buttons; the obvious next question is "so how do I actually get one".
+ *
+ *    Every string is a shortcode attribute so the copy can be changed from
+ *    the page without touching code:
+ *
+ *      [bespoke_how
+ *         eyebrow="How it works"
+ *         title="Your badge on it, in three steps."
+ *         step1title="Pick your product"      step1body="…"
+ *         step2title="Make it yours"          step2body="…"
+ *         step3title="We make it and send it" step3body="…"
+ *         cta="Start designing" ctaurl="/shop/"]
+ *
+ *    The defaults deliberately make NO claim about turnaround time. The
+ *    other shortcode in this file ships a "5 DAYS from design to your door"
+ *    default that nobody has confirmed, and a delivery promise is not
+ *    something to guess at. Add the real figure to step 3 when it is known.
+ * --------------------------------------------------------------------- */
+function bespoke_shortcode_how( $atts ) {
+	$atts = shortcode_atts( [
+		'eyebrow'    => 'How it works',
+		'title'      => 'Your badge on it, in three steps.',
+		'step1title' => 'Pick your product',
+		'step1body'  => 'Armbands, shin pads, grip socks, trophies and more. Every one made to order.',
+		'step2title' => 'Make it yours',
+		'step2body'  => 'Upload your badge, add the names and numbers, choose your colours. You see the finished thing as you build it.',
+		'step3title' => 'We make it and send it',
+		'step3body'  => 'Designed, printed and packed by us. No minimum order, so one of something is absolutely fine.',
+		'cta'        => 'Start designing',
+		'ctaurl'     => '/shop/',
+	], $atts, 'bespoke_how' );
+
+	$steps = [
+		[ 'num' => '01', 'title' => $atts['step1title'], 'body' => $atts['step1body'] ],
+		[ 'num' => '02', 'title' => $atts['step2title'], 'body' => $atts['step2body'] ],
+		[ 'num' => '03', 'title' => $atts['step3title'], 'body' => $atts['step3body'] ],
+	];
+
+	bespoke_shortcodes_emit_css();
+
+	$cards = '';
+	foreach ( $steps as $step ) {
+		$cards .= '<article class="bs-how__card">'
+			. '<div class="bs-how__num">'   . esc_html( $step['num']   ) . '</div>'
+			. '<h3 class="bs-how__title">'  . esc_html( $step['title'] ) . '</h3>'
+			. '<p class="bs-how__body">'    . esc_html( $step['body']  ) . '</p>'
+			. '</article>';
+	}
+
+	$cta = '';
+	if ( $atts['cta'] !== '' && $atts['ctaurl'] !== '' ) {
+		$cta = sprintf(
+			'<a class="bs-how__cta" href="%s">%s</a>',
+			esc_url( $atts['ctaurl'] ),
+			esc_html( $atts['cta'] )
+		);
+	}
+
+	return sprintf(
+		'<section class="bs-how"><div class="bs-how__inner">'
+		. '<p class="bs-how__eyebrow">%s</p>'
+		. '<h2 class="bs-how__heading">%s</h2>'
+		. '<div class="bs-how__grid">%s</div>'
+		. '%s'
+		. '</div></section>',
+		esc_html( $atts['eyebrow'] ),
+		esc_html( $atts['title'] ),
+		$cards,
+		$cta
+	);
+}
+
+/* -------------------------------------------------------------------------
  * 5. CSS — printed inline the first time ANY of the three shortcodes
  *    renders on the page, never again. Static flag guards against
  *    duplicate emission if the same shortcode is used twice on one
@@ -284,7 +362,7 @@ function bespoke_shortcodes_emit_css() {
 function bespoke_shortcodes_get_css() {
 	return <<<'CSS'
 /* Design tokens — scoped to our shortcode roots so they don't leak. */
-.bs-ticker, .bs-promise, .bs-clubs-say {
+.bs-ticker, .bs-promise, .bs-clubs-say, .bs-how {
 	--bs-ink:        #0E0E10;
 	--bs-deep:       #050505;
 	--bs-panel:      #141417;
@@ -535,6 +613,93 @@ function bespoke_shortcodes_get_css() {
 @media (max-width: 768px) {
 	.bs-clubs-say { padding: 56px 0; }
 	.bs-clubs-say__inner { padding: 0 24px; }
+}
+
+/* ==========================================================================
+   [bespoke_how] — three steps
+   Same numbered-card language as the Promise block above, but the numbers
+   lead rather than a big display figure: the point here is sequence.
+   ========================================================================== */
+.bs-how {
+	background: var(--bs-ink);
+	padding: 96px 24px 104px;
+}
+.bs-how__inner {
+	max-width: 1180px;
+	margin: 0 auto;
+}
+.bs-how__eyebrow {
+	font-family: 'Anton', sans-serif;
+	font-size: 12px;
+	letter-spacing: .28em;
+	text-transform: uppercase;
+	color: #5DCAA5;
+	margin: 0 0 14px;
+}
+.bs-how__heading {
+	font-family: 'Anton', sans-serif;
+	font-weight: 400;
+	font-size: clamp(32px, 4.4vw, 60px);
+	line-height: 1;
+	text-transform: uppercase;
+	color: #fff;
+	margin: 0 0 56px;
+}
+.bs-how__grid {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 40px;
+}
+.bs-how__card {
+	border-top: 2px solid #5DCAA5;
+	padding-top: 22px;
+}
+.bs-how__num {
+	font-family: 'Anton', sans-serif;
+	font-size: 13px;
+	letter-spacing: .2em;
+	color: #5DCAA5;
+	margin-bottom: 14px;
+}
+.bs-how__title {
+	font-family: 'Anton', sans-serif;
+	font-weight: 400;
+	font-size: 24px;
+	line-height: 1.1;
+	text-transform: uppercase;
+	color: #fff;
+	margin: 0 0 12px;
+}
+.bs-how__body {
+	font-size: 15px;
+	line-height: 1.65;
+	color: #c9c9c9;
+	margin: 0;
+}
+.bs-how__cta {
+	display: inline-block;
+	margin-top: 52px;
+	background: #5DCAA5;
+	color: #04342C;
+	font-family: 'Anton', sans-serif;
+	letter-spacing: .14em;
+	font-size: 14px;
+	text-transform: uppercase;
+	text-decoration: none;
+	padding: 16px 34px;
+	border-radius: 2px;
+	transition: transform .2s ease, background .2s ease;
+}
+.bs-how__cta:hover {
+	transform: translateY(-2px);
+	background: #6fd8b4;
+	color: #04342C;
+}
+@media (max-width: 900px) {
+	.bs-how { padding: 64px 22px 72px; }
+	.bs-how__grid { grid-template-columns: 1fr; gap: 34px; }
+	.bs-how__heading { margin-bottom: 40px; }
+	.bs-how__cta { margin-top: 38px; }
 }
 CSS;
 }
