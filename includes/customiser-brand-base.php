@@ -5,19 +5,31 @@
  * Prints assets/bespoke-brand-base.css into the <head>.
  *
  * ── Why this file exists ──────────────────────────────────────────────────
- * These styles used to live in the **Code Snippets** plugin as an entry
- * called "BEspoke Global Styles" — the last part of the site still kept
- * outside this plugin. Moving it here means the whole front end travels
- * with the plugin: one thing to upload, one thing in git, and no snippet
- * that can be switched off by accident.
+ * These styles used to live in the **Simple Custom CSS and JS** plugin (NOT
+ * Code Snippets — that plugin holds only PHP entries on this site). A survey
+ * of the rendered pages on 5 Sep 2026 found it printing THREE entries, all
+ * set to load site-wide, all identical on every page:
+ *
+ *   1. CSS · the KEY SIGNINGS heading and the product grid under it.
+ *   2. CSS · "BEspoke Sport — Global CSS", the brand foundation.
+ *   3. JS  · a mobile fix for Fancy Product Designer — DEAD. FPD renders
+ *            nothing on the site any more (no fpd- markup on any page), yet
+ *            that entry still installs a MutationObserver over the whole
+ *            document body, subtree included, on every page load. It should
+ *            simply be deleted, not migrated.
+ *
+ * Entries 1 and 2 are both carried here, in that order, because both style
+ * the Key Signings heading and the later one wins. Moving them means the
+ * whole front end travels with the plugin: one thing to upload, one thing in
+ * git, and nothing that can be switched off by accident.
  *
  * ── Why it is printed inline rather than enqueued ─────────────────────────
  * Every other stylesheet in this plugin is a normal wp_enqueue_style(), and
  * that would be the tidier choice here too — except it would change how the
  * page renders.
  *
- * Code Snippets printed this CSS inline in the <head>, AFTER Elementor's
- * per-page CSS block. Roughly 60% of its declarations are not marked
+ * Simple Custom CSS and JS printed this inline in the <head>, AFTER
+ * Elementor's per-page CSS block. Roughly 60% of its declarations are not marked
  * !important, so for those it was winning purely on source order. Enqueued
  * stylesheets print EARLIER than Elementor's inline block, so the same CSS
  * as a file would quietly start losing those ties — a scatter of small
@@ -34,8 +46,9 @@
  * customiser-master.php).
  *
  * ── After uploading this ──────────────────────────────────────────────────
- * DISABLE the "BEspoke Global Styles" snippet in Code Snippets. Until then
- * the same CSS is simply present twice, which is harmless but pointless.
+ * In **Simple Custom CSS and JS**, disable both CSS entries and delete the
+ * Fancy Product Designer JS one. Until the CSS entries are off, the same
+ * rules are simply present twice — harmless, but pointless.
  *
  * File location: /wp-content/plugins/bespoke-customiser/includes/customiser-brand-base.php
  * Included by:   bespoke-customiser.php

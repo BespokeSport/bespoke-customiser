@@ -190,7 +190,7 @@ an unrelated Any-Length attribute, returning the wrong variation. Loose matches 
 - **Simple Custom CSS and JS** (post type `custom-css-js`, admin menu "Custom Code") —
   **this is where the site's inline CSS/JS actually lives.**
 
-When hunting a stray `<script>`, check both. Simple-CCJ wraps its output in
+When hunting a stray `<script>`, check both. Simple Custom CSS and JS wraps its output in
 `<!-- start/end Simple Custom CSS and JS -->` comments — that's how to trace the source.
 On 2026-07-20 I deactivated **"BEspoke Customise Button Fix"** (post 6622), a broken
 "Read more"→"View Options" script with 4 extra `}` that threw a SyntaxError on every page.
@@ -389,10 +389,15 @@ sizes. Regenerate it after editing the PHP — it's a copy, not a link.
    block of the CSS (wash gradient, copy position, dot height).
 
 ### Backlog
-4. ~~Migrate "BEspoke Global Styles"~~ — **DONE 5 Sep 2026.** Now
-   `assets/bespoke-brand-base.css` + `includes/customiser-brand-base.php`. Awaiting
-   upload, after which the snippet must be **disabled** (not deleted) and the styles
-   verified against `tools/brand-base-baseline.json`.
+4. ~~Migrate the last styles out of a code-injector plugin~~ — **DONE 5 Sep 2026.**
+   It was **Simple Custom CSS and JS**, not Code Snippets (Code Snippets holds only
+   PHP entries here — an earlier version of this document had that wrong, and it cost
+   a wrong set of upload instructions). It was printing **three** site-wide entries,
+   not one: the Key Signings grid CSS, the brand base CSS, and a dead Fancy Product
+   Designer JS fix. Both CSS entries are now `assets/bespoke-brand-base.css` +
+   `includes/customiser-brand-base.php`. Awaiting upload, after which both CSS
+   entries should be **disabled** (not deleted) and the JS one deleted outright, then
+   the styles verified against `tools/brand-base-baseline.json`.
 5. **Go-live plan.** Everything is on staging. Moving to production is **not just plugin
    files** — designs, product artwork, saved placements and product config all live in the
    **WordPress database**. This needs a written plan before the day.
