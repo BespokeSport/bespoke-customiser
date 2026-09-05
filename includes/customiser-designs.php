@@ -564,6 +564,14 @@ function bespoke_design_layers_cb( $post ) {
             <li><strong>Layer 2+</strong> = the actual pattern overlays for THIS design (e.g. distressed texture, stripes). <strong>A file is required</strong> for each. Each is tinted with the customer's colour picker for that zone.</li>
         </ul>
         <p style="margin:6px 0 0 0;color:#555;font-size:12px;">The shared <strong>Background</strong> (static wallpaper) is also set in Product Setup — no per-design file needed.</p>
+        <p style="margin:10px 0 0 0;padding-top:10px;border-top:1px solid #c9d9e8;">
+            <strong>The file type decides whether a layer can be recoloured.</strong>
+        </p>
+        <ul style="margin:4px 0 0 18px;list-style:disc;">
+            <li><strong>PNG</strong> (or GIF / WebP) — a see-through shape. The customer picks a colour and the whole shape becomes it. Use this for patterns, stripes and textures.</li>
+            <li><strong>JPG</strong> — a finished picture, printed exactly as supplied. No colour picker is shown for it. Use this for artwork that is already the right colours, like a poppy or a flag.</li>
+        </ul>
+        <p style="margin:6px 0 0 0;color:#555;font-size:12px;">A JPG has no see-through areas, so if it were recolourable every pixel would turn the same colour and the picture would vanish behind a solid block. Put finished artwork on <strong>layer 2 or below</strong> and leave layer 1 blank — layer 1 is what cuts the artwork to the product shape, and a JPG there would square it off.</p>
     </div>
 
     <table class="widefat" id="bespoke-layers-table" style="margin-bottom:12px;">

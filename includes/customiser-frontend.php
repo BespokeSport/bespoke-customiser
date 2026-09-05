@@ -429,6 +429,29 @@ function bespoke_render_customiser( $atts ) {
                 return /\.(jpe?g|png|gif|webp)(\?.*)?$/i.test(url || '');
             }
 
+            /**
+             * Is this layer artwork a finished PICTURE rather than a shape?
+             *
+             * The tint below flattens every non-transparent pixel to the
+             * chosen colour and keeps only the alpha. That is exactly right
+             * for a PNG cut-out: pick a colour, the pattern becomes it. A
+             * JPEG has no transparency at all, so every pixel is opaque and
+             * the whole 1200x1200 square flattens to one flat block of
+             * colour, hiding the artwork completely. That is what a poppy
+             * design uploaded as a JPG looked like on 5 Sep 2026.
+             *
+             * So the file type IS the instruction. Easy to teach, and hard
+             * to get wrong by accident:
+             *
+             *   JPG / JPEG  a photograph or finished artwork. Drawn as it
+             *               is, never tinted, no colour picker.
+             *   PNG / GIF   a transparent shape. Tintable and recolourable
+             *   / WebP      by the customer, exactly as before.
+             */
+            function isPhotoUrl(url){
+                return /\.jpe?g(\?.*)?$/i.test(url || '');
+            }
+
             // Where pads should sit on the canvas. Matches Apex's bbox
             // (115,183 → 1093,1006) which itself matches the white pad
             // silhouettes baked into shinpads-background.jpg. Defining the
@@ -861,8 +884,9 @@ function bespoke_render_customiser( $atts ) {
                 if (padBaseUrl) {
                     stack.push({
                         url:      padBaseUrl,
-                        tint:     window.S.bgColor || '#feef00',
-                        gradient: window.S.bgGradient || null,
+                        tint:     isPhotoUrl(padBaseUrl) ? null
+                                                         : (window.S.bgColor || '#feef00'),
+                        gradient: isPhotoUrl(padBaseUrl) ? null : (window.S.bgGradient || null),
                         label:    'pad-base'
                     });
                 }
@@ -895,8 +919,9 @@ function bespoke_render_customiser( $atts ) {
                     if (patIdx === 0) window.S.patColor = window.S.patColors[0];
                     stack.push({
                         url:      layer.file_url,
-                        tint:     window.S.patColors[patIdx],
-                        gradient: (window.S.patGradients && window.S.patGradients[patIdx]) || null,
+                        tint:     isPhotoUrl(layer.file_url) ? null : window.S.patColors[patIdx],
+                        gradient: isPhotoUrl(layer.file_url) ? null
+                                                            : ((window.S.patGradients && window.S.patGradients[patIdx]) || null),
                         label:    'pattern-' + idx
                     });
                 });
@@ -1093,8 +1118,24 @@ function bespoke_render_customiser( $atts ) {
             // off (saved as '0'). Locked layers still paint on the pad via
             // the SVG composer — they just don't get a colour-picker row
             // on the front end.
+            /**
+             * Can the customer recolour this layer?
+             *
+             * Two ways to say no:
+             *   1. The admin unticked "Customer editable" on the layer.
+             *   2. The artwork is a JPEG — a finished picture, not a shape.
+             *      Tinting flattens it to a block of colour (see
+             *      isPhotoUrl), so a colour picker on it would only ever
+             *      destroy the design. Better not to offer one.
+             *
+             * Callers use this for row visibility AND as the picker guard,
+             * so both follow from this one answer.
+             */
             function bcpIsLayerEditable(layer){
-                return !layer || layer.editable !== '0';
+                if (!layer) return true;
+                if (layer.editable === '0') return false;
+                if (layer.file_url && isPhotoUrl(layer.file_url)) return false;
+                return true;
             }
 
             function rebuildPatternRows(){
@@ -2236,7 +2277,13 @@ function bespoke_render_customiser( $atts ) {
             }
             if (!design || !design.layers) return false;
             var layer = design.layers[idx];
-            return !!(layer && layer.editable === '0');
+            if (!layer) return false;
+            // Admin-locked…
+            if (layer.editable === '0') return true;
+            // …or a JPEG, which is a finished picture and cannot be
+            // recoloured without flattening it to a block (see isPhotoUrl).
+            if (layer.file_url && /\.jpe?g(\?.*)?$/i.test(layer.file_url)) return true;
+            return false;
           })();
           if (_bcpLocked) { activeInput = null; return; }
 
