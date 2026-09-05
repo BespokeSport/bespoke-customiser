@@ -4022,6 +4022,11 @@ var BESPOKE_STEP_CONFIG = {
   //   design  → card design (layered PNG, same gallery as everything else)
   //   colours → card colour customisation
   player_cards:       ['badge', 'name', 'number', 'design', 'colours'],
+  // Team Mug — colours only. The artwork is fixed and the customer just
+  // recolours the shirts, so every other step is noise. First product
+  // with no badge step: see applyStepConfig(), which now lands on the
+  // first VISIBLE step rather than assuming step 0 exists.
+  team_mug:           ['colours'],
   // Future:
   // shinpad_sleeves: ['badge', 'name', 'number', 'design', 'colours'],
   // etc.
@@ -4045,7 +4050,10 @@ var BESPOKE_ZONES_CONFIG = {
   corner_flags:       1,
   bottles:            1,
   player_cards:       1,
-  armbands:           { badge: 2, text: 1 }
+  armbands:           { badge: 2, text: 1 },
+  // Never used (no badge or text step) but declared so the zone helpers
+  // return a sane answer instead of falling through to the shin-pad pair.
+  team_mug:           1
 };
 
 /* ============================================================
@@ -4513,6 +4521,23 @@ function applyStepConfig(){
   try { bespokeBuildFaceSwitcher(); } catch(_){}
   // Second-badge chooser — reveals itself only on armband base types.
   try { bespokeShowBadge2UI(); } catch(_){}
+
+  /* Land on the first VISIBLE step.
+
+     Every product used to start with the badge step, so opening on step 0
+     was always right. The Team Mug is colours only, and without this the
+     customiser would open on a hidden screen — a blank panel with working
+     tabs above it, which looks thoroughly broken.
+
+     Only fires when the CURRENT step is hidden, so it cannot drag anyone
+     off a step they navigated to themselves. */
+  try {
+    if (window.S && !bespokeIsStepActive(S.step)) {
+      for (var _fs = 0; _fs < 5; _fs++) {
+        if (bespokeIsStepActive(_fs)) { goTo(_fs); break; }
+      }
+    }
+  } catch(_){}
 }
 
 /* ============================================================

@@ -85,6 +85,12 @@ function bespoke_get_product_types() {
         'award_plate'        => 'Plate Trophy Award',
         'award_glassblock'   => 'Glassblock Trophy',
         'player_cards'       => 'Player Cards',
+        // Team Mug — a ring of football shirts round a mug. The customer
+        // changes SIX colours and nothing else: outfield shirt body, pattern
+        // and sleeve, then the same three for the keeper. No badge, no text,
+        // no design choice, which is why its step list in customiser.html is
+        // colours only — the first product with no badge step.
+        'team_mug'           => 'Team Mug',
     ];
     // Merge in admin-managed types added via Product Setup → "Add a product
     // type". A custom key never overrides a core one.
