@@ -3955,6 +3955,14 @@ var BESPOKE_STEP_CONFIG = {
   // shared with the Pennant; diameter (16-36cm) drives the band-width
   // scaling. See initBgVariantToggle + bespokeArmbandBandScale().
   armbands:           ['badge', 'name', 'design', 'colours'],
+  // Pre-designed (themed) armbands — Remembrance, Pride, national flags.
+  // The band behaves exactly like a Captain Armband (it inherits that base
+  // type), but the artwork is FIXED: the customer picks one of the ready-
+  // made designs and adds their badge, nothing else. No text step, and no
+  // colour step — recolouring a poppy or a national flag would defeat the
+  // point of a pre-designed band.
+  // NB: keyed on the RAW product type, not the base — see bespokeActiveSteps().
+  armbands_predesign: ['badge', 'design'],
   // Corner Flags — single item, one badge + one text + design + colour
   // pickers. No squad-number step.
   corner_flags:       ['badge', 'name', 'design', 'colours'],
@@ -4337,7 +4345,14 @@ function bespokeClampArmbandBadgeX(x){
   return Math.max(150, Math.min(1050, x));
 }
 function bespokeActiveSteps(){
-  return BESPOKE_STEP_CONFIG[bespokeBaseType()] || BESPOKE_STEP_CONFIG.shinpads;
+  // RAW type first, then the base type it inherits from. Most child types
+  // want their parent's step list (referee armbands are a captain armband
+  // with different defaults), but some deliberately differ: pre-designed
+  // armbands inherit every armband behaviour yet show only badge + design.
+  // Falling straight through to the base type made that impossible.
+  return BESPOKE_STEP_CONFIG[bespokeProductType()]
+      || BESPOKE_STEP_CONFIG[bespokeBaseType()]
+      || BESPOKE_STEP_CONFIG.shinpads;
 }
 function bespokeIsStepActive(idx){
   if (idx >= 5) return true; // Review / Success always shown

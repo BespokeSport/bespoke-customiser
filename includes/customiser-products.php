@@ -189,6 +189,13 @@ function bespoke_inherit_product_type( $product_type ) {
         // band flow (steps, 3D mirror, geometry) and its artwork, which the
         // admin can override by uploading referee-specific artwork below.
         'referee_armbands'      => 'armbands',
+        // Pre-designed (themed) armbands — Remembrance, Pride, national
+        // flags and so on. Physically the same band, so reuse the whole
+        // armband flow: geometry, badge X-clamp, thickness toggle,
+        // band-width scaling and the order renderers. What differs is the
+        // STEP LIST (badge + design only) and the design set, both keyed on
+        // the raw type — see BESPOKE_STEP_CONFIG in customiser.html.
+        'armbands_predesign'    => 'armbands',
     ];
     // Admin-created ("self-serve") types carry their own inherited base type.
     if ( function_exists( 'bespoke_get_custom_product_types' ) ) {
