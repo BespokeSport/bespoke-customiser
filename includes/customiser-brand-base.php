@@ -10,9 +10,10 @@
  * of the rendered pages on 5 Sep 2026 found it printing THREE entries, all
  * set to load site-wide, all identical on every page:
  *
- *   1. CSS · the KEY SIGNINGS heading and the product grid under it.
- *   2. CSS · "BEspoke Sport — Global CSS", the brand foundation.
- *   3. JS  · a mobile fix for Fancy Product Designer — DEAD. FPD renders
+ *   1. CSS · "BEspoke — Range Section Styles" — the KEY SIGNINGS heading
+ *              and the product grid under it.
+ *   2. CSS · "BEspoke Global Styles" — the brand foundation.
+ *   3. JS  · "FPD Inside/Outside Button Fix" — DEAD. FPD renders
  *            nothing on the site any more (no fpd- markup on any page), yet
  *            that entry still installs a MutationObserver over the whole
  *            document body, subtree included, on every page load. It should
@@ -46,8 +47,9 @@
  * customiser-master.php).
  *
  * ── After uploading this ──────────────────────────────────────────────────
- * In **Simple Custom CSS and JS**, disable both CSS entries and delete the
- * Fancy Product Designer JS one. Until the CSS entries are off, the same
+ * In **Custom Code**, deactivate "BEspoke — Range Section Styles" and
+ * "BEspoke Global Styles", and delete "FPD Inside/Outside Button Fix".
+ * Those three are the only ACTIVE entries; the other eight are already off. Until the CSS entries are off, the same
  * rules are simply present twice — harmless, but pointless.
  *
  * File location: /wp-content/plugins/bespoke-customiser/includes/customiser-brand-base.php

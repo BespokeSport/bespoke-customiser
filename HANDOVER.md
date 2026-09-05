@@ -392,9 +392,10 @@ sizes. Regenerate it after editing the PHP — it's a copy, not a link.
 4. ~~Migrate the last styles out of a code-injector plugin~~ — **DONE 5 Sep 2026.**
    It was **Simple Custom CSS and JS**, not Code Snippets (Code Snippets holds only
    PHP entries here — an earlier version of this document had that wrong, and it cost
-   a wrong set of upload instructions). It was printing **three** site-wide entries,
-   not one: the Key Signings grid CSS, the brand base CSS, and a dead Fancy Product
-   Designer JS fix. Both CSS entries are now `assets/bespoke-brand-base.css` +
+   a wrong set of upload instructions). Of its 11 entries only **three** were active, all
+   site-wide: `BEspoke — Range Section Styles` (CSS, the Key Signings grid),
+   `BEspoke Global Styles` (CSS, the brand base) and `FPD Inside/Outside Button Fix`
+   (JS, dead — see below). Both CSS entries are now `assets/bespoke-brand-base.css` +
    `includes/customiser-brand-base.php`. Awaiting upload, after which both CSS
    entries should be **disabled** (not deleted) and the JS one deleted outright, then
    the styles verified against `tools/brand-base-baseline.json`.
