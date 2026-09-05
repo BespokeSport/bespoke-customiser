@@ -839,6 +839,13 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
          deletions on mobile). Revealed by bespokeShowBadge2UI(); hidden
          for every other product. -->
     <div id="badge2-wrap" style="display:none;">
+      <!-- Left-hand badge on/off. Mirrors the right-hand chooser below so
+           a customer can end up with both badges, either one, or none at
+           all. Before this, the right spot could be emptied but the left
+           could not: hideDraggable() refuses to hide the last badge, and
+           the in-canvas delete X is disabled on armbands after repeated
+           accidental scroll-tap deletions on mobile. -->
+      <div class="toggle-row" id="badgeL-row" onclick="toggleBadgeLeft()"><div class="tog-track on" id="badgeL-tog"><div class="tog-thumb"></div></div><div><div class="tog-label">Badge on the left</div><div class="tog-sub">Turn off to leave the left-hand spot empty</div></div></div>
       <div class="toggle-row" id="badge2-share-row" onclick="toggleBadge2Same()"><div class="tog-track on" id="badge2-tog"><div class="tog-thumb"></div></div><div><div class="tog-label">Same badge left &amp; right</div><div class="tog-sub">Turn off to add a different badge on the right — or leave it for one badge only</div></div></div>
       <div id="badge2-upload-block" style="display:none;">
         <label class="upload-zone" id="upload-zone-2"><input type="file" accept="image/*" id="badge2-file" onchange="handleBadge2(event)"/>
@@ -3162,7 +3169,10 @@ function renderAddBackPanel(){
       // chooser ("Empty" mode). Showing "+ Add right badge" here too
       // would un-hide it while the chooser still says Empty — skip it;
       // customers flip it back via the chooser.
-      if (k === 'badgeR' && typeof bespokeBaseType === 'function' &&
+      // Armbands: BOTH badge spots are owned by their own toggles on the
+      // badge step. Offering "+ Add badge" here as well would put them out
+      // of step with the toggles, which would still read "off".
+      if ((k === 'badgeR' || k === 'badgeL') && typeof bespokeBaseType === 'function' &&
           bespokeBaseType() === 'armbands') return;
       var side = k.endsWith('L') ? 'left' : 'right';
       var btn = document.createElement('button');
@@ -3310,6 +3320,10 @@ function bespokeShowBadge2UI(){
   var on = (typeof bespokeBaseType === 'function' && bespokeBaseType() === 'armbands');
   wrap.style.display = on ? '' : 'none';
   if (!on) return;
+  // Left-hand spot toggle reflects S.hidden.badgeL.
+  var lTog = document.getElementById('badgeL-tog');
+  if (lTog) lTog.className = 'tog-track' + ((window.S && S.hidden && S.hidden.badgeL) ? '' : ' on');
+
   var mode = (window.S && S.badge2Mode) || 'same';
   var same = (mode === 'same');
   // Toggle ON = same badge both sides; OFF reveals the right-hand upload.
@@ -3346,6 +3360,23 @@ function setBadge2Mode(mode){
 //         or, with nothing uploaded, stays empty  (mode 'none')
 // The three underlying modes are preserved, so the renderer, cart payload
 // and admin summary are all unchanged.
+/**
+ * Show or hide the LEFT badge spot.
+ *
+ * The right-hand spot is owned by the Same-badge chooser below; this is
+ * its opposite number. Both write to S.hidden, which the renderer already
+ * filters on and which flows through to the cart line and the admin order
+ * as a removed element, so nothing downstream needs to change.
+ */
+function toggleBadgeLeft(){
+  if (!window.S) return;
+  if (!S.hidden) S.hidden = {};
+  S.hidden.badgeL = !S.hidden.badgeL;
+  bespokeShowBadge2UI();
+  if (typeof renderAddBackPanel === 'function') renderAddBackPanel();
+  if (typeof updateDesignLayers === 'function') updateDesignLayers();
+  if (typeof syncAll === 'function') syncAll();
+}
 function toggleBadge2Same(){
   if (!window.S) return;
   if (!S.hidden) S.hidden = {};
@@ -3965,7 +3996,10 @@ var BESPOKE_STEP_CONFIG = {
   armbands_predesign: ['badge', 'design'],
   // Remembrance bands — same behaviour, kept as a separate type so their
   // designs do not share a picker with flags and Pride bands.
-  remembrance_armbands: ['badge', 'design'],
+  // 'name' carries the captain's letter — a Remembrance band is still a
+  // captain armband, so it needs the C. Design stays fixed and colours
+  // stay out.
+  remembrance_armbands: ['badge', 'name', 'design'],
   // Corner Flags — single item, one badge + one text + design + colour
   // pickers. No squad-number step.
   corner_flags:       ['badge', 'name', 'design', 'colours'],
