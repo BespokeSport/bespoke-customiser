@@ -389,8 +389,10 @@ sizes. Regenerate it after editing the PHP — it's a copy, not a link.
    block of the CSS (wash gradient, copy position, dot height).
 
 ### Backlog
-4. **Migrate "BEspoke Global Styles"** — the last remaining Simple-CCJ entry — into the
-   plugin, removing the dependency on that plugin entirely.
+4. ~~Migrate "BEspoke Global Styles"~~ — **DONE 5 Sep 2026.** Now
+   `assets/bespoke-brand-base.css` + `includes/customiser-brand-base.php`. Awaiting
+   upload, after which the snippet must be **disabled** (not deleted) and the styles
+   verified against `tools/brand-base-baseline.json`.
 5. **Go-live plan.** Everything is on staging. Moving to production is **not just plugin
    files** — designs, product artwork, saved placements and product config all live in the
    **WordPress database**. This needs a written plan before the day.
