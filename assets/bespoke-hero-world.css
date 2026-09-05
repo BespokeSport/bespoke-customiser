@@ -282,13 +282,16 @@
 /* --------------------------------------------------------------------------
    SKIP INTRO
    --------------------------------------------------------------------------
-   Top-right, where an intro-skip is expected. Quiet until hovered or
-   focused — it should be findable without competing with the product copy.
-   A real <button>, so it is keyboard reachable, unlike the dots and meter.
+   BOTTOM-right. It started top-right, where an intro-skip is conventionally
+   found, but the site header is sticky and slides straight over it the
+   moment you scroll — which is exactly when you want the skip.
+   Quiet until hovered or focused, so it is findable without competing with
+   the product copy. A real <button>, so it is keyboard reachable, unlike
+   the dots and the meter.
    -------------------------------------------------------------------------- */
 .bs-world-skip{
 	position: absolute;
-	top: 22px;
+	bottom: 30px;
 	right: 3vw;
 	z-index: 6;
 	background: rgba(13,13,13,.55);
@@ -313,7 +316,19 @@
 
 /* Portrait: sit under the header, clear of the progress dots at 32%. */
 @media (orientation: portrait){
-	.bs-world-skip{ top: 14px; right: 4vw; font-size: 10px; padding: 8px 13px; }
+	/* Portrait keeps it at the TOP, which looks like a contradiction of the
+	   desktop rule above and is not. On a phone the product copy runs along
+	   the bottom edge, and bottom-right lands squarely on the Customise
+	   button — measured, not guessed. --bs-world-skip-top clears the sticky
+	   site header; raise it if the header ever gets taller. The progress dots
+	   sit at 32%, so there is plenty of room between the two. */
+	.bs-world-skip{
+		bottom: auto;
+		top: var(--bs-world-skip-top, 96px);
+		right: 4vw;
+		font-size: 10px;
+		padding: 8px 13px;
+	}
 }
 
 /* Reduced motion collapses the hero to a single screen — there is no
