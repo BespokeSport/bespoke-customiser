@@ -182,6 +182,30 @@ add_action( 'wp_ajax_bespoke_upload_product_asset', function() {
  * Returns the parent type to fall back to, or the type unchanged when it
  * doesn't inherit from anything.
  */
+/**
+ * Types whose design picker must show ONLY their own designs.
+ *
+ * By default a child type also inherits its parent's registered designs,
+ * so a design registered once against Captain Armbands shows up for
+ * double-sided and referee bands too. That is right for those: they are
+ * the same product with a different badge count or defaults.
+ *
+ * It is wrong for the PRE-DESIGNED types. Their whole point is a fixed,
+ * curated set — a Remembrance band must offer poppies, not all 34 captain
+ * armband patterns. Listed here, a type keeps the armband GEOMETRY it
+ * inherits while keeping its design list to itself.
+ *
+ * @param string $product_type
+ * @return bool
+ */
+function bespoke_type_has_exclusive_designs( $product_type ) {
+    $exclusive = apply_filters( 'bespoke_exclusive_design_types', [
+        'armbands_predesign',
+        'remembrance_armbands',
+    ] );
+    return in_array( $product_type, (array) $exclusive, true );
+}
+
 function bespoke_inherit_product_type( $product_type ) {
     $parents = [
         'double_sided_armbands' => 'armbands',

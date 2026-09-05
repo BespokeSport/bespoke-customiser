@@ -308,7 +308,12 @@ function bespoke_render_customiser( $atts ) {
         $design_type_parent = function_exists( 'bespoke_inherit_product_type' )
             ? bespoke_inherit_product_type( $product_type )
             : $product_type;
-        if ( $design_type_parent !== $product_type ) {
+        // …unless this type curates its own list. Pre-designed bands
+        // inherit armband geometry but must NOT inherit all 34 captain
+        // armband patterns into their picker.
+        $inherits_designs = ! ( function_exists( 'bespoke_type_has_exclusive_designs' )
+            && bespoke_type_has_exclusive_designs( $product_type ) );
+        if ( $design_type_parent !== $product_type && $inherits_designs ) {
             $products_clause = [
                 'relation' => 'OR',
                 [ 'key' => '_bespoke_products', 'value' => '"' . $product_type . '"',        'compare' => 'LIKE' ],

@@ -222,6 +222,31 @@ goes, that script goes with it.
 heavyweight customiser plugin is a real cost per page load, and it is the kind of thing
 that gets forgotten until a product page is mysteriously slow.
 
+
+### 6.8 There are TWO design-lookup paths, and only one is live
+
+- **`customiser-frontend.php` (~line 300)** builds `BESPOKE_REGISTERED_DESIGNS` server-side
+  and patches it into `ALL_DESIGNS`. **This is what actually fills the picker.** It
+  deliberately ORs in the PARENT type's designs, so a design registered once against
+  Captain Armbands also appears for double-sided and referee bands.
+- **`bespoke_ajax_get_designs()` in `customiser-designs.php`** answers
+  `admin-ajax.php?action=bespoke_get_designs`. It does an EXACT type match with no
+  inheritance — and **nothing on the front end calls it.** Grep confirms zero references
+  outside its own file.
+
+The two therefore disagree for any child type, and on 5 Sep 2026 that cost real time: a
+Remembrance band was showing all 34 captain armband designs, I queried the AJAX endpoint,
+got the correct single design back, and told Nick the filter was fine and his ticking was
+at fault. It wasn't. I had tested a code path the page never runs.
+
+**If you are debugging the design picker, read `customiser-frontend.php`.** Verify against
+the rendered page (`window.BESPOKE_REGISTERED_DESIGNS`), never against admin-ajax.
+
+Types that must keep their own curated list — the pre-designed bands — are named in
+`bespoke_type_has_exclusive_designs()` in `customiser-products.php`, filterable via
+`bespoke_exclusive_design_types`. They still inherit armband geometry, just not its
+designs.
+
 ---
 
 ## 7. Tooling notes (for you, on the new machine)
