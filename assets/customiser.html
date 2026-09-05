@@ -1051,6 +1051,7 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
           <option value="CF">CF — Centre Forward</option>
         </optgroup>
       </select>
+      <p class="hint" id="hint-position-required" style="display:none;color:#ff6b6b;">Please choose a position — it decides whether the card shows outfield stats or goalkeeper stats.</p>
       <p class="hint">Choosing Goalkeeper swaps the stat labels in the stats step from PAC/SHO/PAS/DRI/DEF/PHY to DIV/HAN/KIC/REF/SPE/POS.</p>
     </div>
     <!-- (Club badge upload cluster lives at the TOP of this step now —
@@ -4982,6 +4983,8 @@ function onPlayerFlag(value){
 }
 
 function onPlayerPosition(value){
+  var _warn = document.getElementById('hint-position-required');
+  if (_warn && value) _warn.style.display = 'none';
   S.playerPosition = String(value || '');
   _applyPlayerStatLabels();
   if (typeof syncAll === 'function') { try { syncAll(); } catch(_){} }
@@ -5798,6 +5801,26 @@ function bespokeCaptureInsideFace(cfg){
 }
 
 function bespokeAddToCart() {
+  /* Player Cards: the on-field position is REQUIRED.
+   *
+   * It is not just a label on the card — it decides which six stats are
+   * printed. Leave it unanswered and a goalkeeper's card goes out with
+   * PAC / SHO / PAS / DRI / DEF / PHY instead of DIV / HAN / KIC / REF /
+   * SPE / POS, and nothing warns anyone until it is made. Cheaper to stop
+   * the order here than to print the wrong card.
+   */
+  if (typeof isPlayerCard === 'function' && isPlayerCard() && !S.playerPosition) {
+    var _warn = document.getElementById('hint-position-required');
+    if (_warn) _warn.style.display = '';
+    goTo(1);
+    var _sel = document.getElementById('player-position');
+    if (_sel) {
+      try { _sel.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch(_) { _sel.scrollIntoView(); }
+      try { _sel.focus({ preventScroll: true }); } catch(_) { _sel.focus(); }
+    }
+    return;
+  }
+
   var cfg = window.BespokeConfig;
 
   // Not in WordPress - just show success screen

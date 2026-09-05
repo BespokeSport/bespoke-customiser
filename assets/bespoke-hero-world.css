@@ -278,3 +278,44 @@
 /* ==========================================================================
    END · World hero
    ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   SKIP INTRO
+   --------------------------------------------------------------------------
+   Top-right, where an intro-skip is expected. Quiet until hovered or
+   focused — it should be findable without competing with the product copy.
+   A real <button>, so it is keyboard reachable, unlike the dots and meter.
+   -------------------------------------------------------------------------- */
+.bs-world-skip{
+	position: absolute;
+	top: 22px;
+	right: 3vw;
+	z-index: 6;
+	background: rgba(13,13,13,.55);
+	border: 1px solid rgba(245,245,240,.22);
+	color: #c9c9c9;
+	font-family: 'Anton', sans-serif;
+	font-size: 11px;
+	letter-spacing: .18em;
+	text-transform: uppercase;
+	padding: 9px 16px;
+	border-radius: 2px;
+	cursor: pointer;
+	backdrop-filter: blur(4px);
+	transition: color .2s ease, border-color .2s ease, background .2s ease;
+}
+.bs-world-skip:hover,
+.bs-world-skip:focus-visible{
+	color: #0D0D0D;
+	background: #5DCAA5;
+	border-color: #5DCAA5;
+}
+
+/* Portrait: sit under the header, clear of the progress dots at 32%. */
+@media (orientation: portrait){
+	.bs-world-skip{ top: 14px; right: 4vw; font-size: 10px; padding: 8px 13px; }
+}
+
+/* Reduced motion collapses the hero to a single screen — there is no
+   journey left to skip. */
+.bs-world.bs-world-static .bs-world-skip{ display: none; }

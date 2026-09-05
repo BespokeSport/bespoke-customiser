@@ -143,12 +143,19 @@ function bespoke_hero_world_shortcode( $atts ) {
         // clears before the products — see the CSS. Turn it down if the
         // render can carry the type on its own.
         'veil'    => '1',
+        // Scroll length, in vh, for a visitor who has skipped the intro
+        // before. The journey still plays — it just passes in a fraction
+        // of the scrolling, so a returning customer is not made to wind
+        // through the whole thing again. Set equal to `scroll` to turn the
+        // shortcut off.
+        'returnscroll' => '260',
     ], $atts, 'bespoke_hero_world' );
 
     $scroll   = max( 300, (int) $atts['scroll'] );
     $height   = min( 100, max( 40, (int) $atts['height'] ) );
     $focus    = min( 100, max( 0, (int) $atts['focus'] ) ) / 100;
     $veil     = min( 1, max( 0, (float) $atts['veil'] ) );
+    $returns  = max( 150, min( $scroll, (int) $atts['returnscroll'] ) );
     $products = bespoke_hero_world_products();
     $base     = BESPOKE_PLUGIN_URL . 'assets/hero-world/';
     $stops    = wp_list_pluck( $products, 'frame' );
@@ -211,6 +218,10 @@ function bespoke_hero_world_shortcode( $atts ) {
           <?php endforeach; ?>
         </div>
 
+        <?php /* Skip lives top-right, where an intro-skip is expected. It
+               is a real button so it is keyboard reachable; the dots and
+               the progress meter are decorative and are not. */ ?>
+        <button type="button" class="bs-world-skip">Skip intro</button>
         <div class="bs-world-hint">Scroll</div>
         <div class="bs-world-meter"></div>
       </div>
@@ -425,9 +436,45 @@ function bespoke_hero_world_shortcode( $atts ) {
 
       if (reduce){
         root.classList.add('bs-world-static');
+        var _sk = root.querySelector('.bs-world-skip');
+        if (_sk) _sk.style.display = 'none';
         fit();
         cards.forEach(function(c){ c.classList.add('on'); });
         return;
+      }
+
+      /* ---- Skip intro --------------------------------------------------
+         Jumps past the hero to whatever follows it. The choice is
+         remembered, and on a later visit the journey is shortened to
+         `returnscroll` rather than skipped outright — the world still
+         turns, it just does not ask for the same wind-through twice.
+         Deliberately NOT an auto-scroll on load: moving the page under
+         someone before they touch it is disorienting and breaks the back
+         button. localStorage is wrapped because a private window throws
+         on access rather than returning null. */
+      var SKIP_KEY = 'bsWorldSkipped';
+      function skippedBefore(){
+        try { return localStorage.getItem(SKIP_KEY) === '1'; } catch(e){ return false; }
+      }
+      function rememberSkip(){
+        try { localStorage.setItem(SKIP_KEY, '1'); } catch(e){}
+      }
+
+      var skipBtn = root.querySelector('.bs-world-skip');
+      if (skipBtn){
+        skipBtn.addEventListener('click', function(){
+          rememberSkip();
+          var below = root.offsetTop + root.offsetHeight;
+          try { window.scrollTo({ top: below, behavior: 'smooth' }); }
+          catch(e){ window.scrollTo(0, below); }
+        });
+      }
+
+      /* A returning skipper gets the short journey. Applied before the
+         first onScroll() so the timeline is measured against it. */
+      if (skippedBefore()){
+        root.style.setProperty('--bs-world-scroll', <?php echo wp_json_encode( $returns . 'vh' ); ?>);
+        root.classList.add('bs-world-quick');
       }
 
       fit(); onScroll();

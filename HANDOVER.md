@@ -429,8 +429,9 @@ sizes. Regenerate it after editing the PHP — it's a copy, not a link.
 live — nothing is sitting in git waiting.*
 
 ### Needs a decision from Nick
-1. **Hero `veil` value** — `veil="0"` vs the current `1`. Whatever he lands on becomes the
-   default in `customiser-hero-world.php` **and** the CSS fallback. Open since July.
+1. ~~Hero `veil` value~~ — **DECIDED 5 Sep 2026: keep it at `1`.** Nick: "lets keep, I
+   think it looks stylish." Already the default in both the shortcode and the CSS, so
+   nothing to change.
 2. **The old Elementor hero** ("BUILT FOR YOUR BADGE") still sits below the new one, so two
    heroes stack. Nick wants to keep the slot and change its content. The suggestion on the
    table is a three-step "how it works" (pick → design → we make it), because nothing on
