@@ -425,39 +425,54 @@ sizes. Regenerate it after editing the PHP — it's a copy, not a link.
 
 ## 10. Outstanding work
 
-### Immediate / decided
-1. **Hero `veil` value** — Nick was testing `veil="0"` vs `1`. Whatever he lands on should
-   become the default in `customiser-hero-world.php` **and** the CSS fallback.
-2. **The old Elementor hero** ("BUILT FOR YOUR BADGE") still sits on the homepage. Two
-   heroes stacked. Needs a decision: replace it, or keep both.
-3. **Mobile hero** — DONE and live on staging (4 Sep 2026), verified on Nick's own phone.
-   Tuning knobs if he wants changes are all in the `@media (orientation: portrait)`
-   block of the CSS (wash gradient, copy position, dot height).
+*Reviewed against the live site on 5 Sep 2026. Everything in the plugin is uploaded and
+live — nothing is sitting in git waiting.*
 
-### Backlog
-4. ~~Migrate the last styles out of a code-injector plugin~~ — **DONE 5 Sep 2026.**
-   It was **Simple Custom CSS and JS**, not Code Snippets (Code Snippets holds only
-   PHP entries here — an earlier version of this document had that wrong, and it cost
-   a wrong set of upload instructions). Of its 11 entries only **three** were active, all
-   site-wide: `BEspoke — Range Section Styles` (CSS, the Key Signings grid),
-   `BEspoke Global Styles` (CSS, the brand base) and `FPD Inside/Outside Button Fix`
-   (JS, dead — see below). Both CSS entries are now `assets/bespoke-brand-base.css` +
-   `includes/customiser-brand-base.php`. Awaiting upload, after which both CSS
-   entries should be **disabled** (not deleted) and the JS one deleted outright, then
-   the styles verified against `tools/brand-base-baseline.json`.
-5. **Go-live plan.** Everything is on staging. Moving to production is **not just plugin
-   files** — designs, product artwork, saved placements and product config all live in the
-   **WordPress database**. This needs a written plan before the day.
-6. **Unfinished products** — Thermal Cups and Football Flags show *shin pad* artwork
-   (no product type set); Grassroots Football Mug is **£0.00**. Nick says these are hidden
-   and not in round one — **verify before launch**.
-7. **Player Cards** — position dropdown could be made required (currently optional, and
-   the placeholder-as-answer bug is fixed).
+### Needs a decision from Nick
+1. **Hero `veil` value** — `veil="0"` vs the current `1`. Whatever he lands on becomes the
+   default in `customiser-hero-world.php` **and** the CSS fallback. Open since July.
+2. **The old Elementor hero** ("BUILT FOR YOUR BADGE") still sits below the new one, so two
+   heroes stack. Nick wants to keep the slot and change its content. The suggestion on the
+   table is a three-step "how it works" (pick → design → we make it), because nothing on
+   the homepage explains the process. Its eyebrow currently duplicates the new hero's
+   word for word, and its three bullets duplicate "Why Choose BEspoke" further down.
+3. **The three mugs.** Football Legends, Grassroots Football and Aston Villa Inspired are
+   all publicly listed and shoppable. Nick says none are going on the new site. Two
+   wrinkles while they are up: Football Legends has **no price**, so it cannot be bought
+   and shows "Read more" where every other product says "CUSTOMISE"; and the Aston Villa
+   mug names a real club while the homepage small print says designs with
+   copyright-protected badges such as Premier League clubs cannot be used.
+4. **Player Cards** — the on-field position dropdown is optional. Skip it and the position
+   box on the card is blank AND the six stats keep the outfield labels, so a goalkeeper
+   who skips it gets PAC/SHO/PAS instead of DIV/HAN/KIC. Making it required is small.
+
+### Ready to action
+5. **Fancy Product Designer is now two products away from removal.** Remembrance is fully
+   off it. Only the Grassroots and Aston Villa mugs still load it — the same mugs in item 3.
+   Decide those and the whole plugin can go, along with the "Customize"→"Customise" patch
+   script in `customiser-woocommerce.php` (~line 185) that exists only to paper over it.
+6. **Delete `assets/hero-world-m.zip` from the server** — 5.1MB of dead weight left over
+   from the portrait hero upload.
+7. **"BESPOKE: Read plugin files (AJAX debug)"** is still ACTIVE in Code Snippets. It
+   serves plugin file contents over a web request. Fine on staging, must not reach live.
+8. **Remembrance band attributes** — it uses one-off `width` / `length` attributes while
+   the other 27 themed bands use the global `pa_band_thickness` / `pa_band-width`. It
+   works (the matcher compares values, not names) but it is the only band set up that way.
+   Its size guidance also disagrees: 24cm is "U11-U15" on standard bands, "U14-U16" here.
+
+### Bigger pieces
+9. **Go-live plan.** Everything is on staging. Moving to production is **not just plugin
+   files** — designs, product artwork, saved placements and per-product config all live in
+   the **WordPress database**. This needs writing down before the day.
+10. **Meta tracking is failing.** Every page POSTs to Facebook's conversions endpoint and
+    gets a 500 back. Unrelated to any of our work and invisible to visitors, but if
+    conversion data is expected at launch it currently will not arrive.
 
 ### Known non-issues (don't re-investigate)
-- Remembrance Armband has no customiser — **intentional**, it's pre-designed.
 - Boys/Girls Creator Packs — **being removed** from the site.
 - Nick has verified sizes come through correctly on armband orders.
+- The Remembrance band DOES have a customiser now (ours). Earlier notes saying it has none
+  are out of date.
 
 ---
 
