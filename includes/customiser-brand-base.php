@@ -13,11 +13,21 @@
  *   1. CSS · "BEspoke — Range Section Styles" — the KEY SIGNINGS heading
  *              and the product grid under it.
  *   2. CSS · "BEspoke Global Styles" — the brand foundation.
- *   3. JS  · "FPD Inside/Outside Button Fix" — DEAD. FPD renders
- *            nothing on the site any more (no fpd- markup on any page), yet
- *            that entry still installs a MutationObserver over the whole
- *            document body, subtree included, on every page load. It should
- *            simply be deleted, not migrated.
+ *   3. JS  · "FPD Inside/Outside Button Fix" — a no-op, deleted rather
+ *            than migrated. Be careful about WHY, because the obvious
+ *            reason is wrong: Fancy Product Designer is still installed
+ *            and ACTIVE, and loads its full designer on at least three
+ *            products (Remembrance Day Armband, Grassroots Football Mug,
+ *            Aston Villa Inspired Mug). The real reason is that FPD's
+ *            toolbar markup changed under it. The fix looks for
+ *            [data-action="next-view"] inside the actions menu; there is
+ *            no longer a single data-action attribute anywhere on the page
+ *            (checked in the light DOM and in shadow roots), and the
+ *            buttons now read "File" and "More" rather than Inside/Outside
+ *            Band. Its own guard, `if (!trigger || !target) return;`, has
+ *            therefore been bailing out every time — while still installing
+ *            a MutationObserver over the whole document body, subtree
+ *            included, on every page load.
  *
  * Entries 1 and 2 are both carried here, in that order, because both style
  * the Key Signings heading and the later one wins. Moving them means the

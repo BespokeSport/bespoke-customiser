@@ -201,6 +201,27 @@ On 2026-07-20 I deactivated **"BEspoke Customise Button Fix"** (post 6622), a br
 parse time cannot rely on that global.** This silently hid the pennant Frill toggle for
 weeks (its `requireAlt` check read an undefined value).
 
+
+### 6.7 Fancy Product Designer is still installed AND ACTIVE
+
+Easy to assume otherwise, because Nick's own customiser handles everything he talks
+about. It does not handle everything on the site. As of 5 Sep 2026 FPD still loads its
+full designer — `FancyProductDesigner-all.min.js` and friends, 400+ `fpd-` elements — on
+at least three products:
+
+- **Remembrance Day Armband** (id 4852) — the one described elsewhere as "pre-designed,
+  no customiser". It has a customiser; it is just a different plugin's.
+- **Grassroots Football Mug** (id 5861)
+- **Aston Villa Inspired Mug** (id 5540)
+
+`customiser-woocommerce.php` (~line 185) carries a small script whose whole job is to
+rewrite FPD's American "Customize" label to "Customise" on those buttons. If FPD ever
+goes, that script goes with it.
+
+**Before go-live, decide what happens to FPD.** Three products depending on a second,
+heavyweight customiser plugin is a real cost per page load, and it is the kind of thing
+that gets forgotten until a product page is mysteriously slow.
+
 ---
 
 ## 7. Tooling notes (for you, on the new machine)
