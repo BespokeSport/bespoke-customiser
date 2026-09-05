@@ -4022,11 +4022,15 @@ var BESPOKE_STEP_CONFIG = {
   //   design  → card design (layered PNG, same gallery as everything else)
   //   colours → card colour customisation
   player_cards:       ['badge', 'name', 'number', 'design', 'colours'],
-  // Team Mug — colours only. The artwork is fixed and the customer just
-  // recolours the shirts, so every other step is noise. First product
-  // with no badge step: see applyStepConfig(), which now lands on the
-  // first VISIBLE step rather than assuming step 0 exists.
-  team_mug:           ['colours'],
+  // Team Mug — pick a shirt style, then recolour it. Design + colours only:
+  // there is no badge and no text on this product, which makes it the first
+  // product with no badge step. See applyStepConfig(), which now lands on
+  // the first VISIBLE step rather than assuming step 0 exists.
+  //
+  // Each "design" here is a shirt STYLE — plain, vertical stripes,
+  // horizontal stripes. Fancy Product Designer offered no style choice at
+  // all, so this is a gain rather than a like-for-like move.
+  team_mug:           ['design', 'colours'],
   // Future:
   // shinpad_sleeves: ['badge', 'name', 'number', 'design', 'colours'],
   // etc.
