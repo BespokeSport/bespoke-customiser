@@ -546,40 +546,58 @@ live — nothing is sitting in git waiting.*
    Its size guidance also disagrees: 24cm is "U11-U15" on standard bands, "U14-U16" here.
 
 ### Bigger pieces
-9. ~~Go-live plan~~ — **WRITTEN 6 Sep 2026.** Full runbook published as an artifact:
-   <https://claude.ai/code/artifact/756410b7-3776-41ce-9c00-0a6516718707>
+9. ~~Go-live plan~~ — **WRITTEN 6 Sep 2026, then rewritten twice the same day.** Full
+   runbook: <https://claude.ai/code/artifact/756410b7-3776-41ce-9c00-0a6516718707>
 
-   The short version: moving to production is **not just plugin files** — the design
-   library (~70 designs), the 12 uploaded fonts, per-product setup and the Elementor
-   pages all live in the **WordPress database**, and so do every real order. The two
-   cannot be separated, which is the whole problem.
+   **Do NOT use SiteGround Full Deploy.** It copies the staging database over the live
+   one, destroying every order taken since the staging copy. It is also unnecessary.
 
-   **Never press SiteGround Full Deploy first** — it copies the staging database over
-   the live one and every order taken since the staging copy is gone, with no undo.
+   **The route (Nick's idea, and the right one): upload files, import four things,
+   never touch the orders.** The live orders and customer accounts are never moved,
+   copied, exported or replaced — they just stay where they are. Everything else is
+   either a file upload or an ADDITIVE import.
 
-   **The trap (Nick spotted this, 6 Sep 2026).** The obvious plan is to refresh staging
-   FROM live so staging picks up the real orders, re-apply the customiser setup, then
-   deploy. It does not work. The refresh copies live's orders as at that MINUTE, and
-   re-applying the setup takes an afternoon at least — so every order that arrives on
-   live during that afternoon is missing from the copy and is destroyed by the deploy
-   at the end of it. **The gap between the copy and the deploy is the window where
-   orders die**, and it is as long as the setup takes.
+   Travels as files: the plugin folder, all design artwork, product assets, fonts, hero
+   frames, and the site-wide styling (which is why `customiser-brand-base.php` was
+   worth migrating out of the Custom Code plugin — it is now a file, not a DB record).
 
-   The published plan closes the window instead of living with it: export the orders
-   and customers out of live to a file FIRST, finish everything on staging with no
-   clock running, then deploy in one short pass with the shop paused, then import the
-   orders back afterwards. Nothing depends on how long the setup takes, and the
-   pre-deploy backup is the real safety net if the import proves awkward.
+   Must be moved as data — four things only:
+   1. The design library, ~70 `bespoke_design` posts (Tools → Export/Import)
+   2. The font list — a single option, `bespoke_customiser_fonts`
+   3. Customiser setup on **14 products** (not 88 — verified 6 Sep 2026)
+   4. The homepage + How It Works Elementor layouts
 
-   Note for whoever runs it: WooCommerce cannot import orders on its own, so step 5
-   needs an order import plugin. That is acceptable because it happens AFTER launch
-   with no time pressure, and the orders are safe in the export and the backup
-   regardless of whether it succeeds.
+   The 14: shin pads, shin pad sleeves, captains armbands, double-sided armbands,
+   referee armbands, remembrance armbands, grip socks, corner flags, pennant, player
+   cards, grassroots mug, and the three trophies (traditional, player-of-the-match,
+   plate). Detect them with the presence of `BespokeConfig` in the page source —
+   `bespoke-customiser-root` is NOT a reliable test, it appears in the CSS on every
+   product.
 
-   Verified 6 Sep 2026: staging carries 88 products, live 92. The four extra ones are
-   Boys/Girls Creator Packs, Thermal Cups and Water Bottles — all four deliberately not
-   coming across. **No product exists on staging that is missing from live**, so every
-   product change is an edit, never a new item.
+   **⚠ Two traps, both verified 6 Sep 2026:**
+   - `_bespoke_layers` stores artwork as an **absolute URL** containing
+     `staging2.bespokesport.uk`, not an attachment ID. After importing designs to live,
+     run a find-and-replace to `www.bespokesport.uk` **before** the products go live,
+     or every design quietly loads its images from staging and breaks the day staging
+     is refreshed.
+   - `_bespoke_thumb_id` IS an attachment ID. Product IDs match across the two sites
+     (checked five, all matched — staging inherited them from live), but images
+     uploaded to staging since the copy have IDs that mean something else on live, so
+     expect a few wrong design thumbnails. Visible immediately in the design picker.
+
+   Sequence matters: everything invisible happens first. Uploading and activating the
+   plugin changes nothing a customer sees, because the customiser only appears once a
+   product has its setup. Only the product import and the Elementor pages are visible,
+   so those two wait for a quiet hour.
+
+   Also verified 6 Sep 2026: staging carries 88 products, live 92. The four extras are
+   Boys/Girls Creator Packs, Thermal Cups and Water Bottles, all deliberately dropped.
+   **No product exists on staging that is missing from live**, so every product change
+   is an edit. On this route the four survive the move and must be removed by hand.
+
+   Both sites run the same Astra theme and the same 18 plugins. The only differences:
+   staging has our plugin + `woocommerce-services`, live has `official-facebook-pixel`.
+
 10. **Meta tracking is failing.** Every page POSTs to Facebook's conversions endpoint and
     gets a 500 back. Unrelated to any of our work and invisible to visitors, but if
     conversion data is expected at launch it currently will not arrive.
