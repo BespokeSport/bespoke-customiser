@@ -1334,7 +1334,9 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
       <div id="sum-mug" style="display:none;">
         <div class="sum-row"><span class="sum-k">Squad size</span><span class="sum-v" id="sum-mug-count">—</span></div>
         <div class="sum-row"><span class="sum-k">Keeper shirt</span><span class="sum-v" id="sum-mug-keeper">—</span></div>
+        <div id="sum-mug-keeper-colours"></div>
         <div class="sum-row"><span class="sum-k">Outfield shirt</span><span class="sum-v" id="sum-mug-outfield">—</span></div>
+        <div id="sum-mug-outfield-colours"></div>
         <div class="sum-head">SQUAD</div>
         <div class="sum-row"><span class="sum-v" id="sum-mug-squad" style="white-space:pre-line;text-align:left;">—</span></div>
       </div>
@@ -1346,14 +1348,20 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
       <div class="sum-head" id="sum-head-right">RIGHT</div>
       <div class="sum-row"><span class="sum-k">Name</span><span class="sum-v" id="sum-nR">-</span></div>
       <div class="sum-row"><span class="sum-k">Number</span><span class="sum-v" id="sum-nuR">-</span></div>
+      <!-- Wrapped so a product without text or a single colour scheme can
+           hide them wholesale — the Team Mug has neither. -->
+      <div id="sum-generic-fonts">
       <div class="sum-head">Fonts</div>
       <div class="sum-row"><span class="sum-k">Name font</span><span class="sum-v" id="sum-name-font">Bold Block</span></div>
       <div class="sum-row"><span class="sum-k">Number font</span><span class="sum-v" id="sum-num-font">Bold Block</span></div>
+      </div>
+      <div id="sum-generic-colours">
       <div class="sum-head">Colours</div>
       <div class="sum-row"><span class="sum-k" id="sum-k-bg">Background</span><span class="sum-v"><span class="sdot" id="sd-bg" style="background:#feef00;"></span><span id="sh-bg">#feef00</span></span></div>
       <div class="sum-row"><span class="sum-k">Pattern</span><span class="sum-v"><span class="sdot" id="sd-pat" style="background:#211d33;"></span><span id="sh-pat">#211d33</span></span></div>
       <div class="sum-row"><span class="sum-k">Name text</span><span class="sum-v"><span class="sdot" id="sd-nt" style="background:#161616;border-color:#ccc;"></span><span id="sh-nt">#FFFFFF</span></span></div>
       <div class="sum-row"><span class="sum-k">Number text</span><span class="sum-v"><span class="sdot" id="sd-nu" style="background:#161616;border-color:#ccc;"></span><span id="sh-nu">#FFFFFF</span></span></div>
+      </div><!-- /sum-generic-colours -->
       <div class="price-row"><span style="font-size:14px;color:#888888;">Price</span><span id="bespoke-price-display" class="bespoke-live-price" style="font-size:22px;font-weight:700;color:#5DCAA5;">&mdash;</span></div>
       <div id="sum-notes-row" class="sum-row" style="display:none;"><span class="sum-k">Notes</span><span class="sum-v" id="sum-notes" style="font-size:12px;text-align:right;max-width:70%;word-break:break-word;"></span></div>
     </div>
@@ -3705,6 +3713,44 @@ function renderMugColours(part, hostId){
     host.appendChild(row);
   });
 }
+/** Colour rows for one shirt on the review screen: the layer name, a
+    swatch and the hex, exactly as chosen. Reads the parked slot rather
+    than live state, so it describes both shirts and not just whichever
+    was on screen last. */
+function mugSummaryColours(hostId, slotName){
+  var host = document.getElementById(hostId);
+  if (!host || !window.S) return;
+  host.innerHTML = '';
+  var held = (slotName === 'keeper') ? S.mugKeeper : S.mugOutfield;
+  if (!held) return;
+  var reg = window.BESPOKE_REGISTERED_DESIGNS || [];
+  var d = null;
+  for (var i = 0; i < reg.length; i++) { if (reg[i].id === held.design) { d = reg[i]; break; } }
+  if (!d || !d.layers) return;
+  d.layers.forEach(function(layer, idx){
+    if (!layer) return;
+    if (layer.editable === '0') return;
+    var col = (idx === 0)
+      ? (held.bgColor || layer.default || '#FFFFFF')
+      : ((held.patColors || [])[idx - 1] || layer.default || '#000000');
+    var row = document.createElement('div');
+    row.className = 'sum-row';
+    var k = document.createElement('span');
+    k.className = 'sum-k';
+    k.textContent = layer.label || ('Layer ' + (idx + 1));
+    var v = document.createElement('span');
+    v.className = 'sum-v';
+    var dot = document.createElement('span');
+    dot.className = 'sdot';
+    dot.style.background = col;
+    var hex = document.createElement('span');
+    hex.textContent = col;
+    v.appendChild(dot); v.appendChild(hex);
+    row.appendChild(k); row.appendChild(v);
+    host.appendChild(row);
+  });
+}
+
 /** Fill the mug's own review block, and hide the generic rows. */
 function fillMugSummary(){
   if (!window.S) return;
@@ -3735,6 +3781,17 @@ function fillMugSummary(){
   set('sum-mug-keeper',   nameOf(S.mugKeeper   && S.mugKeeper.design));
   set('sum-mug-outfield', nameOf(S.mugOutfield && S.mugOutfield.design));
   set('sum-mug-squad',    (S.squad && S.squad.trim()) ? S.squad.trim() : 'No players listed');
+
+  // The real colours, per shirt.
+  mugSummaryColours('sum-mug-keeper-colours',   'keeper');
+  mugSummaryColours('sum-mug-outfield-colours', 'outfield');
+
+  // A mug has no text, so no fonts; and its colours are listed per shirt
+  // above, so the single generic colour scheme below is wrong for it.
+  ['sum-generic-fonts','sum-generic-colours'].forEach(function(id){
+    var el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
 }
 
 /** Reveal the panel once its steps are correct. See the pre-init mask. */
