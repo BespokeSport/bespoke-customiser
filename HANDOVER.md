@@ -556,8 +556,25 @@ live — nothing is sitting in git waiting.*
 
    **Never press SiteGround Full Deploy first** — it copies the staging database over
    the live one and every order taken since the staging copy is gone, with no undo.
-   The recommended route refreshes staging FROM live first (so staging holds the real
-   orders), re-applies the customiser setup, and only then deploys.
+
+   **The trap (Nick spotted this, 6 Sep 2026).** The obvious plan is to refresh staging
+   FROM live so staging picks up the real orders, re-apply the customiser setup, then
+   deploy. It does not work. The refresh copies live's orders as at that MINUTE, and
+   re-applying the setup takes an afternoon at least — so every order that arrives on
+   live during that afternoon is missing from the copy and is destroyed by the deploy
+   at the end of it. **The gap between the copy and the deploy is the window where
+   orders die**, and it is as long as the setup takes.
+
+   The published plan closes the window instead of living with it: export the orders
+   and customers out of live to a file FIRST, finish everything on staging with no
+   clock running, then deploy in one short pass with the shop paused, then import the
+   orders back afterwards. Nothing depends on how long the setup takes, and the
+   pre-deploy backup is the real safety net if the import proves awkward.
+
+   Note for whoever runs it: WooCommerce cannot import orders on its own, so step 5
+   needs an order import plugin. That is acceptable because it happens AFTER launch
+   with no time pressure, and the orders are safe in the export and the backup
+   regardless of whether it succeeds.
 
    Verified 6 Sep 2026: staging carries 88 products, live 92. The four extra ones are
    Boys/Girls Creator Packs, Thermal Cups and Water Bottles — all four deliberately not
