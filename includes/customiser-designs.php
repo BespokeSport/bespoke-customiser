@@ -578,7 +578,7 @@ function bespoke_design_layers_cb( $post ) {
     if ( ! is_array( $layers ) || empty( $layers ) ) {
         // Default two layers to get people started
         $layers = [
-            [ 'label' => 'Pad background', 'default' => '#feef00' ],
+            [ 'label' => 'Base colour', 'default' => '#feef00' ],
             [ 'label' => 'Pattern',        'default' => '#211d33' ],
         ];
     }
@@ -586,9 +586,12 @@ function bespoke_design_layers_cb( $post ) {
     <div style="margin-bottom:14px;padding:12px;background:#f0f6fc;border-left:4px solid #2271b1;">
         <p style="margin:0 0 6px 0;"><strong>Each layer = one colour zone the customer can recolour.</strong></p>
         <ul style="margin:0 0 0 18px;list-style:disc;">
-            <li><strong>Layer 1</strong> = the pad colour picker shown to the customer. <strong>Leave the file blank</strong> — it uses the shared <em>Pad Base</em> from <a href="<?php echo esc_url( admin_url( 'edit.php?post_type=bespoke_design&page=bespoke-product-setup' ) ); ?>">Product Setup</a>. Only upload a file here if this specific design needs a custom pad shape.</li>
-            <li><strong>Layer 2+</strong> = the actual pattern overlays for THIS design (e.g. distressed texture, stripes). <strong>A file is required</strong> for each. Each is tinted with the customer's colour picker for that zone.</li>
+            <li><strong>Layer 1</strong> = the base colour picker shown to the customer. <strong>Leave the file blank</strong> — it uses the shared <em>Pad Base</em> image from <a href="<?php echo esc_url( admin_url( 'edit.php?post_type=bespoke_design&page=bespoke-product-setup' ) ); ?>">Product Setup</a>. Only upload a file here if this design needs a shape of its own. (That field is called <em>Pad Base</em> for historical reasons — it is the product's own outline, whether that is a pad, a band, a flag or a mug.)</li>
+            <li><strong>Layer 2+</strong> = the artwork for THIS design — a texture, stripes, a shirt, a poppy. <strong>A file is required</strong> for each. Each is tinted with the customer's colour picker for that zone.</li>
         </ul>
+        <p style="margin:10px 0 0 0;padding-top:10px;border-top:1px solid #c9d9e8;">
+            The <strong>Part</strong> box under each layer label is for products built from two halves the customer styles separately — the Team Mug's keeper and outfield shirts. Leave it alone on everything else; anything left unset is simply treated as the main part of the product.
+        </p>
         <p style="margin:6px 0 0 0;color:#555;font-size:12px;">The shared <strong>Background</strong> (static wallpaper) is also set in Product Setup — no per-design file needed.</p>
         <p style="margin:10px 0 0 0;padding-top:10px;border-top:1px solid #c9d9e8;">
             <strong>The file type decides whether a layer can be recoloured.</strong>
@@ -648,7 +651,7 @@ function bespoke_design_layers_cb( $post ) {
                     <input type="text"
                            name="bespoke_layers[<?php echo $i; ?>][label]"
                            value="<?php echo esc_attr( $layer['label'] ?? '' ); ?>"
-                           placeholder="e.g. Pad background"
+                           placeholder="e.g. Base colour"
                            style="width:100%;" />
                     <small class="bespoke-css-var-hint" style="color:#aaa;">CSS variable: <code>--col-<?php echo $n; ?></code></small>
                     <select name="bespoke_layers[<?php echo $i; ?>][part]"

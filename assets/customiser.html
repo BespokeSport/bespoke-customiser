@@ -3515,7 +3515,16 @@ function renderMugColours(part, hostId){
   if (!S.patColors) S.patColors = [];
   d.layers.forEach(function(layer, idx){
     if (idx === 0 || !layer) return;
-    if ((layer.part || '') !== part) return;
+    /* Which step does this layer belong on?
+
+       A layer with no Part set belongs to the OUTFIELD step. It has to go
+       somewhere: filtering it out of both steps, as this first did, means a
+       design whose layers have not been assigned yet shows no colour
+       controls at all, which reads as completely broken rather than as
+       something not filled in. Only the keeper is opt-in. */
+    var _lp = layer.part || '';
+    if (part === 'keeper') { if (_lp !== 'keeper') return; }
+    else if (_lp === 'keeper') { return; }
     if (layer.editable === '0') return;
     var patIdx = idx - 1;
     var colour = S.patColors[patIdx] || layer.default || '#000000';
