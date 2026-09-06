@@ -247,6 +247,47 @@ Types that must keep their own curated list — the pre-designed bands — are n
 `bespoke_exclusive_design_types`. They still inherit armband geometry, just not its
 designs.
 
+
+### 6.9 NEVER inline an image into customiser.html
+
+On 6 Sep 2026 this file was **4.10MB**, of which **3.8MB (92.5%) was three base64
+JPEGs** — `APEX_SRC`, `FALSE_NINE_SRC`, `FORTRESS_SRC`. Placeholder design photographs
+from before designs were managed in WP admin. Each name appeared exactly ONCE in the
+whole file, its own assignment: no other reference, no `window[...]` lookups, no `eval`.
+Completely dead, and the registered designs replace `ALL_DESIGNS` at runtime anyway.
+
+The file is **inlined into every product page**, so those three dead images were blocking
+the first paint of the customiser on every product on the site. Removing them took it to
+**0.31MB** and product pages from 4.5MB+ to about 740KB.
+
+**If placeholder artwork is ever wanted again, reference it by URL.** Anything inlined
+here is downloaded and parsed before a customer sees anything, on every product, forever.
+
+Worth re-measuring occasionally:
+
+```
+node -e "const h=require('fs').readFileSync('assets/customiser.html','utf8');
+console.log((h.length/1048576).toFixed(2)+'MB');
+console.log('base64:', (h.match(/data:image\/[a-z]+;base64,/g)||[]).length)"
+```
+
+### 6.10 Test the customiser LOCALLY before asking Nick to upload
+
+The Team Mug took far more rounds than it should have because I kept changing code and
+asking Nick to check it. Almost every bug lived in state that only exists once real
+designs are loaded, which no amount of reading the source will reveal.
+
+The fix is a local harness: take `assets/customiser.html`, inject the globals
+`customiser-frontend.php` would emit (`BespokeConfig`, `BESPOKE_REGISTERED_DESIGNS`,
+`BESPOKE_PRODUCT_ASSETS` — copy the real values straight out of a live product page), and
+serve it. The whole flow can then be driven with `goTo()` / the product's own functions
+and the state inspected directly. That found in one pass what several upload-and-ask
+rounds had not.
+
+Two traps while doing this, both already noted above: the Browser pane is usually
+`document.hidden`, which suspends `requestAnimationFrame` — shim it. And check the file
+actually on the server before debugging, since a stale upload wastes the whole exercise.
+
 ---
 
 ## 7. Tooling notes (for you, on the new machine)
@@ -448,10 +489,12 @@ live — nothing is sitting in git waiting.*
    who skips it gets PAC/SHO/PAS instead of DIV/HAN/KIC. Making it required is small.
 
 ### Ready to action
-5. **Fancy Product Designer is now two products away from removal.** Remembrance is fully
-   off it. Only the Grassroots and Aston Villa mugs still load it — the same mugs in item 3.
-   Decide those and the whole plugin can go, along with the "Customize"→"Customise" patch
-   script in `customiser-woocommerce.php` (~line 185) that exists only to paper over it.
+5. **Fancy Product Designer — one product away from removal.** Remembrance moved off it,
+   and the **Grassroots Football Mug is now on our Team Mug customiser** (6 Sep 2026:
+   Squad / Keeper / Outfield, two independently styled shirts, squad list captured as
+   text). Only the **Aston Villa Inspired Mug** still loads FPD. Move or retire that one
+   and the whole plugin can go, along with the "Customize"→"Customise" patch script in
+   `customiser-woocommerce.php` (~line 185) that exists only to paper over it.
 6. **Delete `assets/hero-world-m.zip` from the server** — 5.1MB of dead weight left over
    from the portrait hero upload.
 7. **"BESPOKE: Read plugin files (AJAX debug)"** is still ACTIVE in Code Snippets. It
