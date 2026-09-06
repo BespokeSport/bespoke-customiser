@@ -500,20 +500,21 @@ live — nothing is sitting in git waiting.*
 1. ~~Hero `veil` value~~ — **DECIDED 5 Sep 2026: keep it at `1`.** Nick: "lets keep, I
    think it looks stylish." Already the default in both the shortcode and the CSS, so
    nothing to change.
-2. **The old Elementor hero** ("BUILT FOR YOUR BADGE") still sits below the new one, so two
-   heroes stack. Nick wants to keep the slot and change its content. The suggestion on the
-   table is a three-step "how it works" (pick → design → we make it), because nothing on
-   the homepage explains the process. Its eyebrow currently duplicates the new hero's
-   word for word, and its three bullets duplicate "Why Choose BEspoke" further down.
-3. **The three mugs.** Football Legends, Grassroots Football and Aston Villa Inspired are
-   all publicly listed and shoppable. Nick says none are going on the new site. Two
-   wrinkles while they are up: Football Legends has **no price**, so it cannot be bought
-   and shows "Read more" where every other product says "CUSTOMISE"; and the Aston Villa
-   mug names a real club while the homepage small print says designs with
-   copyright-protected badges such as Premier League clubs cannot be used.
-4. **Player Cards** — the on-field position dropdown is optional. Skip it and the position
-   box on the card is blank AND the six stats keep the outfield labels, so a goalkeeper
-   who skips it gets PAC/SHO/PAS instead of DIV/HAN/KIC. Making it required is small.
+2. ~~The old Elementor hero ("BUILT FOR YOUR BADGE")~~ — **DONE 6 Sep 2026.** Replaced by
+   the three-step `[bespoke_how]` "how it works" section (pick → design → we make it).
+   Nothing on the homepage had explained the process, and its old copy duplicated both
+   the new hero's eyebrow and the "Why Choose BEspoke" bullets further down.
+3. **The three mugs.** Football Legends, Grassroots Football and Aston Villa Inspired.
+   Grassroots Football was moved onto our customiser on 6 Sep 2026 and Nick confirmed
+   "the mugs are good", so they ARE going on the new site — an earlier note here saying
+   otherwise was out of date. Two things still open: Football Legends has **no price**,
+   so it cannot be bought and shows "Read more" where every other product says
+   "CUSTOMISE"; and the Aston Villa mug names a real club, while the homepage small
+   print says designs using copyright-protected badges such as Premier League clubs
+   cannot be used.
+4. ~~Player Cards position dropdown~~ — **DONE 5 Sep 2026: now required.** Leaving it
+   blank used to produce a card with an empty position box AND the outfield stat labels,
+   so a goalkeeper got PAC/SHO/PAS instead of DIV/HAN/KIC.
 
 ### Ready to action
 5. ~~Fancy Product Designer~~ — **REMOVED 6 Sep 2026.** Every product is off it, it is
@@ -521,19 +522,47 @@ live — nothing is sitting in git waiting.*
    from `customiser-woocommerce.php`. The plugin folder is still on the server and can be
    deleted whenever. NB: it stored design data on historic orders, so expect old FPD
    orders to read oddly in the admin.
+6a. **Uploaded 6 Sep 2026:** the Review step's "Design" row read `DESIGN_CATALOGUE`, an
+    array declared empty and never filled, so it showed an em dash on EVERY product and
+    every order. It now reads `window.BESPOKE_REGISTERED_DESIGNS`, which is what
+    `fillMugSummary()` in the same file already used. Two lookup paths existed; only one
+    worked (see §6.8).
+
+6b. **Uploaded 6 Sep 2026:** the two anonymous upload endpoints are now rate-limited
+    (`bespoke_upload_rate_limited()` in `customiser-ajax.php`). Each already capped one
+    file at 5MB but nothing stopped repeated posts, and a full disk on shared hosting
+    takes the shop down. 60 per 10 minutes — deliberately generous, since a real order
+    uses two and a club can share one address. **It disables itself when it cannot tell
+    visitors apart**, so an nginx proxy hiding the visitor address can never put every
+    customer in one bucket and block a sale.
+
 6. **Delete `assets/hero-world-m.zip` from the server** — 5.1MB of dead weight left over
    from the portrait hero upload.
-7. **"BESPOKE: Read plugin files (AJAX debug)"** is still ACTIVE in Code Snippets. It
-   serves plugin file contents over a web request. Fine on staging, must not reach live.
+7. ~~"BESPOKE: Read plugin files (AJAX debug)"~~ — **DELETED 6 Sep 2026 by Nick.** It
+   served plugin file contents over a web request and must never have reached live.
 8. **Remembrance band attributes** — it uses one-off `width` / `length` attributes while
    the other 27 themed bands use the global `pa_band_thickness` / `pa_band-width`. It
    works (the matcher compares values, not names) but it is the only band set up that way.
    Its size guidance also disagrees: 24cm is "U11-U15" on standard bands, "U14-U16" here.
 
 ### Bigger pieces
-9. **Go-live plan.** Everything is on staging. Moving to production is **not just plugin
-   files** — designs, product artwork, saved placements and per-product config all live in
-   the **WordPress database**. This needs writing down before the day.
+9. ~~Go-live plan~~ — **WRITTEN 6 Sep 2026.** Full runbook published as an artifact:
+   <https://claude.ai/code/artifact/756410b7-3776-41ce-9c00-0a6516718707>
+
+   The short version: moving to production is **not just plugin files** — the design
+   library (~70 designs), the 12 uploaded fonts, per-product setup and the Elementor
+   pages all live in the **WordPress database**, and so do every real order. The two
+   cannot be separated, which is the whole problem.
+
+   **Never press SiteGround Full Deploy first** — it copies the staging database over
+   the live one and every order taken since the staging copy is gone, with no undo.
+   The recommended route refreshes staging FROM live first (so staging holds the real
+   orders), re-applies the customiser setup, and only then deploys.
+
+   Verified 6 Sep 2026: staging carries 88 products, live 92. The four extra ones are
+   Boys/Girls Creator Packs, Thermal Cups and Water Bottles — all four deliberately not
+   coming across. **No product exists on staging that is missing from live**, so every
+   product change is an edit, never a new item.
 10. **Meta tracking is failing.** Every page POSTs to Facebook's conversions endpoint and
     gets a 500 back. Unrelated to any of our work and invisible to visitors, but if
     conversion data is expected at launch it currently will not arrive.
