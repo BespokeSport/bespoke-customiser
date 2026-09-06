@@ -448,40 +448,6 @@ function bespoke_render_customiser( $atts ) {
              *   PNG / GIF   a transparent shape. Tintable and recolourable
              *   / WebP      by the customer, exactly as before.
              */
-            /**
-             * Which file should this layer actually draw?
-             *
-             * Normally its own. The exception is a product built from two
-             * halves the customer styles separately — the Team Mug, where
-             * the keeper shirt and the outfield shirt are each picked from
-             * the same list of designs but independently of one another.
-             *
-             * There S.design is the OUTFIELD choice and supplies everything,
-             * while S.gkDesign is the KEEPER choice; any layer marked as the
-             * keeper's part takes its artwork from that second design
-             * instead. Matched by layer LABEL first, so the designs can be
-             * built in any order, falling back to position.
-             *
-             * Every other product leaves `part` blank and gets its own file,
-             * exactly as before.
-             */
-            function bespokeLayerArtwork(layer, idx){
-                if (!layer) return '';
-                var own = layer.file_url || '';
-                if (layer.part !== 'keeper') return own;
-                var altId = (window.S && window.S.gkDesign) || '';
-                var alt   = altId ? byId[altId] : null;
-                if (!alt || !alt.layers || !alt.layers.length) return own;
-                var match = null;
-                if (layer.label) {
-                    alt.layers.forEach(function(l){
-                        if (!match && l && l.label === layer.label) match = l;
-                    });
-                }
-                if (!match) match = alt.layers[idx] || null;
-                return (match && match.file_url) ? match.file_url : own;
-            }
-
             function isPhotoUrl(url){
                 return /\.jpe?g(\?.*)?$/i.test(url || '');
             }
@@ -951,9 +917,7 @@ function bespoke_render_customiser( $atts ) {
                     // Keep S.patColor mirrored to patColors[0] so the
                     // legacy "Pattern" row in the static HTML reflects state.
                     if (patIdx === 0) window.S.patColor = window.S.patColors[0];
-                    // A keeper-part layer draws the keeper's chosen style;
-                    // everything else draws its own file.
-                    var _art     = bespokeLayerArtwork(layer, idx);
+                    var _art     = layer.file_url;
                     var _isPhoto = isPhotoUrl(_art);
                     stack.push({
                         url:      _art,

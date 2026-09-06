@@ -1249,9 +1249,10 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
       <button type="button" class="surprise-nav" id="surprise-fwd" onclick="surpriseForward()" aria-label="Next Surprise Me result" title="Next" disabled>→</button>
     </div>
     <!-- TEAM MUG: this screen becomes the KEEPER shirt — its style and its
-         three colours. The native design gallery below is hidden, because
-         it sets the OUTFIELD style (S.design); the keeper has its own
-         picker writing to S.gkDesign. -->
+         colours. The native design gallery below is hidden; the mug has
+         two shirts and this picker edits one of them. Opening this tab
+         parks the outfield shirt and unpacks the keeper (mugUseSlot), so
+         everything the renderer reads is the keeper while you are here. -->
     <div id="mug-keeper-block" data-mug-only style="display:none;">
       <div class="sec-label">Keeper shirt style</div>
       <div class="mug-style-row" id="mug-style-keeper"></div>
@@ -1461,9 +1462,20 @@ var S = {
   // Team Mug squad list. Free text, never rendered — see the
   // [data-mug-only] block on the text step.
   squad:'',
-  // Team Mug: the KEEPER's chosen style. S.design is the outfield one and
-  // supplies the layer structure; this only swaps the keeper-part files.
-  gkDesign:'',
+  /* Team Mug: two shirts, edited one at a time.
+
+     Each registered design IS a complete shirt — outline, base, sleeves,
+     pattern — so the keeper and the outfield each need their OWN design
+     and their own colours. They cannot share one layer set.
+
+     While a shirt is being edited its design and colours live in the
+     normal S.design / S.bgColor / S.patColors, so every existing renderer
+     works untouched. Switching tabs parks the current shirt in its slot
+     and unpacks the other one. Same idea as the double-sided armband's
+     faces, kept local to the mug. */
+  mugSlot:'outfield',
+  mugKeeper:null,
+  mugOutfield:null,
   // How many players go on the mug. Free choice, not a priced variation —
   // every squad size costs the same.
   playerCount:11,
@@ -3338,6 +3350,14 @@ function goTo(n){
   for(var i=0;i<5;i++){var l=document.getElementById('lbl-'+i);if(!l)continue;l.className='sl';if(i<n)l.classList.add('done');if(i===n)l.classList.add('active');}
   document.getElementById('prog').style.width=PROG[n]+'%';
   if(n<6 && !previews[n]) makeSVG(n);
+  /* TEAM MUG: the Keeper and Outfield tabs each edit their OWN shirt, so
+     moving between them parks one and unpacks the other. Everything the
+     renderer reads — design, base colour, pattern colours — swaps with it,
+     which is why no other code needs to know there are two. */
+  if (typeof isTeamMug === 'function' && isTeamMug()) {
+    if (n === 3) { try { mugUseSlot('keeper'); } catch(_){} }
+    else if (n === 4) { try { mugUseSlot('outfield'); } catch(_){} }
+  }
 if(n===1){
   buildFontGrid("name");
   // Re-run the text box's auto-height now that the screen is VISIBLE.
@@ -3456,13 +3476,22 @@ function onMugPlayerCount(value){
   onSquadList();
 }
 
+/** The design a given shirt is holding — live state if it is the one being
+    edited, otherwise whatever is parked in its slot. */
+function mugSlotDesign(part){
+  if (!window.S) return '';
+  if (part === mugActiveSlot()) return S.design || '';
+  var held = (part === 'keeper') ? S.mugKeeper : S.mugOutfield;
+  return (held && held.design) || '';
+}
+
 /** Style buttons for one shirt, built from the designs registered for
     this product. Both shirts choose from the same list. */
 function renderMugStyles(part, hostId){
   var host = document.getElementById(hostId);
   if (!host || !window.S) return;
   var reg = window.BESPOKE_REGISTERED_DESIGNS || [];
-  var current = (part === 'keeper') ? (S.gkDesign || S.design) : S.design;
+  var current = mugSlotDesign(part);
   host.innerHTML = '';
   reg.forEach(function(d){
     var b = document.createElement('button');
@@ -3481,15 +3510,55 @@ function renderMugStyles(part, hostId){
   });
 }
 
-function setMugStyle(part, id){
-  if (!window.S) return;
-  if (part === 'keeper') { S.gkDesign = id; }
-  else {
-    S.design = id;
-    if (typeof buildDesignGallery === 'function') { try { buildDesignGallery(); } catch(_){} }
+/** Park the shirt currently being edited into its slot. */
+function mugStashSlot(){
+  if (!window.S || !isTeamMug()) return;
+  var key = (S.mugSlot === 'keeper') ? 'mugKeeper' : 'mugOutfield';
+  S[key] = {
+    design:    S.design || '',
+    bgColor:   S.bgColor || '',
+    patColors: (S.patColors || []).slice()
+  };
+}
+
+/** Make `slot` the shirt being edited, unpacking whatever it holds. */
+function mugUseSlot(slot){
+  if (!window.S || !isTeamMug()) return;
+  if (slot !== 'keeper' && slot !== 'outfield') return;
+  if (S.mugSlot === slot) return;
+  mugStashSlot();
+  S.mugSlot = slot;
+  var held = (slot === 'keeper') ? S.mugKeeper : S.mugOutfield;
+  if (held && held.design) {
+    S.design    = held.design;
+    S.bgColor   = held.bgColor || S.bgColor;
+    S.patColors = (held.patColors || []).slice();
   }
   applyMugUI();
   if (typeof updateDesignLayers === 'function') updateDesignLayers();
+  if (typeof syncAll === 'function') syncAll();
+}
+
+/** Which shirt is being edited right now. */
+function mugActiveSlot(){
+  return (window.S && S.mugSlot === 'keeper') ? 'keeper' : 'outfield';
+}
+
+/** Pick a shirt style for the shirt currently being edited.
+
+    Colours are cleared so the new design seeds its own defaults — the
+    layer at position 3 on Stripes is not the same thing as the layer at
+    position 3 on Half, so carrying the old colours across would put them
+    on the wrong parts of the shirt. */
+function setMugStyle(part, id){
+  if (!window.S) return;
+  mugUseSlot(part);
+  if (S.design === id) return;
+  S.design    = id;
+  S.patColors = [];
+  if (typeof buildDesignGallery === 'function') { try { buildDesignGallery(); } catch(_){} }
+  if (typeof updateDesignLayers === 'function') updateDesignLayers();
+  applyMugUI();
   if (typeof syncAll === 'function') syncAll();
 }
 
@@ -3503,38 +3572,58 @@ function setMugStyle(part, id){
     (ct-pat, ct-pat2 …). Those still exist on the hidden native block, and
     two elements sharing an id would leave getElementById picking whichever
     came first. Own ids, own tiny handler, same S.patColors underneath. */
+/** Colour rows for the shirt currently being edited.
+
+    Every editable layer of the active design gets one, in order. Layer 0
+    has no file of its own and is tinted with S.bgColor (the shared base
+    from Product Setup); layers 1+ use S.patColors. Layers the admin marked
+    as not editable — a shirt outline, say — are painted but not offered.
+
+    Only the tab whose shirt is active draws anything: the other one shows
+    a line telling you to switch to it, rather than a set of controls that
+    would silently edit the wrong shirt. */
 function renderMugColours(part, hostId){
   var host = document.getElementById(hostId);
   if (!host || !window.S) return;
+  host.innerHTML = '';
+
+  if (part !== mugActiveSlot()) {
+    var note = document.createElement('p');
+    note.className = 'hint';
+    note.textContent = 'Open this tab to set the ' + (part === 'keeper' ? 'keeper' : 'outfield') + " shirt's colours.";
+    host.appendChild(note);
+    return;
+  }
+
   var reg = window.BESPOKE_REGISTERED_DESIGNS || [];
   var d = null;
   for (var i = 0; i < reg.length; i++) { if (reg[i].id === S.design) { d = reg[i]; break; } }
-  host.innerHTML = '';
-  if (!d || !d.layers) return;
+  if (!d || !d.layers || !d.layers.length) {
+    var p = document.createElement('p');
+    p.className = 'hint';
+    p.textContent = 'Choose a style above and its colours will appear here.';
+    host.appendChild(p);
+    return;
+  }
+
   if (!S.patColors) S.patColors = [];
   d.layers.forEach(function(layer, idx){
-    if (idx === 0 || !layer) return;
-    /* Which step does this layer belong on?
-
-       A layer with no Part set belongs to the OUTFIELD step. It has to go
-       somewhere: filtering it out of both steps, as this first did, means a
-       design whose layers have not been assigned yet shows no colour
-       controls at all, which reads as completely broken rather than as
-       something not filled in. Only the keeper is opt-in. */
-    var _lp = layer.part || '';
-    if (part === 'keeper') { if (_lp !== 'keeper') return; }
-    else if (_lp === 'keeper') { return; }
+    if (!layer) return;
     if (layer.editable === '0') return;
-    var patIdx = idx - 1;
-    var colour = S.patColors[patIdx] || layer.default || '#000000';
-    S.patColors[patIdx] = colour;
-    var row = document.createElement('div');
+
+    var isBase  = (idx === 0);
+    var colour  = isBase
+      ? (S.bgColor || layer.default || '#FFFFFF')
+      : (S.patColors[idx - 1] || layer.default || '#000000');
+    if (isBase) { S.bgColor = colour; } else { S.patColors[idx - 1] = colour; }
+
+    var row  = document.createElement('div');
     row.className = 'zone-row';
     var info = document.createElement('div');
     info.className = 'zone-info';
-    var lbl = document.createElement('div');
+    var lbl  = document.createElement('div');
     lbl.className = 'zone-lbl';
-    lbl.textContent = layer.label || ('Layer ' + idx);
+    lbl.textContent = layer.label || ('Layer ' + (idx + 1));
     info.appendChild(lbl);
     var ct = document.createElement('div');
     ct.className = 'ct';
@@ -3551,12 +3640,15 @@ function renderMugColours(part, hostId){
     host.appendChild(row);
   });
 }
-
 function onMugColour(idx, val){
   if (!window.S) return;
   if (!S.patColors) S.patColors = [];
-  S.patColors[idx - 1] = val;
-  if (idx === 1) S.patColor = val;
+  // Layer 0 is the shared base and is tinted with bgColor, not patColors.
+  if (idx === 0) { S.bgColor = val; }
+  else {
+    S.patColors[idx - 1] = val;
+    if (idx === 1) S.patColor = val;
+  }
   var ct = document.getElementById('ct-mug-' + idx);
   if (ct) ct.style.background = val;
   clearTimeout(_mugColourTimer);
@@ -3592,17 +3684,17 @@ function applyMugUI(){
   buildMugPlayerCount();
   onSquadList();
 
-  /* Default the keeper to the same style as the outfield until chosen.
-     Also drops a stale value: this used to run before the product's
-     designs had loaded, so it latched onto whatever the customiser's own
-     default design was ("vanguard") — a shin-pad pattern that is not even
-     offered on this product. */
-  var _mugReg = window.BESPOKE_REGISTERED_DESIGNS || [];
-  var _gkOk = false;
-  for (var _i = 0; _i < _mugReg.length; _i++) {
-    if (window.S && _mugReg[_i].id === S.gkDesign) { _gkOk = true; break; }
+
+  /* Seed both shirts on first run. Without this, a customer who never
+     opens the Keeper tab leaves that slot empty and the order carries no
+     keeper shirt at all — the workshop would have nothing to make. Both
+     start on the same style, which is also a sensible default. */
+  if (!S.mugOutfield && S.design) {
+    S.mugOutfield = { design: S.design, bgColor: S.bgColor || '', patColors: (S.patColors||[]).slice() };
   }
-  if (window.S && !_gkOk) S.gkDesign = S.design;
+  if (!S.mugKeeper && S.design) {
+    S.mugKeeper = { design: S.design, bgColor: S.bgColor || '', patColors: (S.patColors||[]).slice() };
+  }
 
   renderMugStyles('keeper',   'mug-style-keeper');
   renderMugStyles('outfield', 'mug-style-outfield');
@@ -6360,7 +6452,12 @@ function _bespokeCommitAddToCart(cfg, btn, insideFace) {
       }
       formData.append('bespoke_player_flag',     S.playerFlag     || '');
       formData.append('bespoke_squad', S.squad || '');
-      formData.append('bespoke_gk_design', S.gkDesign || '');
+      // Park whichever shirt is on screen so both slots are current.
+      try { mugStashSlot(); } catch(_){}
+      formData.append('bespoke_gk_design',      (S.mugKeeper   && S.mugKeeper.design)   || '');
+      formData.append('bespoke_outfield_design',(S.mugOutfield && S.mugOutfield.design) || '');
+      formData.append('bespoke_gk_colours',      JSON.stringify((S.mugKeeper   && S.mugKeeper.patColors)   || []));
+      formData.append('bespoke_outfield_colours',JSON.stringify((S.mugOutfield && S.mugOutfield.patColors) || []));
       formData.append('bespoke_player_count', S.playerCount || '');
       formData.append('bespoke_player_position', S.playerPosition || '');
       // Friendly label for the position so admin sees "Right Back"
