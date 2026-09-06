@@ -197,6 +197,85 @@ function bespoke_is_local_upload_url( $url ) {
 }
 
 
+/**
+ * Rate-limit the two anonymous upload endpoints.
+ *
+ * Both cap a SINGLE file at 5 MB, but nothing stopped the same caller posting
+ * one every second. On a shared SiteGround plan a full disk takes the whole
+ * shop down, so a cap on one file was only ever half the control.
+ *
+ * -- Why this is deliberately generous --------------------------------------
+ * Blocking a real customer mid-purchase is far worse than the disk risk it
+ * prevents. A genuine order posts two uploads (badge + preview); somebody
+ * kitting out a squad may place several in a row, and a whole club can sit
+ * behind one office or school address. 60 per 10 minutes is therefore well
+ * above anything a person does, and still caps one address at 300 MB.
+ *
+ * -- Why it can switch itself off -------------------------------------------
+ * This site sits behind an nginx proxy. If PHP only ever sees the proxy
+ * address then every visitor shares ONE bucket, and the 61st upload of the
+ * day would turn away a paying customer. So when no distinct per-visitor
+ * address can be established this does nothing at all, which is exactly the
+ * behaviour that shipped before and is safe. The forwarded header is
+ * spoofable, but a limiter an attacker can sidestep still beats one that
+ * blocks real orders.
+ *
+ * @return bool True if this caller has had enough for now.
+ */
+function bespoke_upload_rate_limited() {
+
+    $ip = bespoke_upload_client_ip();
+    if ( $ip === '' ) {
+        return false; // Cannot tell visitors apart - see above. Never block.
+    }
+
+    $key   = 'bespoke_ul_' . md5( $ip );
+    $count = (int) get_transient( $key );
+
+    if ( $count >= 60 ) {
+        return true;
+    }
+
+    // set_transient() restarts the 10-minute window on every call, so a steady
+    // trickle never expires the counter. That is intended: the window is meant
+    // to close only once the caller stops.
+    set_transient( $key, $count + 1, 10 * MINUTE_IN_SECONDS );
+    return false;
+}
+
+/**
+ * The visitor's address, or an empty string when it cannot be established.
+ *
+ * Returns empty rather than guessing. The caller reads that as "do not
+ * rate-limit", which is the safe direction.
+ *
+ * @return string
+ */
+function bespoke_upload_client_ip() {
+
+    $remote = isset( $_SERVER['REMOTE_ADDR'] ) ? trim( (string) $_SERVER['REMOTE_ADDR'] ) : '';
+
+    // A public REMOTE_ADDR is the visitor: the proxy passed it through.
+    if ( $remote !== '' && filter_var( $remote, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE ) ) {
+        return $remote;
+    }
+
+    // Otherwise PHP is seeing the proxy, so fall back to the forwarded header.
+    // Leftmost entry is the original client; the rest are hops.
+    foreach ( [ 'HTTP_CF_CONNECTING_IP', 'HTTP_X_FORWARDED_FOR', 'HTTP_X_REAL_IP' ] as $header ) {
+        if ( empty( $_SERVER[ $header ] ) ) {
+            continue;
+        }
+        $parts = explode( ',', (string) $_SERVER[ $header ] );
+        $first = trim( $parts[0] );
+        if ( filter_var( $first, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE ) ) {
+            return $first;
+        }
+    }
+
+    return '';
+}
+
 /* =========================================================================
    1. BADGE UPLOAD
    ========================================================================= */
@@ -220,6 +299,9 @@ function bespoke_handle_badge_upload() {
 
     // ── Security ────────────────────────────────────────────────────────────
     check_ajax_referer( 'bespoke_add_to_cart', 'nonce' );
+    if ( bespoke_upload_rate_limited() ) {
+        wp_send_json_error( 'Too many uploads from this connection. Please wait a few minutes and try again.' );
+    }
 
     // ── File presence ────────────────────────────────────────────────────────
     if ( empty( $_FILES['badge'] ) || $_FILES['badge']['error'] !== UPLOAD_ERR_OK ) {
@@ -335,6 +417,9 @@ add_action( 'wp_ajax_nopriv_bespoke_upload_preview', 'bespoke_handle_preview_upl
 function bespoke_handle_preview_upload() {
 
     check_ajax_referer( 'bespoke_add_to_cart', 'nonce' );
+    if ( bespoke_upload_rate_limited() ) {
+        wp_send_json_error( 'Too many uploads from this connection. Please wait a few minutes and try again.' );
+    }
 
     if ( empty( $_FILES['preview'] ) || $_FILES['preview']['error'] !== UPLOAD_ERR_OK ) {
         wp_send_json_error( 'No preview file received.' );
