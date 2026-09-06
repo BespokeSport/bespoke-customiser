@@ -797,19 +797,26 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
    leave the customiser invisible. */
 .bcp-preinit .step-bar,
 .bcp-preinit .screen{visibility:hidden;}
+/* Something to look at while a 4MB file finishes parsing, instead of a
+   blank column. Only ever visible during the pre-init mask. */
+.bcp-loading{display:none;}
+.bcp-preinit .bcp-loading{display:block;padding:38px 20px;color:#777;font-size:13px;letter-spacing:.04em;}
 </style>
 </head>
 <body>
-<script>
-// Applied immediately, before the browser paints the panel. Removed by
-// applyStepConfig once the steps are correct, or by the failsafe.
-document.addEventListener('DOMContentLoaded', function(){
-  var f = document.querySelector('.frame');
-  if (f) f.classList.add('bcp-preinit');
-  setTimeout(function(){ if (f) f.classList.remove('bcp-preinit'); }, 2500);
-});
-</script>
-<div class="frame">
+<!-- bcp-preinit is set HERE, in the markup, not by script.
+
+     The browser paints this panel while it is still parsing the rest of
+     the file, long before any DOMContentLoaded handler runs — so adding
+     the class from script was always too late and the default steps
+     flashed up before rearranging. In the markup it is true from the
+     first paint.
+
+     applyStepConfig removes it once the steps are right; the failsafe
+     below removes it regardless, so a script error can never leave the
+     customiser invisible. -->
+<div class="frame bcp-preinit">
+  <div class="bcp-loading">Loading your designer…</div>
   <div class="top-bar">
     <div class="brand">BE<span>spoke</span> Sport</div>
     <!-- Live price — updates on every size / variant selection.
@@ -3580,6 +3587,17 @@ function mugUseSlot(slot){
     S.design    = held.design;
     S.bgColor   = held.bgColor || S.bgColor;
     S.patColors = (held.patColors || []).slice();
+
+    /* Tell the renderer this design's colours are already settled.
+
+       It seeds every layer's default colour the first time it paints a
+       given design, tracked in _bcpSeededDesign. Switching Keeper →
+       Outfield → Keeper means it sees a "new" design each time and
+       re-seeds — which threw away the colours we had just restored. The
+       shirt came back on the right style with default colours, which is
+       exactly what Nick kept reporting. Claiming the seed here leaves our
+       restored values alone. */
+    S._bcpSeededDesign = held.design;
   }
   applyMugUI();
   if (typeof updateDesignLayers === 'function') updateDesignLayers();
@@ -3720,6 +3738,9 @@ function fillMugSummary(){
 }
 
 /** Reveal the panel once its steps are correct. See the pre-init mask. */
+// Failsafe: whatever happens, never leave the panel hidden.
+setTimeout(function(){ var f = document.querySelector('.frame'); if (f) f.classList.remove('bcp-preinit'); }, 2500);
+
 function bcpRevealPanel(){
   var f = document.querySelector('.frame');
   if (f) f.classList.remove('bcp-preinit');
