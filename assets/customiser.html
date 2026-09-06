@@ -785,9 +785,30 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
 .mug-style.sel{border-color:#5DCAA5;background:#16241f;}
 .mug-style img{display:block;width:100%;height:64px;object-fit:contain;margin-bottom:6px;border-radius:8px;background:#141417;}
 .mug-style span{display:block;line-height:1.25;}
+
+/* PRE-INIT MASK.
+   The markup ships with all five steps and the badge screen showing,
+   because that is what most products want. Products that differ — the
+   Team Mug is Squad / Keeper / Outfield — only get rearranged once
+   applyStepConfig runs, so for a moment you saw the wrong menu and then
+   watched it change. Hiding the panel until it is configured costs a
+   fraction of a second and removes the flicker.
+   Failsafe below removes this no matter what, so a JS error can never
+   leave the customiser invisible. */
+.bcp-preinit .step-bar,
+.bcp-preinit .screen{visibility:hidden;}
 </style>
 </head>
 <body>
+<script>
+// Applied immediately, before the browser paints the panel. Removed by
+// applyStepConfig once the steps are correct, or by the failsafe.
+document.addEventListener('DOMContentLoaded', function(){
+  var f = document.querySelector('.frame');
+  if (f) f.classList.add('bcp-preinit');
+  setTimeout(function(){ if (f) f.classList.remove('bcp-preinit'); }, 2500);
+});
+</script>
 <div class="frame">
   <div class="top-bar">
     <div class="brand">BE<span>spoke</span> Sport</div>
@@ -1300,6 +1321,16 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
       <!-- Band thickness / Pennant style — shown by fillSummary only when
            the product has a bg-variant toggle configured. -->
       <div class="sum-row" id="sum-variant-row" style="display:none;"><span class="sum-k" id="sum-variant-k">Style</span><span class="sum-v" id="sum-variant">—</span></div>
+      <!-- TEAM MUG summary. The generic rows above describe one object with
+           a badge and a name; a mug has two shirts and a squad list, so it
+           gets its own block and the generic rows are hidden. -->
+      <div id="sum-mug" style="display:none;">
+        <div class="sum-row"><span class="sum-k">Squad size</span><span class="sum-v" id="sum-mug-count">—</span></div>
+        <div class="sum-row"><span class="sum-k">Keeper shirt</span><span class="sum-v" id="sum-mug-keeper">—</span></div>
+        <div class="sum-row"><span class="sum-k">Outfield shirt</span><span class="sum-v" id="sum-mug-outfield">—</span></div>
+        <div class="sum-head">SQUAD</div>
+        <div class="sum-row"><span class="sum-v" id="sum-mug-squad" style="white-space:pre-line;text-align:left;">—</span></div>
+      </div>
       <div class="sum-row"><span class="sum-k">Design</span><span class="sum-v" id="sum-design">Vanguard</span></div>
       <div class="sum-row"><span class="sum-k">Badge</span><span class="sum-v" id="sum-badge">Not added</span></div>
       <div class="sum-head" id="sum-head-left">LEFT</div>
@@ -3476,6 +3507,21 @@ function onMugPlayerCount(value){
   onSquadList();
 }
 
+/** Is this design one this product actually offers?
+
+    Matters because applyMugUI first runs BEFORE the product's designs have
+    been injected, when S.design is still the customiser's own built-in
+    default ("vanguard", a shin-pad pattern). Seeding the two shirts from
+    that left both slots holding a design this product does not have, and
+    switching tabs then loaded it back over whatever the customer had just
+    chosen — which is why the keeper style would not stay put. */
+function mugIsRegistered(id){
+  if (!id) return false;
+  var reg = window.BESPOKE_REGISTERED_DESIGNS || [];
+  for (var i = 0; i < reg.length; i++) { if (reg[i].id === id) return true; }
+  return false;
+}
+
 /** The design a given shirt is holding — live state if it is the one being
     edited, otherwise whatever is parked in its slot. */
 function mugSlotDesign(part){
@@ -3529,7 +3575,8 @@ function mugUseSlot(slot){
   mugStashSlot();
   S.mugSlot = slot;
   var held = (slot === 'keeper') ? S.mugKeeper : S.mugOutfield;
-  if (held && held.design) {
+  // Never load a design this product does not offer — see mugIsRegistered.
+  if (held && mugIsRegistered(held.design)) {
     S.design    = held.design;
     S.bgColor   = held.bgColor || S.bgColor;
     S.patColors = (held.patColors || []).slice();
@@ -3640,6 +3687,44 @@ function renderMugColours(part, hostId){
     host.appendChild(row);
   });
 }
+/** Fill the mug's own review block, and hide the generic rows. */
+function fillMugSummary(){
+  if (!window.S) return;
+  try { mugStashSlot(); } catch(_){}
+  var box = document.getElementById('sum-mug');
+  if (box) box.style.display = '';
+  // Hide the rows that describe a badge / name product.
+  ['sum-size','sum-design','sum-badge','sum-nL','sum-nuL','sum-nR','sum-nuR'].forEach(function(id){
+    var el = document.getElementById(id);
+    var row = el && el.closest ? el.closest('.sum-row') : null;
+    if (row) row.style.display = 'none';
+  });
+  ['sum-head-left','sum-head-right'].forEach(function(id){
+    var el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+
+  var reg = window.BESPOKE_REGISTERED_DESIGNS || [];
+  var nameOf = function(id){
+    for (var i = 0; i < reg.length; i++) { if (reg[i].id === id) return reg[i].label || id; }
+    return '—';
+  };
+  var set = function(id, txt){
+    var el = document.getElementById(id);
+    if (el) el.textContent = txt;
+  };
+  set('sum-mug-count',    (S.playerCount || 11) + ' players');
+  set('sum-mug-keeper',   nameOf(S.mugKeeper   && S.mugKeeper.design));
+  set('sum-mug-outfield', nameOf(S.mugOutfield && S.mugOutfield.design));
+  set('sum-mug-squad',    (S.squad && S.squad.trim()) ? S.squad.trim() : 'No players listed');
+}
+
+/** Reveal the panel once its steps are correct. See the pre-init mask. */
+function bcpRevealPanel(){
+  var f = document.querySelector('.frame');
+  if (f) f.classList.remove('bcp-preinit');
+}
+
 function onMugColour(idx, val){
   if (!window.S) return;
   if (!S.patColors) S.patColors = [];
@@ -3689,17 +3774,30 @@ function applyMugUI(){
      opens the Keeper tab leaves that slot empty and the order carries no
      keeper shirt at all — the workshop would have nothing to make. Both
      start on the same style, which is also a sensible default. */
-  if (!S.mugOutfield && S.design) {
-    S.mugOutfield = { design: S.design, bgColor: S.bgColor || '', patColors: (S.patColors||[]).slice() };
-  }
-  if (!S.mugKeeper && S.design) {
-    S.mugKeeper = { design: S.design, bgColor: S.bgColor || '', patColors: (S.patColors||[]).slice() };
+  if (mugIsRegistered(S.design)) {
+    if (!S.mugOutfield || !mugIsRegistered(S.mugOutfield.design)) {
+      S.mugOutfield = { design: S.design, bgColor: S.bgColor || '', patColors: (S.patColors||[]).slice() };
+    }
+    if (!S.mugKeeper || !mugIsRegistered(S.mugKeeper.design)) {
+      S.mugKeeper = { design: S.design, bgColor: S.bgColor || '', patColors: (S.patColors||[]).slice() };
+    }
   }
 
   renderMugStyles('keeper',   'mug-style-keeper');
   renderMugStyles('outfield', 'mug-style-outfield');
   renderMugColours('keeper',   'mug-colours-keeper');
   renderMugColours('outfield', 'mug-colours-outfield');
+
+  /* The generic wording ("choose design", "choose colours") is wrong here:
+     each of these steps is a whole shirt. Set after applyStepConfig has
+     patched the buttons, so this wins. */
+  var _nb = function(step, text){
+    var sc = document.getElementById('s' + step);
+    var b  = sc && sc.querySelector('.btn-next');
+    if (b) b.textContent = text;
+  };
+  _nb(1, 'Next: design the keeper →');
+  _nb(3, 'Next: design the outfield shirt →');
 }
 
 /** Keep S.squad in step with the box, and count the players listed. */
@@ -4223,6 +4321,11 @@ function removeBadge(){
 }
 // buildDesignGrid replaced by buildDesignGallery
 function fillSummary(){
+  // Team Mug has its own summary — the generic rows below describe a badge
+  // and a name, neither of which this product has.
+  if (typeof isTeamMug === 'function' && isTeamMug()) {
+    try { fillMugSummary(); } catch(_){}
+  }
   var d=DESIGN_CATALOGUE.find(function(x){return x.id===S.design;});
   var selSize = null;
   for (var _si = 0; _si < SIZES.length; _si++) { if (SIZES[_si].label === S.padSize) { selSize = SIZES[_si]; break; } }
@@ -4868,6 +4971,8 @@ function applyStepConfig(){
   // per-product label table and would otherwise put "Text" back over
   // the mug's "Squad".
   try { applyMugUI(); } catch(_){}
+  // Steps are now correct — safe to show the panel. See .bcp-preinit.
+  try { bcpRevealPanel(); } catch(_){}
   // Point the size sliders at the real starting values (per-product DEFSZ
   // overrides + any admin-saved placement), not the shin-pad numbers baked
   // into the slider markup.
