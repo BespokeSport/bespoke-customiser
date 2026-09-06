@@ -248,6 +248,28 @@ Types that must keep their own curated list — the pre-designed bands — are n
 designs.
 
 
+### 6.7b Fancy Product Designer can now be switched off
+
+Superseding §6.7. Swept every product on 6 Sep 2026 and **nothing loads the FPD designer
+any more** — not one of the 15 Premier League mugs, not the Grassroots mug (moved to our
+Team Mug type), not the Remembrance armband (moved to Remembrance Armbands).
+
+The Premier League mugs never needed it. Their artwork is a fixed illustrated shirt, and
+the surnames are collected by a **themecomplete Extra Product Options textarea**
+(`tmcp_textarea_0`), which is a different plugin entirely and unaffected by FPD. The only
+FPD file still enqueued anywhere is `frontend-woo-variations.js`, its WooCommerce
+variations shim, which has nothing to shim once the designer is gone.
+
+So FPD can be **deactivated without building anything**. After it is off and the mugs are
+verified, the `Customize`→`Customise` patch script in `customiser-woocommerce.php`
+(~line 178) can probably go too — its `.fpd-catalog-customize` selector dies with FPD,
+and the related/up-sell selectors alongside it only ever mattered because FPD renamed
+those buttons. Check the buttons read correctly before deleting it.
+
+⚠ One caution: FPD stores its design data on historic ORDERS. Deactivating may make old
+FPD orders unreadable in the admin. Irrelevant on staging pre-launch, but worth knowing
+before doing the same on production.
+
 ### 6.9 NEVER inline an image into customiser.html
 
 On 6 Sep 2026 this file was **4.10MB**, of which **3.8MB (92.5%) was three base64
