@@ -1531,7 +1531,6 @@ var BESPOKE_FACE_FIELDS = [
   // Second badge spot — per face, so the outside can be club+charity while
   // the inside stays club-only (or any mix).
   'badge2','badge2URL','badge2Mode',
-  'squad','gkDesign','playerCount',
   // Per-face "which design's palette have we already seeded" flag. MUST be
   // snapshotted with the face: applyRegisteredDesignSVG (customiser-frontend.php)
   // re-seeds the admin's DEFAULT layer colours whenever _bcpSeededDesign !=
@@ -3593,8 +3592,17 @@ function applyMugUI(){
   buildMugPlayerCount();
   onSquadList();
 
-  // Default the keeper to the same style as the outfield until chosen.
-  if (window.S && !S.gkDesign) S.gkDesign = S.design;
+  /* Default the keeper to the same style as the outfield until chosen.
+     Also drops a stale value: this used to run before the product's
+     designs had loaded, so it latched onto whatever the customiser's own
+     default design was ("vanguard") — a shin-pad pattern that is not even
+     offered on this product. */
+  var _mugReg = window.BESPOKE_REGISTERED_DESIGNS || [];
+  var _gkOk = false;
+  for (var _i = 0; _i < _mugReg.length; _i++) {
+    if (window.S && _mugReg[_i].id === S.gkDesign) { _gkOk = true; break; }
+  }
+  if (window.S && !_gkOk) S.gkDesign = S.design;
 
   renderMugStyles('keeper',   'mug-style-keeper');
   renderMugStyles('outfield', 'mug-style-outfield');
@@ -4756,8 +4764,6 @@ function applyStepConfig(){
   // the end of applyStepConfig so it lands after all step tabs +
   // screens have been positioned.
   try { applyPlayerCardUI(); } catch(_){}
-  // Team Mug — swaps the text step for the squad list. No-op elsewhere.
-  try { applyMugUI(); } catch(_){}
   // Product-neutral defaults ("Text", "Background", "Text colour",
   // etc.) live in the HTML; per-product overrides are applied here
   // (shinpads keeps "Player name / Squad number / on both pads",
@@ -4765,6 +4771,11 @@ function applyStepConfig(){
   // Top/Bottom text, armbands pre-fills "C", etc.). See
   // BESPOKE_PRODUCT_LABELS + BESPOKE_LABEL_DEFAULTS above.
   try { applyProductLabels(); } catch(_){}
+  // Team Mug — rebuilds the squad / keeper / outfield screens. Must run
+  // AFTER applyProductLabels(), which rewrites the step tabs from the
+  // per-product label table and would otherwise put "Text" back over
+  // the mug's "Squad".
+  try { applyMugUI(); } catch(_){}
   // Point the size sliders at the real starting values (per-product DEFSZ
   // overrides + any admin-saved placement), not the shin-pad numbers baked
   // into the slider markup.

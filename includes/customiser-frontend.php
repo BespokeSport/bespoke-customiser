@@ -1376,6 +1376,15 @@ function bespoke_render_customiser( $atts ) {
                     requestAnimationFrame(function(){
                         applyRegisteredDesignSVG();
                         updateColourPickerLabels();
+                        // The Team Mug builds its own style buttons and
+                        // colour rows from the registered designs. Those
+                        // arrive AFTER the customiser has set up its steps,
+                        // so building them once at init found an empty list
+                        // and produced two empty panels. Rebuild here, where
+                        // the data is known to be present.
+                        if (typeof window.applyMugUI === 'function') {
+                            try { window.applyMugUI(); } catch(e){}
+                        }
                     });
                     return ret;
                 };
