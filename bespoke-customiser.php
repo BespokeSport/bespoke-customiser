@@ -55,6 +55,7 @@ add_action( 'plugins_loaded', function() {
         'customiser-master.php',        // Master/global page theme — dark + mint + Inter on every front-end page
         'customiser-homepage.php',      // Homepage hero + product range grid styling
         'customiser-hero-world.php',    // [bespoke_hero_world] scroll-driven rotating world hero
+        'customiser-fpd-archive.php',   // makes historic Fancy Product Designer orders readable
     ];
 
     $missing = [];
