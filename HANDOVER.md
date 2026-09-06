@@ -202,7 +202,12 @@ parse time cannot rely on that global.** This silently hid the pennant Frill tog
 weeks (its `requireAlt` check read an undefined value).
 
 
-### 6.7 Fancy Product Designer is still installed AND ACTIVE
+### 6.7 Fancy Product Designer — REMOVED 6 Sep 2026
+
+*(Kept for context. Deactivated on 6 Sep 2026 after every product was moved off it; see
+6.7b. Nothing below is current — it describes the situation that led to the removal.)*
+
+### Historic: Fancy Product Designer was installed AND ACTIVE
 
 Easy to assume otherwise, because Nick's own customiser handles everything he talks
 about. It does not handle everything on the site. As of 5 Sep 2026 FPD still loads its
@@ -511,12 +516,11 @@ live — nothing is sitting in git waiting.*
    who skips it gets PAC/SHO/PAS instead of DIV/HAN/KIC. Making it required is small.
 
 ### Ready to action
-5. **Fancy Product Designer — one product away from removal.** Remembrance moved off it,
-   and the **Grassroots Football Mug is now on our Team Mug customiser** (6 Sep 2026:
-   Squad / Keeper / Outfield, two independently styled shirts, squad list captured as
-   text). Only the **Aston Villa Inspired Mug** still loads FPD. Move or retire that one
-   and the whole plugin can go, along with the "Customize"→"Customise" patch script in
-   `customiser-woocommerce.php` (~line 185) that exists only to paper over it.
+5. ~~Fancy Product Designer~~ — **REMOVED 6 Sep 2026.** Every product is off it, it is
+   deactivated, and the `Customize`→`Customise` patch script it required has been deleted
+   from `customiser-woocommerce.php`. The plugin folder is still on the server and can be
+   deleted whenever. NB: it stored design data on historic orders, so expect old FPD
+   orders to read oddly in the admin.
 6. **Delete `assets/hero-world-m.zip` from the server** — 5.1MB of dead weight left over
    from the portrait hero upload.
 7. **"BESPOKE: Read plugin files (AJAX debug)"** is still ACTIVE in Code Snippets. It

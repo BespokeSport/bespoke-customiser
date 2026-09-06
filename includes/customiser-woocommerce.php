@@ -168,33 +168,18 @@ function bespoke_wc_customise_loop_link( $html, $product ) {
     return $html;
 }
 
-/**
- * JS belt-and-braces — if any "Customize" text slipped through (e.g.
- * because FPD rendered the button via a different path, or the page
- * is server-cached pre-filter), rewrite the visible label client-side.
- * Only fires on the front-end.
+/*
+ * REMOVED 6 Sep 2026: bespoke_wc_customise_text_js().
+ *
+ * A footer script that rewrote any button reading "Customize" to the UK
+ * spelling. It existed solely because Fancy Product Designer labelled its
+ * catalogue buttons that way. FPD has now been deactivated — no product on
+ * the site loaded its designer any more — and the raw HTML no longer
+ * contains "Customize" anywhere, so the script had nothing left to fix.
+ *
+ * It also covered .related and .up-sells buttons, but those only ever said
+ * "Customize" because FPD renamed them.
  */
-add_action( 'wp_footer', 'bespoke_wc_customise_text_js', 99 );
-
-function bespoke_wc_customise_text_js() {
-    if ( is_admin() ) return;
-    ?>
-    <script>
-    (function(){
-      function fix(){
-        var sels = '.fpd-catalog-customize, .related .product a.button, .up-sells .product a.button';
-        document.querySelectorAll(sels).forEach(function(btn){
-          var t = (btn.textContent || '').trim();
-          if (/^customize$/i.test(t)) btn.textContent = 'Customise';
-        });
-      }
-      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fix);
-      else fix();
-    })();
-    </script>
-    <?php
-}
-
 /**
  * Enqueue the drop-in product page stylesheet on EVERY single-product
  * page. Used to only fire on products with a `_bespoke_product_type`
