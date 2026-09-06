@@ -4418,7 +4418,15 @@ function fillSummary(){
   if (typeof isTeamMug === 'function' && isTeamMug()) {
     try { fillMugSummary(); } catch(_){}
   }
-  var d=DESIGN_CATALOGUE.find(function(x){return x.id===S.design;});
+  /* The design the customer actually chose.
+
+     This read DESIGN_CATALOGUE, which is declared empty and never filled —
+     so the Review step's "Design" row said "—" on every product, on every
+     order. The live registry is the one the server injects. fillMugSummary()
+     in this same file already reads the right one. */
+  var _reg = window.BESPOKE_REGISTERED_DESIGNS || [];
+  var d = null;
+  for (var _di = 0; _di < _reg.length; _di++) { if (_reg[_di].id === S.design) { d = _reg[_di]; break; } }
   var selSize = null;
   for (var _si = 0; _si < SIZES.length; _si++) { if (SIZES[_si].label === S.padSize) { selSize = SIZES[_si]; break; } }
   document.getElementById('sum-size').textContent = selSize
