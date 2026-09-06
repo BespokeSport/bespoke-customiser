@@ -1563,8 +1563,17 @@ function bespoke_squad_lines( $squad ) {
 }
 
 function bespoke_render_cart_team_mug( $item_data, $d ) {
+    if ( ! empty( $d['player_count'] ) ) {
+        $item_data[] = [ 'name' => 'Squad size', 'value' => (int) $d['player_count'] . ' players' ];
+    }
     if ( ! empty( $d['design'] ) ) {
-        $item_data[] = [ 'name' => 'Shirt style', 'value' => esc_html( $d['design'] ) ];
+        $item_data[] = [ 'name' => 'Outfield shirt', 'value' => esc_html( $d['design'] ) ];
+    }
+    // Only worth a line of its own when it differs — most orders will have
+    // the keeper in the same style, and repeating it is just noise.
+    $gk = $d['gk_design'] ?? '';
+    if ( $gk !== '' && $gk !== ( $d['design'] ?? '' ) ) {
+        $item_data[] = [ 'name' => 'Keeper shirt', 'value' => esc_html( $gk ) ];
     }
     $squad = trim( (string) ( $d['squad'] ?? '' ) );
     if ( $squad === '' ) {
@@ -1583,6 +1592,18 @@ function bespoke_render_cart_team_mug( $item_data, $d ) {
 
 function bespoke_render_admin_team_mug( $d, $item ) {
     echo bespoke_render_admin_generic_card( 'Team Mug', $d );
+
+    // Squad size and the two shirt styles, spelled out for the workshop.
+    $gk    = $d['gk_design'] ?? '';
+    $out   = $d['design']    ?? '';
+    $count = (int) ( $d['player_count'] ?? 0 );
+    echo '<p style="margin:8px 0 0;">';
+    if ( $count ) {
+        echo '<strong>Squad size:</strong> ' . $count . ' players &nbsp;·&nbsp; ';
+    }
+    echo '<strong>Outfield:</strong> ' . esc_html( $out !== '' ? $out : '—' );
+    echo ' &nbsp;·&nbsp; <strong>Keeper:</strong> ' . esc_html( $gk !== '' ? $gk : $out );
+    echo '</p>';
 
     // The squad list gets its own block rather than a table row: it is
     // multi-line, it is what the workshop prints from, and it exists

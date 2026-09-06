@@ -830,6 +830,15 @@ function bespoke_handle_add_to_cart() {
             // every other product type.
             'squad' => sanitize_textarea_field( wp_unslash( $_POST['bespoke_squad'] ?? '' ) ),
 
+            // Team Mug: the KEEPER shirt style, chosen separately from the
+            // outfield one. `design` above is the outfield choice.
+            'gk_design' => sanitize_text_field( $_POST['bespoke_gk_design'] ?? '' ),
+
+            // How many players are going on the mug. Not a priced option —
+            // every squad size costs the same — so it is recorded here
+            // rather than as a variation.
+            'player_count' => max( 0, min( 30, (int) ( $_POST['bespoke_player_count'] ?? 0 ) ) ),
+
             // ── Player card fields (Stage 1) ─────────────────────────────────
             // Only meaningful when type === 'player_cards'; null/blank on
             // every other product type. Sanitised through the same

@@ -553,6 +553,26 @@ function bespoke_design_files_cb( $post ) {
 
 /* ── 3c. COLOUR LAYERS META BOX ── */
 
+/**
+ * The "Part" a design layer can belong to.
+ *
+ * Almost every product is one object and leaves this blank. It exists for
+ * products assembled from two halves that the customer styles separately —
+ * the Team Mug's keeper and outfield shirts, chosen from the same list of
+ * designs but independently of one another. The renderer uses it to take
+ * the keeper's layers from the keeper's chosen design and everything else
+ * from the outfield's.
+ *
+ * @return array value => label
+ */
+function bespoke_get_layer_parts() {
+    return apply_filters( 'bespoke_layer_parts', [
+        ''         => '— Part: all / not split —',
+        'outfield' => 'Outfield shirt',
+        'keeper'   => 'Keeper shirt',
+    ] );
+}
+
 function bespoke_design_layers_cb( $post ) {
     $layers = get_post_meta( $post->ID, '_bespoke_layers', true );
     if ( ! is_array( $layers ) || empty( $layers ) ) {
@@ -580,6 +600,16 @@ function bespoke_design_layers_cb( $post ) {
         <p style="margin:6px 0 0 0;color:#555;font-size:12px;">A JPG has no see-through areas, so if it were recolourable every pixel would turn the same colour and the picture would vanish behind a solid block. Put finished artwork on <strong>layer 2 or below</strong> and leave layer 1 blank — layer 1 is what cuts the artwork to the product shape, and a JPG there would square it off.</p>
     </div>
 
+    <?php
+    // Built once here so the "Add layer" JS below can drop the same list
+    // into a new row — that template is plain string concatenation and
+    // cannot run PHP.
+    $part_options_js = '';
+    foreach ( bespoke_get_layer_parts() as $pval => $plabel ) {
+        $part_options_js .= '<option value="' . esc_attr( $pval ) . '">' . esc_html( $plabel ) . '</option>';
+    }
+    ?>
+    <script>var BESPOKE_PART_OPTIONS = <?php echo wp_json_encode( $part_options_js ); ?>;</script>
     <table class="widefat" id="bespoke-layers-table" style="margin-bottom:12px;">
         <thead>
             <tr>
@@ -603,6 +633,11 @@ function bespoke_design_layers_cb( $post ) {
                 // Off by default: existing layers are all clipped to the
                 // product shape, which is right for patterns.
                 $outside   = ( isset( $layer['outside'] ) && $layer['outside'] === '1' ) ? '1' : '0';
+                // Which PART of the product this layer belongs to. Blank for
+                // almost everything — only products assembled from two
+                // independently styled halves use it (the Team Mug's keeper
+                // and outfield shirts).
+                $part      = sanitize_key( $layer['part'] ?? '' );
             ?>
             <tr class="bespoke-layer-row" style="background:#fff;" data-layer-idx="<?php echo $i; ?>">
                 <td style="vertical-align:middle;text-align:center;padding:8px 4px;">
@@ -616,6 +651,13 @@ function bespoke_design_layers_cb( $post ) {
                            placeholder="e.g. Pad background"
                            style="width:100%;" />
                     <small class="bespoke-css-var-hint" style="color:#aaa;">CSS variable: <code>--col-<?php echo $n; ?></code></small>
+                    <select name="bespoke_layers[<?php echo $i; ?>][part]"
+                            class="bespoke-layer-part"
+                            style="width:100%;margin-top:6px;font-size:11px;">
+                        <?php foreach ( bespoke_get_layer_parts() as $pval => $plabel ) : ?>
+                            <option value="<?php echo esc_attr( $pval ); ?>" <?php selected( $part, $pval ); ?>><?php echo esc_html( $plabel ); ?></option>
+                        <?php endforeach; ?>
+                    </select>
                 </td>
                 <td>
                     <div style="display:flex;align-items:center;gap:8px;">
@@ -735,6 +777,7 @@ function bespoke_design_layers_cb( $post ) {
                 + '<input type="text" name="bespoke_layers[' + idx + '][label]" value="" '
                 + 'placeholder="e.g. Pattern" style="width:100%;" />'
                 + '<small class="bespoke-css-var-hint" style="color:#aaa;">CSS variable: <code>--col-' + num + '</code></small>'
+                + '<select name="bespoke_layers[' + idx + '][part]" class="bespoke-layer-part" style="width:100%;margin-top:6px;font-size:11px;">' + BESPOKE_PART_OPTIONS + '</select>'
                 + '</td>'
                 + '<td>'
                 + '<div style="display:flex;align-items:center;gap:8px;">'
@@ -965,6 +1008,10 @@ function bespoke_design_save_meta( $post_id, $post ) {
         // AROUND the product rather than on it — the plate trophy's
         // printed frame, where 85% of the file falls outside the plate.
         $outside  = ( isset( $layer['outside'] ) && $layer['outside'] === '1' ) ? '1' : '0';
+        $part     = sanitize_key( $layer['part'] ?? '' );
+        if ( ! array_key_exists( $part, bespoke_get_layer_parts() ) ) {
+            $part = '';
+        }
         // Parse the optional "Allowed colours" list — comma-separated hex
         // codes (#FEEF00, FF0000, etc.). Each entry is normalised to a
         // 6-digit uppercase hex with the # prefix. Invalid entries dropped.
@@ -1003,6 +1050,11 @@ function bespoke_design_save_meta( $post_id, $post ) {
             // old behaviour of being clipped.
             if ( $outside === '1' ) {
                 $entry['outside'] = '1';
+            }
+            // Only stored when set, so nothing changes for the products
+            // that are a single object.
+            if ( $part !== '' ) {
+                $entry['part'] = $part;
             }
             $layers[] = $entry;
         }
