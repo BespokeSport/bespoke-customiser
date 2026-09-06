@@ -1209,7 +1209,7 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
       <div class="sec-label" id="label-num-size">Text size</div>
       <div class="size-row">
         <label>Small</label>
-        <input type="range" id="num-size-slider" min="60" max="240" value="155" oninput="onNumSize(this.value)">
+        <input type="range" id="num-size-slider" min="60" max="220" value="155" oninput="onNumSize(this.value)">
         <label>Large</label>
         <span class="size-val" id="num-size-val">155</span>
       </div>
@@ -2778,7 +2778,7 @@ function setupDrag(svg, stepId) {
       if (nsv) nsv.textContent = S.nameSize;
       fastPinchSize('name');
     } else if (resizing.indexOf('num') === 0) {
-      S.numSize = Math.max(60, Math.min(240, Math.round(newSize)));
+      S.numSize = Math.max(60, Math.min(220, Math.round(newSize)));
       var msl = document.getElementById('num-size-slider');
       var msv = document.getElementById('num-size-val');
       if (msl) msl.value = S.numSize;
@@ -6335,8 +6335,8 @@ function bespokeCaptureInsideFace(cfg){
       fd.append('badge',  blob, S.badge);
       return fetch(cfg.ajaxUrl, { method:'POST', body:fd });
     }).then(function(r){ return r.json(); })
-      .then(function(d){ return d.success ? d.data : { url:'', filename:S.badge }; })
-      .catch(function(){ return { url:'', filename:S.badge }; });
+      .then(function(d){ if (d.success) return d.data; throw bespokeUploadFailed('club badge', d.data || ''); })
+      .catch(function(err){ throw err.bespokeUserMessage ? err : bespokeUploadFailed('club badge'); });
   }
   // Inside face's SECOND badge (charity/sponsor logo) — only when this
   // face's mode is "different" and it has its own upload.
@@ -6349,8 +6349,8 @@ function bespokeCaptureInsideFace(cfg){
       fd.append('badge',  blob, S.badge2);
       return fetch(cfg.ajaxUrl, { method:'POST', body:fd });
     }).then(function(r){ return r.json(); })
-      .then(function(d){ return (d && d.success) ? d.data : { url:'', filename:S.badge2 }; })
-      .catch(function(){ return { url:'', filename:S.badge2 }; });
+      .then(function(d){ if (d && d.success) return d.data; throw bespokeUploadFailed('second badge', (d && d.data) || ''); })
+      .catch(function(err){ throw err.bespokeUserMessage ? err : bespokeUploadFailed('second badge'); });
   }
   return Promise.all([ badgeP, badge2P, settleP ]).then(function(parts){
     var badgeData  = parts[0];
@@ -6379,6 +6379,30 @@ function bespokeCaptureInsideFace(cfg){
       return { data:insideData, badge:res.badgeData, badge2:res.badge2Data, previewUrl:res.previewUrl };
     });
   });
+}
+
+/**
+ * Turn a failed artwork upload into a REAL failure.
+ *
+ * Every one of these uploads used to end in
+ *
+ *     .catch(function(){ return { url:'', filename: S.badge }; })
+ *
+ * so a network blip, a server upload limit or a 500 produced an order
+ * that reached the workshop with no badge on it — and which looked
+ * exactly like a customer who had chosen not to upload one. They paid,
+ * and a blank product got printed. Nobody found out until it shipped.
+ *
+ * These now reject. The add-to-cart chain already ends in a .catch that
+ * re-enables the button, so the customer is simply told what went wrong
+ * and can try again with their design still on screen. Choosing NO badge
+ * is unaffected — those paths never call an upload at all.
+ */
+function bespokeUploadFailed(what, detail){
+  var e = new Error('upload failed: ' + what + (detail ? ' — ' + detail : ''));
+  e.bespokeUserMessage = 'Your ' + what + " could not be uploaded, so we've not added this to your basket. "
+                       + 'Please check your connection and try again — your design is still here.';
+  return e;
 }
 
 function bespokeAddToCart() {
@@ -6439,9 +6463,11 @@ function _bespokeCommitAddToCart(cfg, btn, insideFace) {
       .then(function(r){ return r.json(); })
       .then(function(data) {
         if(data.success) return data.data;
-        return {url:'', filename: S.badge};
+        throw bespokeUploadFailed('club badge', data.data || '');
       })
-      .catch(function() { return {url:'', filename: S.badge}; });
+      .catch(function(err) {
+        throw err.bespokeUserMessage ? err : bespokeUploadFailed('club badge');
+      });
   }
 
   // Step 1a-armbands: upload the SECOND badge (charity / sponsor logo)
@@ -6459,8 +6485,8 @@ function _bespokeCommitAddToCart(cfg, btn, insideFace) {
         return fetch(cfg.ajaxUrl, { method:'POST', body:fd });
       })
       .then(function(r){ return r.json(); })
-      .then(function(d){ return (d && d.success) ? d.data : {url:'', filename:S.badge2}; })
-      .catch(function(){ return {url:'', filename:S.badge2}; });
+      .then(function(d){ if (d && d.success) return d.data; throw bespokeUploadFailed('second badge', (d && d.data) || ''); })
+      .catch(function(err){ throw err.bespokeUserMessage ? err : bespokeUploadFailed('second badge'); });
   }
 
   // Step 1a (player cards only): Upload player photo through the same
@@ -6722,7 +6748,10 @@ function _bespokeCommitAddToCart(cfg, btn, insideFace) {
   })
   .catch(function(err) {
     console.error('Add to cart error:', err);
-    alert('Sorry, there was a connection problem. Please try again.');
+    // An artwork upload that failed carries its own wording — telling the
+    // customer "connection problem" when their badge was rejected for being
+    // too large would send them round in circles.
+    alert((err && err.bespokeUserMessage) || 'Sorry, there was a connection problem. Please try again.');
     if(btn) { btn.textContent = 'Add to cart'; btn.disabled = false; }
   });
 }

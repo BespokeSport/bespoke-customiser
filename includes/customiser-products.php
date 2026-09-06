@@ -279,7 +279,7 @@ add_action( 'wp_ajax_bespoke_save_product_geometry', function() {
     // wheel clamps in customiser.html. nameSize runs to 300 so an armband's
     // big captain's "C" (default 240) survives a Save placement instead of
     // being silently clamped down.
-    foreach ( [ 'badgeSize' => [ 80, 500 ], 'nameSize' => [ 40, 300 ], 'numSize' => [ 60, 220 ] ] as $key => $r ) {
+    foreach ( [ 'badgeSize' => [ 50, 500 ], 'nameSize' => [ 40, 300 ], 'numSize' => [ 60, 220 ] ] as $key => $r ) {
         if ( isset( $data[ $key ] ) ) {
             $clean[ $key ] = max( $r[0], min( $r[1], (int) $data[ $key ] ) );
         }
