@@ -251,10 +251,45 @@ function bespoke_handle_badge_upload() {
         wp_send_json_error( 'Invalid file type. Please upload a PNG, JPG, GIF, WebP, or SVG image.' );
     }
 
-    // ── Save to the dedicated bespoke-badges upload folder ───────────────────
-    // This folder is created on plugin activation (see bespoke-customiser.php).
-    // Keeping badges separate makes them easy to find and back up.
-    $safe_name = 'badge-' . time() . '-' . sanitize_file_name( $file['name'] );
+    /* ── Save to the dedicated bespoke-badges upload folder ─────────────────
+     *
+     * The EXTENSION IS DERIVED FROM THE VERIFIED CONTENT TYPE, never from the
+     * uploaded filename. This used to be
+     *
+     *     'badge-' . time() . '-' . sanitize_file_name( $file['name'] )
+     *
+     * which let an anonymous caller choose it. sanitize_file_name() does not
+     * strip a single trailing extension — "shell.php" survives it intact —
+     * so a file whose bytes began "GIF89a;" followed by PHP passed the
+     * content-type check above and was then written as a .php. The only
+     * thing standing between that and code execution was an .htaccess
+     * written once at activation, and only if the folder did not already
+     * exist. (That is now self-healing too — see bespoke-customiser.php.)
+     *
+     * The preview handler below already did this correctly; the badge
+     * handler now matches it. Note that this endpoint is nopriv: the nonce
+     * on it is a CSRF token, not authentication. Every anonymous visitor
+     * shares the same value and it is printed on the product page, so this
+     * has to be safe against a caller who is simply hostile.
+     *
+     * The customer's original filename is still recorded — it is passed
+     * separately as bespoke_badge_filename and shown on the admin order
+     * card — it just never touches the path on disk.
+     */
+    $mime_ext = [
+        'image/jpeg'    => 'jpg',
+        'image/png'     => 'png',
+        'image/gif'     => 'gif',
+        'image/webp'    => 'webp',
+        'image/svg+xml' => 'svg',
+    ];
+    if ( ! isset( $mime_ext[ $real_mime ] ) ) {
+        // Unreachable: $real_mime already passed the allow-list above. Kept
+        // so a future edit to that list cannot silently produce a file with
+        // no extension at all.
+        wp_send_json_error( 'Invalid file type.' );
+    }
+    $safe_name = 'badge-' . time() . '-' . wp_generate_uuid4() . '.' . $mime_ext[ $real_mime ];
     $dest_path = BESPOKE_UPLOAD_DIR . $safe_name;
     $dest_url  = BESPOKE_UPLOAD_URL . $safe_name;
 

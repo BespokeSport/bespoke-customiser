@@ -84,6 +84,39 @@ add_action( 'plugins_loaded', function() {
     }
 });
 
+/**
+ * Keep the badge upload directory protected.
+ *
+ * Runs on every load, not just activation. It used to be activation-only
+ * AND skipped entirely if the folder already existed, so a site where
+ * /uploads/bespoke-badges/ predated the plugin — or where the file was ever
+ * lost in a migration or restore — had an unprotected directory that
+ * anonymous visitors can write into. The other three upload directories
+ * (designs, product assets, fonts) already self-healed on init; this one
+ * was the exception.
+ *
+ * Belt and braces: uploads are now named server-side from their verified
+ * content type (see customiser-ajax.php), so nothing should ever write a
+ * .php here. This is what catches it if something does. The rules are
+ * Apache syntax and do nothing on nginx or LiteSpeed, which is the second
+ * reason not to depend on them alone.
+ */
+add_action( 'init', function() {
+    if ( ! defined( 'BESPOKE_UPLOAD_DIR' ) ) return;
+    if ( ! file_exists( BESPOKE_UPLOAD_DIR ) ) {
+        wp_mkdir_p( BESPOKE_UPLOAD_DIR );
+    }
+    $ht = BESPOKE_UPLOAD_DIR . '.htaccess';
+    if ( file_exists( BESPOKE_UPLOAD_DIR ) && ! file_exists( $ht ) ) {
+        @file_put_contents( $ht,
+            "Options -Indexes\n" .
+            "<FilesMatch \"\\.(php|phtml|phar|pl|py|cgi|sh)$\">\n" .
+            "    Require all denied\n" .
+            "</FilesMatch>\n"
+        );
+    }
+} );
+
 // Create badge upload directory on activation
 register_activation_hook( __FILE__, function() {
     if ( ! file_exists( BESPOKE_UPLOAD_DIR ) ) {
