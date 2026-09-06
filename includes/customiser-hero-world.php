@@ -122,7 +122,25 @@ add_shortcode( 'bespoke_hero_world', 'bespoke_hero_world_shortcode' );
 
 function bespoke_hero_world_shortcode( $atts ) {
     $atts = shortcode_atts( [
-        'scroll'  => '1000',
+        /* Length of the scroll journey, in vh. This is the ONLY thing that
+           decides how far the world turns per wheel click, and therefore
+           whether the rotation feels smooth or jumpy.
+
+           On a 900px window, with the render at 30 frames per 90 degree turn:
+
+             scroll   scroll per frame   wheel clicks per frame
+               1000          50px               0.5   (2 frames a click)
+               1600          83px               0.8
+               2000         105px               1.05
+
+           Frame COUNT is a different lever. Doubling the render to 60 frames
+           per turn halves the smallest possible step, which helps a slow
+           trackpad drift — but it does NOT reduce how far the world turns per
+           wheel click. Only this number does. Raise both together.
+
+           Raised from 1000 to 1600 on 6 Sep 2026: Nick reported "I scroll
+           down a tiny bit and we jump lots of frames". */
+        'scroll'  => '1600',
         'eyebrow' => 'BE:UNIQUE — BE:CREATIVE',
         // Visible height of the pinned window, in vh. The frames are CROPPED
         // to this (never squashed), so a letterbox costs nothing and needs no
@@ -148,7 +166,12 @@ function bespoke_hero_world_shortcode( $atts ) {
         // of the scrolling, so a returning customer is not made to wind
         // through the whole thing again. Set equal to `scroll` to turn the
         // shortcut off.
-        'returnscroll' => '260',
+        // 260 was far too aggressive: it squeezed the SAME animation into a
+        // quarter of the scroll, so a returning visitor got roughly ten
+        // frames per wheel click — much jumpier than the hero it was meant
+        // to be a convenience for. Now a little over a third of the full
+        // journey, which is still noticeably quicker without being a blur.
+        'returnscroll' => '600',
     ], $atts, 'bespoke_hero_world' );
 
     $scroll   = max( 300, (int) $atts['scroll'] );
