@@ -599,7 +599,7 @@ function bespoke_render_cart_shinpads( $item_data, $d ) {
     if ( ! empty( $d['design'] ) ) {
         $item_data[] = [
             'name'  => 'Design',
-            'value' => esc_html( $d['design'] ),
+            'value' => esc_html( bespoke_design_label( $d['design'] ) ),
         ];
     }
 
@@ -811,21 +811,6 @@ function bespoke_render_admin_shinpads( $d, $item ) {
 
     // Helper: look up the human-readable design name from its slug.
     // Falls back to the slug ucfirst'd if no matching post is found.
-    $design_label = function( $slug ) {
-        $slug = trim( (string) $slug );
-        if ( $slug === '' ) return '—';
-        $posts = get_posts( [
-            'post_type'        => 'bespoke_design',
-            'name'             => $slug,
-            'posts_per_page'   => 1,
-            'post_status'      => 'any',
-            'suppress_filters' => true,
-        ] );
-        if ( ! empty( $posts ) ) {
-            return $posts[0]->post_title;
-        }
-        return ucfirst( $slug );
-    };
 
     // Helper: row in the spec table
     $row = function( $label, $value ) {
@@ -876,7 +861,7 @@ function bespoke_render_admin_shinpads( $d, $item ) {
                 <?php
                 echo $section( 'Product',
                     $row( 'Size',   $d['size']   ?? '' ) .
-                    $row( 'Design', esc_html( $design_label( $d['design'] ?? '' ) ) )
+                    $row( 'Design', esc_html( bespoke_design_label( $d['design'] ?? '' ) ) )
                 );
                 echo $section( 'Left pad',
                     $row( 'Name',   $d['left']['name']   ?? '' ) .
@@ -1341,7 +1326,7 @@ function bespoke_render_cart_armbands( $item_data, $d ) {
     // (Band Thickness / Band Width / etc.). Adding our own Diameter and
     // Band thickness rows on top of that just duplicates the info.
     if ( ! empty( $d['design'] ) ) {
-        $item_data[] = [ 'name' => 'Design', 'value' => esc_html( $d['design'] ) ];
+        $item_data[] = [ 'name' => 'Design', 'value' => esc_html( bespoke_design_label( $d['design'] ) ) ];
     }
     if ( ! empty( $d['left']['name'] ) ) {
         $item_data[] = [ 'name' => 'Text', 'value' => esc_html( $d['left']['name'] ) ];
@@ -1438,7 +1423,7 @@ function bespoke_render_cart_pennant( $item_data, $d ) {
         'value' => esc_html( bespoke_format_bg_variant( $d ) ),
     ];
     if ( ! empty( $d['design'] ) ) {
-        $item_data[] = [ 'name' => 'Design', 'value' => esc_html( $d['design'] ) ];
+        $item_data[] = [ 'name' => 'Design', 'value' => esc_html( bespoke_design_label( $d['design'] ) ) ];
     }
     if ( ! empty( $d['left']['name'] ) ) {
         $item_data[] = [ 'name' => 'Text', 'value' => esc_html( $d['left']['name'] ) ];
@@ -1465,7 +1450,7 @@ function bespoke_render_admin_pennant( $d, $item ) {
    ========================================================================= */
 
 function bespoke_render_cart_award_plate( $item_data, $d ) {
-    if ( ! empty( $d['design'] ) ) $item_data[] = [ 'name' => 'Design', 'value' => esc_html( $d['design'] ) ];
+    if ( ! empty( $d['design'] ) ) $item_data[] = [ 'name' => 'Design', 'value' => esc_html( bespoke_design_label( $d['design'] ) ) ];
     if ( ! empty( $d['left']['name'] ) )   $item_data[] = [ 'name' => 'Top text',    'value' => esc_html( $d['left']['name'] ) ];
     if ( ! empty( $d['left']['number'] ) ) $item_data[] = [ 'name' => 'Bottom text', 'value' => esc_html( $d['left']['number'] ) ];
     $item_data[] = [ 'name' => 'Club badge', 'value' => ! empty( $d['badge']['url'] ) ? 'Uploaded' : 'Not added' ];
@@ -1481,7 +1466,7 @@ function bespoke_render_admin_award_plate( $d, $item ) {
 }
 
 function bespoke_render_cart_award_gamechanger( $item_data, $d ) {
-    if ( ! empty( $d['design'] ) ) $item_data[] = [ 'name' => 'Design', 'value' => esc_html( $d['design'] ) ];
+    if ( ! empty( $d['design'] ) ) $item_data[] = [ 'name' => 'Design', 'value' => esc_html( bespoke_design_label( $d['design'] ) ) ];
     if ( ! empty( $d['left']['name'] ) ) $item_data[] = [ 'name' => 'Text', 'value' => esc_html( $d['left']['name'] ) ];
     $item_data[] = [ 'name' => 'Club badge', 'value' => ! empty( $d['badge']['url'] ) ? 'Uploaded' : 'Not added' ];
     return $item_data;
@@ -1493,7 +1478,7 @@ function bespoke_render_admin_award_gamechanger( $d, $item ) {
 }
 
 function bespoke_render_cart_award_glassblock( $item_data, $d ) {
-    if ( ! empty( $d['design'] ) ) $item_data[] = [ 'name' => 'Design', 'value' => esc_html( $d['design'] ) ];
+    if ( ! empty( $d['design'] ) ) $item_data[] = [ 'name' => 'Design', 'value' => esc_html( bespoke_design_label( $d['design'] ) ) ];
     if ( ! empty( $d['left']['name'] ) ) $item_data[] = [ 'name' => 'Text', 'value' => esc_html( $d['left']['name'] ) ];
     $item_data[] = [ 'name' => 'Club badge', 'value' => ! empty( $d['badge']['url'] ) ? 'Uploaded' : 'Not added' ];
     return $item_data;
@@ -1510,7 +1495,7 @@ function bespoke_render_admin_award_glassblock( $d, $item ) {
    ========================================================================= */
 
 function bespoke_render_cart_corner_flags( $item_data, $d ) {
-    if ( ! empty( $d['design'] ) ) $item_data[] = [ 'name' => 'Design', 'value' => esc_html( $d['design'] ) ];
+    if ( ! empty( $d['design'] ) ) $item_data[] = [ 'name' => 'Design', 'value' => esc_html( bespoke_design_label( $d['design'] ) ) ];
     if ( ! empty( $d['left']['name'] ) ) $item_data[] = [ 'name' => 'Text', 'value' => esc_html( $d['left']['name'] ) ];
     $item_data[] = [ 'name' => 'Club badge', 'value' => ! empty( $d['badge']['url'] ) ? 'Uploaded' : 'Not added' ];
     return $item_data;
@@ -1552,7 +1537,7 @@ function bespoke_render_cart_team_mug( $item_data, $d ) {
         $item_data[] = [ 'name' => 'Squad size', 'value' => (int) $d['player_count'] . ' players' ];
     }
     if ( ! empty( $d['design'] ) ) {
-        $item_data[] = [ 'name' => 'Outfield shirt', 'value' => esc_html( $d['design'] ) ];
+        $item_data[] = [ 'name' => 'Outfield shirt', 'value' => esc_html( bespoke_design_label( $d['design'] ) ) ];
     }
     // Only worth a line of its own when it differs — most orders will have
     // the keeper in the same style, and repeating it is just noise.
@@ -1610,7 +1595,7 @@ function bespoke_render_admin_team_mug( $d, $item ) {
 
 function bespoke_render_cart_bottles( $item_data, $d ) {
     if ( ! empty( $d['design'] ) ) {
-        $item_data[] = [ 'name' => 'Design', 'value' => esc_html( $d['design'] ) ];
+        $item_data[] = [ 'name' => 'Design', 'value' => esc_html( bespoke_design_label( $d['design'] ) ) ];
     }
     if ( ! empty( $d['left']['name'] ) ) {
         $item_data[] = [ 'name' => 'Name', 'value' => esc_html( $d['left']['name'] ) ];
@@ -1648,7 +1633,7 @@ function bespoke_render_admin_bottles( $d, $item ) {
 function bespoke_render_cart_player_cards( $item_data, $d ) {
     $pc = ( isset( $d['player_card'] ) && is_array( $d['player_card'] ) ) ? $d['player_card'] : [];
     if ( ! empty( $d['design'] ) ) {
-        $item_data[] = [ 'name' => 'Design', 'value' => esc_html( $d['design'] ) ];
+        $item_data[] = [ 'name' => 'Design', 'value' => esc_html( bespoke_design_label( $d['design'] ) ) ];
     }
     if ( ! empty( $d['left']['name'] ) ) {
         $item_data[] = [ 'name' => 'Player name', 'value' => esc_html( $d['left']['name'] ) ];
@@ -1760,7 +1745,7 @@ function bespoke_render_admin_player_cards( $d, $item ) {
                     $product_rows .= $row( 'Size',   esc_html( $d['size'] ) );
                 }
                 if ( ! empty( $d['design'] ) ) {
-                    $product_rows .= $row( 'Design', esc_html( $d['design'] ) );
+                    $product_rows .= $row( 'Design', esc_html( bespoke_design_label( $d['design'] ) ) );
                 }
                 // Font (only if the customer changed it from the default)
                 $font_raw = $d['fonts']['name'] ?? '';
@@ -1914,7 +1899,7 @@ function bespoke_render_admin_generic_card( $product_label, $d, $opts = [] ) {
                 <?php
                 $product_rows = '';
                 if ( ! empty( $d['size']   ) ) $product_rows .= $row( $size_label, esc_html( $d['size'] ) );
-                if ( ! empty( $d['design'] ) ) $product_rows .= $row( 'Design',   esc_html( $d['design'] ) );
+                if ( ! empty( $d['design'] ) ) $product_rows .= $row( 'Design',   esc_html( bespoke_design_label( $d['design'] ) ) );
                 if ( $show_variant )           $product_rows .= $row( $show_variant, esc_html( bespoke_format_bg_variant( $d ) ) );
                 if ( $product_rows ) echo $section( 'Product', $product_rows );
 

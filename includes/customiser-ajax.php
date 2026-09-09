@@ -723,19 +723,28 @@ function bespoke_handle_add_to_cart() {
     // ── Security ─────────────────────────────────────────────────────────────
     check_ajax_referer( 'bespoke_add_to_cart', 'nonce' );
 
-    // ── Per-IP rate limit ────────────────────────────────────────────────────
-    // Anonymous endpoint, so a naïve attacker could flood the session +
-    // postmeta tables. Allow ~30 attempts per IP per minute — generous
-    // for legitimate "tweak and re-add" customers, tight enough that a
-    // single IP can't blow up the DB. Uses a short-lived transient so it
-    // self-cleans and doesn't grow the options table.
-    $ip       = isset( $_SERVER['REMOTE_ADDR'] ) ? wp_unslash( $_SERVER['REMOTE_ADDR'] ) : '';
-    $ip_key   = 'bespoke_atc_' . md5( (string) $ip );
-    $attempts = (int) get_transient( $ip_key );
-    if ( $attempts >= 30 ) {
-        wp_send_json_error( 'Too many add-to-cart attempts — please wait a minute and try again.' );
+    /* ── Per-IP rate limit ──────────────────────────────────────────────────
+     * Anonymous endpoint, so a naïve attacker could flood the session and
+     * postmeta tables. 30 attempts per minute is generous for a genuine
+     * "tweak it and add it again" customer and still stops a flood.
+     *
+     * The address comes from bespoke_upload_client_ip() rather than straight
+     * from REMOTE_ADDR. This site sits behind an nginx proxy: if PHP only
+     * ever sees the proxy then a bare REMOTE_ADDR puts EVERY visitor in one
+     * bucket, and the 31st add-to-cart on the whole site turns away a paying
+     * customer. The helper falls back to the forwarded header, and returns
+     * an empty string when it genuinely cannot tell visitors apart — in
+     * which case no limit is applied at all, which is the safe direction.
+     */
+    $ip = bespoke_upload_client_ip();
+    if ( $ip !== '' ) {
+        $ip_key   = 'bespoke_atc_' . md5( $ip );
+        $attempts = (int) get_transient( $ip_key );
+        if ( $attempts >= 30 ) {
+            wp_send_json_error( 'Too many add-to-cart attempts — please wait a minute and try again.' );
+        }
+        set_transient( $ip_key, $attempts + 1, MINUTE_IN_SECONDS );
     }
-    set_transient( $ip_key, $attempts + 1, MINUTE_IN_SECONDS );
 
     // ── Ensure WooCommerce session and cart are ready ─────────────────────────
     //

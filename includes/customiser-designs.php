@@ -23,6 +23,49 @@
 
 defined( 'ABSPATH' ) || exit;
 
+/**
+ * The human name of a design, from its slug.
+ *
+ * The cart, the checkout, the order confirmation email and the admin order
+ * card all used to print the raw slug — a customer who picked "Apex - Ref"
+ * saw "apex-ref" in their basket, and the workshop read the same. One
+ * renderer (the armband order card) already looked the label up through a
+ * closure; every other one printed $d['design'] directly. This is that
+ * closure promoted to a real function so all of them agree.
+ *
+ * Results are cached per request. Without it a basket of six items meant
+ * six identical database queries, and the admin orders list is worse.
+ *
+ * Falls back to a tidied version of the slug when the design has been
+ * deleted, which matters for OLD ORDERS: a design retired last season
+ * still has to read sensibly on the order that used it.
+ *
+ * @param  string $slug
+ * @return string
+ */
+function bespoke_design_label( $slug ) {
+    static $cache = [];
+
+    $slug = trim( (string) $slug );
+    if ( $slug === '' ) return '';
+    if ( isset( $cache[ $slug ] ) ) return $cache[ $slug ];
+
+    $posts = get_posts( [
+        'post_type'        => 'bespoke_design',
+        'name'             => $slug,
+        'posts_per_page'   => 1,
+        'post_status'      => 'any',
+        'suppress_filters' => true,
+    ] );
+
+    $label = ! empty( $posts )
+        ? $posts[0]->post_title
+        : ucwords( str_replace( [ '-', '_' ], ' ', $slug ) );
+
+    return $cache[ $slug ] = $label;
+}
+
+
 
 /* =========================================================================
    1. REGISTER CUSTOM POST TYPE
