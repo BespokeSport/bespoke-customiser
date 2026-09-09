@@ -14,8 +14,9 @@
  *   - Display order (lower = appears first)
  *   - Active/inactive toggle
  *
- * The AJAX endpoint bespoke_get_designs is called by customiser.html
- * on page load to fetch the live design catalogue for the current product.
+ * The design list reaches the customiser through the BESPOKE_REGISTERED_DESIGNS
+ * global printed into each product page by customiser-frontend.php — not by an
+ * AJAX call. (There was an endpoint; it had no caller and was removed.)
  *
  * File location: /wp-content/plugins/bespoke-sport/includes/customiser-designs.php
  * Included by:   bespoke-customiser.php (main plugin bootstrap)
@@ -1456,66 +1457,19 @@ add_action( 'save_post_bespoke_design', function( $post_id ) {
 
 
 /* =========================================================================
-   6. AJAX ENDPOINT — bespoke_get_designs
-   Called by customiser.html on page load to fetch the live design
-   catalogue for the current product type.
+   6. (REMOVED) AJAX ENDPOINT — bespoke_get_designs
+
+   Deleted 9 Sep 2026. It was registered for anonymous callers, had no nonce
+   or capability check of any kind, and ran an unbounded query
+   (posts_per_page => -1) on every hit — a cheap way to make the server do
+   expensive work over and over.
+
+   Nothing called it. The comment here used to claim "Called by
+   customiser.html on page load", which was simply untrue: the customiser
+   reads the design list from the BESPOKE_REGISTERED_DESIGNS global that
+   customiser-frontend.php prints into the product page. Verified against
+   both the repo and the deployed customiser.html before removing.
+
+   If a genuine need for a designs endpoint ever appears, give it a nonce, a
+   sane posts_per_page, and a caller.
    ========================================================================= */
-
-add_action( 'wp_ajax_bespoke_get_designs',        'bespoke_ajax_get_designs' );
-add_action( 'wp_ajax_nopriv_bespoke_get_designs', 'bespoke_ajax_get_designs' );
-
-function bespoke_ajax_get_designs() {
-
-    $product_type = sanitize_key( $_GET['product_type'] ?? '' );
-
-    if ( ! $product_type ) {
-        wp_send_json_error( 'No product type specified.' );
-    }
-
-    // Validate against known product types
-    if ( ! array_key_exists( $product_type, bespoke_get_product_types() ) ) {
-        wp_send_json_error( 'Invalid product type.' );
-    }
-
-    $args = [
-        'post_type'      => 'bespoke_design',
-        'post_status'    => 'publish',
-        'posts_per_page' => -1,
-        'meta_query'     => [
-            'relation' => 'AND',
-            [
-                'key'   => '_bespoke_active',
-                'value' => '1',
-            ],
-            [
-                'key'     => '_bespoke_products',
-                'value'   => '"' . $product_type . '"',
-                'compare' => 'LIKE',
-            ],
-        ],
-        'meta_key' => '_bespoke_order',
-        'orderby'  => 'meta_value_num',
-        'order'    => 'ASC',
-    ];
-
-    $query   = new WP_Query( $args );
-    $designs = [];
-
-    foreach ( $query->posts as $post ) {
-        $thumb_id  = get_post_meta( $post->ID, '_bespoke_thumb_id', true );
-        $thumb_url = $thumb_id ? wp_get_attachment_image_url( $thumb_id, 'medium' ) : '';
-        $svg_url   = get_post_meta( $post->ID, '_bespoke_svg_url', true );
-        $layers    = get_post_meta( $post->ID, '_bespoke_layers',  true );
-        $layers    = is_array( $layers ) ? $layers : [];
-
-        $designs[] = [
-            'id'        => $post->ID,
-            'name'      => $post->post_title,
-            'thumb_url' => $thumb_url ?: '',
-            'svg_url'   => $svg_url   ?: '',
-            'layers'    => $layers,
-        ];
-    }
-
-    wp_send_json_success( $designs );
-}
