@@ -517,6 +517,56 @@ live — nothing is sitting in git waiting.*
    so a goalkeeper got PAC/SHO/PAS instead of DIV/HAN/KIC.
 
 ### Ready to action
+
+**PRODUCT COPY AUDIT — 9 Sep 2026.** Full findings and draft copy:
+<https://claude.ai/code/artifact/6680476b-51b8-4db5-ab7e-15826158bf72>
+
+4a. **The "At a glance" sidebar is copy-pasted and factually WRONG on 12 products.**
+    The armband block was duplicated onto the mug, all three trophies, corner flags,
+    pennant, player cards and the rest without being edited. It currently tells
+    customers the grassroots mug is **"FA-safety approved"** and **"Sold as a pair"**.
+    Only "Made in: Hampshire, UK" and "Returns: non-returnable" are true across the
+    board. This is the highest-priority copy fix — two of those claims could generate
+    a genuine complaint.
+
+4b. **The lead time contradicts itself** on shin pads, shin pad sleeves and the
+    pennant: the sidebar says 5 working days, the short description (in capitals)
+    says 7. Both are on the same screen. The notice also reads as seasonal and may
+    be stale.
+
+4c. **Typos:** "exisiting" (shin pad sleeves), "ackowledhing" (pennant), "ONE OF THE
+    MOST BUSIEST TIMES" (3 products), "Sizes to suits all" (the subtitle on BOTH
+    products that have one). Brand written **BESpoke** instead of BEspoke on 4
+    products. A space sits before the comma/full stop in 36 descriptions.
+
+4d. **Only 2 of 16 products have the full page treatment.** Shin pads and grip socks
+    have eyebrow, subtitle, price note and sizing chart; the other 14 have only the
+    sidebar. That is 56 empty fields. Draft eyebrow/subtitle/price-note copy for all
+    of them is in the audit above, written from Nick's own descriptions. Sizing
+    charts are deliberately NOT drafted — they need real measurements, and inventing
+    those is how the sidebar ended up claiming a mug is sold as a pair.
+
+4e. **Two products are unfinished and unbuyable but publicly reachable:**
+    `pre-designed-custom-captains-armbands` and `football-legends-mug-choose-your-team`
+    have no description, no price and no customiser.
+
+4f. **Basket test passed.** All 14 customiser products add to basket correctly via the
+    real server path, recording design, size, colours, names and numbers. Detection
+    tip: a product has the customiser if its page contains `BespokeConfig`.
+    `bespoke-customiser-root` is NOT a valid test — it appears in the CSS on every
+    product page, and `productType` matches WooCommerce's own "variable" on many.
+
+4g. **Security scan clean.** No exposed config/backups/logs/.git, no directory
+    listings, XML-RPC blocked, user enumeration blocked, and the badge folder's PHP
+    deny rule verified LIVE (a non-existent .php returns 403, not 404). Missing:
+    X-Frame-Options, Strict-Transport-Security, Referrer-Policy, CSP — none urgent,
+    the first two worth adding in SiteGround before launch.
+
+    NB: heavy automated testing trips SiteGround's bot protection (sgcaptcha) and
+    then returns a 249-byte challenge page instead of the file. **Always assert the
+    response size before trusting a grep count** — it silently produced a wrong
+    "0 references" result during this audit.
+
 5. ~~Fancy Product Designer~~ — **REMOVED 6 Sep 2026.** Every product is off it, it is
    deactivated, and the `Customize`→`Customise` patch script it required has been deleted
    from `customiser-woocommerce.php`. The plugin folder is still on the server and can be
