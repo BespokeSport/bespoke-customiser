@@ -27,9 +27,9 @@
  * There are TWO renders of the same world and the script picks one by the
  * screen's orientation (swapping if a phone is turned round):
  *
- *   assets/hero-world/    widescreen 1920×1080, 91 frames (f0000 … f0090),
+ *   assets/hero-world/    widescreen 1920×1080, 181 frames (f0000 … f0180),
  *                         stops at 0 / 30 / 60 / 90 — landscape screens.
- *   assets/hero-world-m/  portrait 1080×1920, 90 frames (f0000 … f0089),
+ *   assets/hero-world-m/  portrait 1080×1920, 181 frames (f0000 … f0180),
  *                         stops at 0 / 30 / 60 / 89 — portrait screens
  *                         (phones, tablets held upright). This render came
  *                         out of C4D one frame shorter, hence 89: that is 3°
@@ -62,18 +62,18 @@
 
 defined( 'ABSPATH' ) || exit;
 
-/** Total frames in assets/hero-world/ (f0000 … f0090) — the widescreen render. */
-define( 'BESPOKE_HERO_FRAMES', 91 );
+/** Total frames in assets/hero-world/ (f0000 … f0180) — the widescreen render, 60 frames per 90° turn. */
+define( 'BESPOKE_HERO_FRAMES', 181 );
 
-/** Total frames in assets/hero-world-m/ (f0000 … f0089) — the portrait render. */
-define( 'BESPOKE_HERO_FRAMES_M', 90 );
+/** Total frames in assets/hero-world-m/ (f0000 … f0180) — the portrait render, 60 frames per 90° turn. */
+define( 'BESPOKE_HERO_FRAMES_M', 181 );
 
 /**
  * The four products the world stops at, in rotation order.
  *
  * 'frame' must match the frame where that product faces the camera in the
  * widescreen render, 'mframe' the same in the portrait render — the world
- * turns 90° between each, and both were rendered at 30 frames per 90°. Keep
+ * turns 90° between each, and both are rendered at 60 frames per 90°. Keep
  * these in step with the renders or the cards will announce the wrong
  * product.
  */
@@ -89,8 +89,8 @@ function bespoke_hero_world_products() {
             'url'     => '/product/personalised-captains-armbands/',
         ],
         [
-            'frame'   => 30,
-            'mframe'  => 30,
+            'frame'   => 60,
+            'mframe'  => 60,
             'title'   => 'Tackle in <span>style</span>.',
             'body'    => 'Fully personalised shin pads — your badge, your name, your number. Made in the UK, built to last.',
             'price'   => '£20',
@@ -98,8 +98,8 @@ function bespoke_hero_world_products() {
             'url'     => '/product/personalised-shin-pads/',
         ],
         [
-            'frame'   => 60,
-            'mframe'  => 60,
+            'frame'   => 120,
+            'mframe'  => 120,
             'title'   => 'Grip. <span>Comfort.</span> Colour.',
             'body'    => "Anti-slip grip socks carrying your club badge and squad number, in your team's colours.",
             'price'   => '£10',
@@ -107,8 +107,8 @@ function bespoke_hero_world_products() {
             'url'     => '/product/personalised-grip-socks-bespoke-sports/',
         ],
         [
-            'frame'   => 90,
-            'mframe'  => 89,   // portrait render is 90 frames long (0–89)
+            'frame'   => 180,
+            'mframe'  => 180,
             'title'   => 'Reward the <span>moment</span>.',
             'body'    => 'Man &amp; Girl of the Match trophies, personalised for your club — so every performance gets remembered.',
             'price'   => '£20',
@@ -126,17 +126,21 @@ function bespoke_hero_world_shortcode( $atts ) {
            decides how far the world turns per wheel click, and therefore
            whether the rotation feels smooth or jumpy.
 
-           On a 900px window, with the render at 30 frames per 90 degree turn:
+           On a 900px window. The world turns 270° in all, and how much of that
+           one wheel click moves depends on this number alone:
 
-             scroll   scroll per frame   wheel clicks per frame
-               1000          50px               0.5   (2 frames a click)
-               1600          83px               0.8
-               2000         105px               1.05
+             scroll   turn per wheel click   frames per click (60fps render)
+               1000          6.0°                   4
+               1600          3.6°                   2.4
+               2000          2.9°                   1.9
 
-           Frame COUNT is a different lever. Doubling the render to 60 frames
-           per turn halves the smallest possible step, which helps a slow
-           trackpad drift — but it does NOT reduce how far the world turns per
-           wheel click. Only this number does. Raise both together.
+           Frame COUNT is a different lever. On 10 Sep 2026 the renders went from
+           30 to 60 frames per 90° turn. That halves the smallest possible step,
+           which smooths a slow trackpad drift or a finger dragging on a phone —
+           but it does NOT change how far the world turns per wheel click. Only
+           this number does. (This table used to quote scroll-per-frame, a figure
+           that quietly halved when the frame count doubled. Degrees per click is
+           the one that describes the feel.)
 
            Raised from 1000 to 1600 on 6 Sep 2026: Nick reported "I scroll
            down a tiny bit and we jump lots of frames". */
@@ -190,10 +194,22 @@ function bespoke_hero_world_shortcode( $atts ) {
     $has_m    = file_exists( BESPOKE_PLUGIN_DIR . 'assets/hero-world-m/f0000.avif' );
     $stops_m  = wp_list_pluck( $products, 'mframe' );
 
+    /* Version the frame URLs by when the sequence was last replaced.
+
+       Every render reuses the same filenames, so without this a returning
+       visitor's browser keeps serving the OLD frames it already has cached
+       and only fetches the ones it has never seen — a jumble of two renders
+       with different timing. Found when the 30fps sequence (f0000–f0090)
+       was replaced by a 60fps one (f0000–f0180) on 10 Sep 2026. f0000 is
+       rewritten by every upload, so its modified time changes by itself and
+       there is nothing to remember next time. */
+    $ver      = (string) ( @filemtime( BESPOKE_PLUGIN_DIR . 'assets/hero-world/f0000.avif' )   ?: BESPOKE_HERO_FRAMES );
+    $ver_m    = (string) ( @filemtime( BESPOKE_PLUGIN_DIR . 'assets/hero-world-m/f0000.avif' ) ?: BESPOKE_HERO_FRAMES_M );
+
     // Poster = the first stop frame. Also the no-JS / no-AVIF fallback, so
     // the hero is never a blank box.
-    $poster   = $base   . 'f' . str_pad( (string) $stops[0],   4, '0', STR_PAD_LEFT ) . '.avif';
-    $poster_m = $base_m . 'f' . str_pad( (string) $stops_m[0], 4, '0', STR_PAD_LEFT ) . '.avif';
+    $poster   = $base   . 'f' . str_pad( (string) $stops[0],   4, '0', STR_PAD_LEFT ) . '.avif?v=' . $ver;
+    $poster_m = $base_m . 'f' . str_pad( (string) $stops_m[0], 4, '0', STR_PAD_LEFT ) . '.avif?v=' . $ver_m;
 
     // Unique id per instance. The script finds its own section by id rather
     // than by walking siblings — wpautop / Elementor can inject markup
@@ -260,12 +276,12 @@ function bespoke_hero_world_shortcode( $atts ) {
       var SETS = {
         wide: { base:  <?php echo wp_json_encode( $base ); ?>,
                 n:     <?php echo (int) BESPOKE_HERO_FRAMES; ?>,
-                w: 1920, h: 1080,
+                w: 1920, h: 1080, v: <?php echo wp_json_encode( $ver ); ?>,
                 stops: <?php echo wp_json_encode( array_values( $stops ) ); ?> },
         tall: <?php echo $has_m
             ? '{ base: '   . wp_json_encode( $base_m )
             . ', n: '      . (int) BESPOKE_HERO_FRAMES_M
-            . ', w: 1080, h: 1920'
+            . ', w: 1080, h: 1920, v: ' . wp_json_encode( $ver_m )
             . ', stops: '  . wp_json_encode( array_values( $stops_m ) ) . ' }'
             : 'null'; ?>
       };
@@ -291,8 +307,9 @@ function bespoke_hero_world_shortcode( $atts ) {
          into the new set's slots. */
       var BASE, N, STOPS, SEG, imgs, ok, queue, gen = 0, flight = 0, want = 0, shown = -1;
       var NATW = 0, NATH = 0;   // the active render's native pixel size
+      var VQ = '';              // the active set's ?v= cache-buster (see $ver)
       var pad = function(n){ n = String(n); while (n.length < 4) n = '0' + n; return n; };
-      var url = function(i){ return BASE + 'f' + pad(i) + '.avif'; };
+      var url = function(i){ return BASE + 'f' + pad(i) + '.avif' + VQ; };
 
       /* ---- Build the hold/turn timeline from the stop frames --------------
          Each product gets a HOLD (frame frozen, its card up) and each gap a
@@ -368,6 +385,7 @@ function bespoke_hero_world_shortcode( $atts ) {
         gen++;
         BASE = set.base; N = set.n; STOPS = set.stops;
         NATW = set.w || 0; NATH = set.h || 0;
+        VQ   = set.v ? '?v=' + encodeURIComponent(set.v) : '';
         SEG  = timeline(STOPS);
         imgs = new Array(N); ok = new Array(N);
         queue = reduce ? STOPS.slice(0,1) : order();

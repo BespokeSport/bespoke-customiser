@@ -334,10 +334,23 @@ actually on the server before debugging, since a stale upload wastes the whole e
 - **`sharp`** (Node) converts frames to AVIF; **`ffmpeg-static`** pulls frames out of an
   MP4 losslessly (the portrait hero render arrived as a video).
 - **Browser tooling:** the in-app browser tools work well against staging. Two traps:
-  - `javascript_tool` **does not await Promises** — use a "kick and poll" pattern (start
-    async work storing to `window.__x`, then read it in a second call).
+  - `javascript_tool` **does await Promises** now — verified 10 Sep 2026: an async IIFE with
+    awaited timeouts returns its result. (An older note said it did not; if a call ever comes
+    back empty, fall back to kick-and-poll through `window.__x`.)
   - The MCP content filter **blocks returning raw page HTML/URLs** — return booleans,
     measurements and short strings only, never page content.
+- **A collapsed Browser pane renders the page at 0×0.** `document.hidden` is true, `innerWidth`
+  and `innerHeight` are 0, `(orientation: portrait)` MATCHES (0 is not less than 0), screenshots
+  come back blank and rAF is suspended — so a desktop test run like that silently exercises the
+  portrait code. `resize_window` gives a real viewport even while collapsed; shim rAF with
+  `setTimeout`; and verify a canvas by pixel-matching rather than by eye: draw each candidate
+  frame with the same cover-fit into an offscreen canvas, shrink both to 48×48 and compare.
+  That proved every hero stop pixel-exact at phone and desktop sizes on 10 Sep 2026.
+- **Write scripts with the Write tool, not shell heredocs.** On 10 Sep 2026 a heredoc dropped
+  one of a pair of backslashes on the way to node (a regex meant to match an optional
+  backslash matched nothing, twice), and a later heredoc was never terminated at all, so the
+  git commit chained after it silently never ran. Where a backslash must be built in code,
+  use `String.fromCharCode(92)`. Check a chained command printed every step it should.
 - **Testing mobile:** the Browser pane's `resize_window` (preset `mobile`, or an explicit
   width/height) genuinely changes the viewport, so `@media` and `(orientation: portrait)`
   rules apply. Trap: preset `desktop` only restores the pane's own size, which is itself
@@ -370,8 +383,8 @@ Shin Pads · Grip Socks · Shin Pad Sleeves · Captain Armbands · **Double-Side
 `[bespoke_hero_world]` — a pinned hero where a rendered world of products on a floodlit
 pitch rotates as you scroll, holding at each of four products with an info card.
 
-**Journey:** Armbands (frame 0) → Shin Pads (30) → Grip Socks (60) → GameChanger (90 —
-89 in the portrait set).
+**Journey:** Armbands (frame 0) → Shin Pads (60) → Grip Socks (120) → GameChanger (180), in
+both sets — 60 frames per 90° turn since 10 Sep 2026.
 
 **Delivery decision — important.** Video was tried and **rejected**: browsers seek video by
 keyframe so scrubbing arrived in ~6-frame lumps, and H.264 visibly softened the night sky
@@ -381,11 +394,11 @@ from each stop.
 
 **Two renders, picked by orientation** (`matchMedia('(orientation: portrait)')`, and it
 swaps live if the phone is turned):
-- `assets/hero-world/` — widescreen 1920×1080, **91 frames** (0–90), 4.8MB.
-- `assets/hero-world-m/` — portrait 1080×1920, **90 frames** (0–89), 4.9MB. Nick's C4D
-  export came out one frame short, so the trophies stop on 89 (3° off square — invisible).
-  Stop frames are full size (q68); the in-between frames are 810×1440 (q45) — above what
-  a phone canvas draws at, and only ever seen in motion.
+- `assets/hero-world/` — widescreen 1920×1080, **181 frames** (0–180), 10.5MB.
+- `assets/hero-world-m/` — portrait 1080×1920, **181 frames** (0–180), 13.6MB.
+  Both went from 30 to **60 frames per 90° turn** on 10 Sep 2026 (they were 4.8MB / 4.9MB).
+  Stop frames are full size, q80 4:4:4; the in-betweens are 80% size (1536×864 / 864×1536),
+  q40 4:2:0 — see the encoding recipe below.
 - The portrait set is only offered if `hero-world-m/f0000.avif` exists on the server, so
   phones fall back to the widescreen set (cover-cropped) rather than a blank canvas when
   the folder hasn't been uploaded.
@@ -402,11 +415,17 @@ swaps live if the phone is turned):
 **Re-rendering the artwork.** Nick renders in C4D and saves an image sequence; the site
 needs AVIF, so he cannot drop his files straight in. The cycle is: he saves the sequence
 and tells you the folder → you convert and number them `f0000.avif`… (`sharp`, see
-`tools/`) and zip them → he uploads and extracts. Keep 30 frames per 90° turn; if a frame
+`tools/`) and zip them → he uploads and extracts. Keep 60 frames per 90° turn; if a frame
 count changes, update `BESPOKE_HERO_FRAMES` / `BESPOKE_HERO_FRAMES_M` and the `frame` /
 `mframe` stops. **Zip the files FLAT, with no containing folder** — SiteGround creates a
 folder named after the zip, so `hero-world-m.zip` full of bare `.avif` files lands exactly
 right (see the zip trap in §4).
+
+**Frame URLs are versioned automatically.** Every render reuses the filenames `f0000…`, so
+without a version a returning visitor's browser mixes cached frames from the old render with
+new ones — two animations with different timing, spliced together. The shortcode appends
+`?v=` plus the upload time of `f0000.avif` to every frame and poster URL, so replacing the
+sequence busts the cache by itself. Nothing to bump by hand.
 
 **⚠ Never accept the animation as a video file.** The first portrait sequence arrived as
 `World Mobile V1.mp4` — H.264, 90 frames, 2.14MB, about **6 Mbps / 24KB per frame**, while
@@ -421,24 +440,42 @@ for stills before spending any time on it.
 
 | | Size | Frames | Notes |
 |---|---|---|---|
-| Portrait (phones) | **1440 × 2560** | 91 (0–90) | 9:16. Covers every phone at 3x density. |
-| Widescreen (desktop) | **2560 × 1440** | 91 (0–90) | 16:9. Only helps retina/4K; lower priority. |
+| Portrait (phones) | **1440 × 2560** | 181 (0–180) | 9:16. Covers every phone at 3x density. |
+| Widescreen (desktop) | **2560 × 1440** | 181 (0–180) | 16:9. Only helps retina/4K; lower priority. |
 
 Image sequence, **JPEG at maximum quality or PNG — never a video**. DPI/PPI in the render
 settings is irrelevant to the web and can be ignored; only pixel dimensions matter. Keep
-30 frames per 90° turn and the same four product stops. Asking for 91 portrait frames
-retires the odd `mframe => 89` special case.
+60 frames per 90° turn and the same four product stops (0, 60, 120, 180).
+
+**The 10 Sep 2026 renders — which files are which.** The NAS folder
+`Hero Animation/World Animation/Mobile` holds THREE sequences, mixed together:
+- `Grass_World_Mobile_V2_…` — 91 frames, 30fps stills, 1080×1920 (3–4 Sep).
+- `World 1_####` — 181 frames, 60fps, 1080×1920 (9 Sep). **This is the one that is live.**
+- `World 1_i1_####` — **do not use.** 1440×2560, but only 124 of 181 frames, framed by a
+  different camera, and the shin pad artwork and sock crests rendered solid black (missing
+  textures). It cannot be topped up by rendering the last 57 frames: the scene has changed.
+
+So the portrait set is still 1080×1920. For the sharper phone hero, re-render all 181 frames
+at 1440×2560 from the current scene, then change `w: 1080, h: 1920` in the shortcode's
+`SETS` to match — the pixel-density cap works from those numbers, and leaving them at 1080
+would throw the extra resolution away. `Desktop/desktop World 1_####` (181, 1920×1080) is
+complete. **Check a delivered folder with a contact sheet before converting it:** the
+texture fault above is invisible in a frame count and obvious at a glance.
 
 Bigger sources barely cost file size, because only the **four stop frames** are encoded at
-full resolution — the ~87 in-between frames are downscaled regardless, and downscaling
-from a larger original is cleaner than encoding a small one. Projected totals stay near
-7MB per set.
+full resolution — the 177 in-between frames are downscaled regardless, and downscaling
+from a larger original is cleaner than encoding a small one. Measured totals are under
+the encoding recipe.
 
-**Encoding recipe** (`sharp`): stop frames q80 at full size with `4:4:4` chroma; the
-in-between frames q45 at 85% size with `4:2:0`. Weighting it this way matters — the eye
-only ever rests on the four stops. Measured against Nick's originals, the stop frames are
-close to indistinguishable; the mid-turn frames are visibly softer, but are only seen
-while the page is actually moving. Each set lands around 6-7MB.
+**Encoding recipe** (`sharp`, effort 6): stop frames q80 at full size with `4:4:4` chroma;
+the in-between frames **q40 at 80% size** with `4:2:0`. Weighting it this way matters — the
+eye only ever rests on the four stops. At 60fps each in-between is on screen half as long as
+at 30, which is what pays for the lighter setting. Measured on 10 Sep 2026 against the source
+JPGs: 85%/q45 gave 14.3MB desktop + 18.3MB portrait; 80%/q40 gives **10.5MB + 13.6MB** with
+no visible difference mid-turn; 75%/q36 starts smearing the sock crest and losing stars.
+Raising effort to 8 saved nothing. Stop frames are indistinguishable from the source at 1:1.
+(An older note here said 85%/q45 and 6-7MB per set; the frames actually live until 10 Sep
+were lighter than that, with 75% in-betweens.)
 
 **Resolution ceiling.** At a 3x pixel-density cap a phone canvas reaches roughly 1300px
 wide, so 1080×1920 is marginally under and 1440×2560 clears it. The widescreen render at
@@ -450,7 +487,8 @@ above.
 phones, worth far more than any compression setting. It is also capped to the frames' own
 resolution so a big monitor can't allocate a canvas of pure upscale.
 
-**Frame rate and smoothness.** At 30 frames per 90° the world turns 3° per frame, and the
+**Frame rate and smoothness.** (Both sets moved to 60fps on 10 Sep 2026, 1.5° per frame;
+what follows is why.) At 30 frames per 90° the world turns 3° per frame, and the
 artwork travels about **64px across a 1080px-wide frame between adjacent frames** (measured
 by correlating frames 10 and 11). One turn spans roughly 1300px of scroll, so a frame
 changes about every 45px of finger movement — the picture moves faster than the finger,
