@@ -680,7 +680,7 @@ function bespoke_shortcodes_get_css() {
 	display: inline-block;
 	margin-top: 52px;
 	background: #5DCAA5;
-	color: #04342C;
+	color: #0D0D0D;
 	font-family: 'Anton', sans-serif;
 	letter-spacing: .14em;
 	font-size: 14px;
@@ -693,7 +693,7 @@ function bespoke_shortcodes_get_css() {
 .bs-how__cta:hover {
 	transform: translateY(-2px);
 	background: #6fd8b4;
-	color: #04342C;
+	color: #0D0D0D;
 }
 @media (max-width: 900px) {
 	.bs-how { padding: 64px 22px 72px; }
