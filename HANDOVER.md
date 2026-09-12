@@ -494,6 +494,24 @@ Raising effort to 8 saved nothing. Stop frames are indistinguishable from the so
 (An older note here said 85%/q45 and 6-7MB per set; the frames actually live until 10 Sep
 were lighter than that, with 75% in-betweens.)
 
+**Pre-sharpening the stop frames (12 Sep 2026).** Nick reported the desktop hero looking
+soft, and crucially said his source JPGs look fine on the same screen. That is the tell.
+The files are faithful — source JPG and served AVIF are indistinguishable at 1:1, checked
+on a crop of the crest lettering — but the page stretches a 1920-wide frame across a wider
+screen, and stretching is where the detail goes. A photo viewer does not stretch it, which
+is why the JPGs look better. Without a re-render the fix is `sharpen({ sigma: 0.8 })`
+before encoding, pre-compensating for that stretch; measured against the source stretched
+to 2560 it gets most of the way back, with no halos at 1:1.
+
+Applied to the **four stop frames only**. Sharpening the in-betweens as well adds
+high-frequency detail the encoder then has to pay for: it took desktop from 10.5MB to
+14.4MB and portrait from 13.6MB to 19.0MB, all spent on frames that are only ever seen
+while moving. Stops-only costs about 4%.
+
+A canvas `imageSmoothingQuality` theory was tested first and is a DEAD END — Chrome
+returns byte-identical pixels for `low`, `high` and the default at these scales. Do not
+spend time on it again.
+
 **Resolution ceiling.** At a 3x pixel-density cap a phone canvas reaches roughly 1300px
 wide, so 1080×1920 is marginally under and 1440×2560 clears it. The widescreen render at
 1920×1080 is well short on high-density laptops and 4K monitors. See the render spec table

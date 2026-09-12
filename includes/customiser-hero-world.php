@@ -319,6 +319,8 @@ function bespoke_hero_world_shortcode( $atts ) {
 
       var cv     = root.querySelector('.bs-world-canvas');
       var ctx    = cv.getContext('2d', { alpha:false });
+
+
       var sticky = root.querySelector('.bs-world-sticky');
       var FOCUS  = <?php echo wp_json_encode( $focus ); ?>;
       var cards = [].slice.call(root.querySelectorAll('.bs-world-card'));
