@@ -217,27 +217,19 @@
 	z-index: 5;
 	pointer-events: none;   /* the CTA underneath stays clickable */
 }
-.bs-world-hint__label{
-	font-family: 'Anton', sans-serif;
-	font-size: 15px;
-	letter-spacing: .18em;
-	text-transform: uppercase;
-	color: #FFFFFF;
-	text-shadow: 0 2px 6px rgba(0,0,0,.6);
-}
+/* The icon is Nick's GIF (198x500, 75 frames, 3s, transparent). Sized by
+   width with height auto so the aspect follows the file if it is ever
+   re-exported at another size. */
 .bs-world-hint__icon{
+	width: 84px;
+	height: auto;
 	filter: drop-shadow(0 8px 22px rgba(0,0,0,.5));
 }
-/* The three chevrons pulse in sequence, so the movement reads downward. */
-.bs-world-hint__chevs path{ animation: bs-world-chev 1.6s ease-in-out infinite; }
-.bs-world-hint__chevs path:nth-child(2){ animation-delay: .18s; }
-.bs-world-hint__chevs path:nth-child(3){ animation-delay: .36s; }
-@keyframes bs-world-chev{
-	0%, 100% { opacity: .22; }
-	45%      { opacity: 1; }
-}
+/* A GIF cannot be paused, so reduced motion gets a still of frame one. */
+.bs-world-hint__icon--still{ display: none; }
 @media (prefers-reduced-motion: reduce){
-	.bs-world-hint__chevs path{ animation: none; opacity: .85; }
+	.bs-world-hint__icon--moving{ display: none; }
+	.bs-world-hint__icon--still{ display: block; }
 }
 /* Fully faded - taken out of the box model so it cannot be hit-tested. */
 .bs-world-hint.gone{ visibility: hidden; }
@@ -307,8 +299,7 @@
 	/* The cue is centred in the window on every screen; on a phone it just
 	   needs to be a touch smaller so it clears the copy along the bottom. */
 	.bs-world-hint{ gap: 12px; }
-	.bs-world-hint__icon{ width: 46px; height: 125px; }
-	.bs-world-hint__label{ font-size: 13px; }
+	.bs-world-hint__icon{ width: 68px; }
 }
 
 /* A phone held sideways: landscape layout, but there's little height, so

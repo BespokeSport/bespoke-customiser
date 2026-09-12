@@ -351,6 +351,14 @@ actually on the server before debugging, since a stale upload wastes the whole e
   backslash matched nothing, twice), and a later heredoc was never terminated at all, so the
   git commit chained after it silently never ran. Where a backslash must be built in code,
   use `String.fromCharCode(92)`. Check a chained command printed every step it should.
+- **Watch for MIXED line endings in the hero files.** On 12 Sep 2026
+  `customiser-hero-world.php` held 554 CRLF lines and 32 LF ones, because successive
+  patch scripts each detected the ending differently and wrote their own. Multi-line
+  string anchors then matched NOTHING while single-line ones worked, which reads exactly
+  like a missing anchor even though the text is there in front of you. Both hero files
+  are normalised to CRLF now. If a multi-line anchor misses on text you can see, check
+  the line endings before you doubt the text, or join anchor lines with a `?
+` regex.
 - **Testing mobile:** the Browser pane's `resize_window` (preset `mobile`, or an explicit
   width/height) genuinely changes the viewport, so `@media` and `(orientation: portrait)`
   rules apply. Trap: preset `desktop` only restores the pane's own size, which is itself
@@ -414,13 +422,25 @@ swaps live if the phone is turned):
 instinct was to TAP THE DOTS — it never occurred to him to scroll. Two quiet versions
 failed before this one: grey `#5a5a5a` on `#0D0D0D` is about 2.6:1 contrast at 11px, and
 even a bright corner label was still missed. What works is dimming the whole hero — a
-scrim at `rgba(13,13,13,.55)` over the sticky window with a mouse and three chevrons in
-the middle of it, drawn as inline SVG (nothing extra to upload, sharp at any pixel
-density, and each chevron animates on its own delay). Opacity is driven per frame from
-scroll progress: full at rest, gone by 3.5%, so it lifts AS you scroll rather than
-snapping off at a threshold — which is why there is no CSS transition on it, it would
-fight the per-frame updates. `pointer-events: none` keeps the CTA underneath clickable,
-and the chevrons stop animating under `prefers-reduced-motion`.
+scrim at `rgba(13,13,13,.55)` over the sticky window with the animated mouse Nick supplied
+centred in it (`assets/bespoke-scroll-cue.gif`, 198×500, 75 frames, 3s, transparent
+background). **It carries the words SCROLL DOWN itself, so do not add a label** — the
+first attempt did and showed it twice. A GIF cannot be paused, so
+`assets/bespoke-scroll-cue.png`, a still of frame one, is swapped in under
+`prefers-reduced-motion`. Opacity is driven per frame from scroll progress: full at rest,
+gone by 3.5%, so it lifts AS you scroll rather than snapping off at a threshold — which is
+why there is no CSS transition on it, it would fight the per-frame updates.
+`pointer-events: none` keeps the CTA underneath clickable.
+
+**The opening card needs a lead-in (12 Sep 2026).** `FIRST_HOLD` was 0.18 — about 2% of
+the journey — so the headline left almost the instant you started scrolling, while the cue
+was still fading: you never got a clean look at it. That was a sound call when the hero sat
+there undimmed and you read it before touching the wheel; the scrim overturned it. At 0.85
+the opening card holds for about 9%. Measured on the real output: cue gone by 3.5%, card 0
+still up at 9%, world turning by 11%. Raising it changes the share of the scroll the turns
+get (4.8 of 9.4, not 4.8 of 8.73), which alone would speed the rotation up 7% per wheel
+click, so `scroll` went 1600 → 1720 to keep the pacing Nick signed off on:
+(1720−92) × 0.5106 = 831px of turning against (1600−92) × 0.5498 = 829px before.
 
 **The dots are still decorative `span`s.** That tap was the real signal. If they keep
 drawing taps they should either become buttons that jump to that product, or stop looking

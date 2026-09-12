@@ -130,9 +130,13 @@ function bespoke_hero_world_shortcode( $atts ) {
            one wheel click moves depends on this number alone:
 
              scroll   turn per wheel click   frames per click (60fps render)
-               1000          6.0°                   4
-               1600          3.6°                   2.4
-               2000          2.9°                   1.9
+               1000          6.5°                   4.3
+               1720          3.6°                   2.4
+               2200          2.8°                   1.9
+
+           (Recalculated 12 Sep 2026 when FIRST_HOLD grew: the turns now take
+           4.8 of 9.4 weight rather than 4.8 of 8.73, so the same feel needs a
+           longer scroll. 1720 gives what 1600 used to.)
 
            Frame COUNT is a different lever. On 10 Sep 2026 the renders went from
            30 to 60 frames per 90° turn. That halves the smallest possible step,
@@ -144,7 +148,7 @@ function bespoke_hero_world_shortcode( $atts ) {
 
            Raised from 1000 to 1600 on 6 Sep 2026: Nick reported "I scroll
            down a tiny bit and we jump lots of frames". */
-        'scroll'  => '1600',
+        'scroll'  => '1720',
         'eyebrow' => 'BE:UNIQUE — BE:CREATIVE',
         // Visible height of the pinned window, in vh. The frames are CROPPED
         // to this (never squashed), so a letterbox costs nothing and needs no
@@ -273,18 +277,15 @@ function bespoke_hero_world_shortcode( $atts ) {
                Inline SVG, not a GIF: nothing extra to upload, sharp at any
                pixel density, and the chevrons animate independently. */ ?>
         <div class="bs-world-hint" aria-hidden="true">
-          <span class="bs-world-hint__label">Scroll down</span>
-          <svg class="bs-world-hint__icon" viewBox="0 0 56 152" width="56" height="152" fill="none">
-            <rect x="2" y="2" width="52" height="84" rx="26" fill="#5DCAA5"/>
-            <path d="M28 15 V73" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"/>
-            <rect x="20" y="27" width="16" height="30" rx="8" stroke="#FFFFFF" stroke-width="3"/>
-            <g class="bs-world-hint__chevs" stroke="#5DCAA5" stroke-width="5"
-               stroke-linecap="round" stroke-linejoin="round">
-              <path d="M11 102 L28 118 L45 102"/>
-              <path d="M11 118 L28 134 L45 118"/>
-              <path d="M11 134 L28 150 L45 134"/>
-            </g>
-          </svg>
+          <?php /* Nick's own animation. A GIF cannot be stopped, so a still of
+                 its first frame stands in for anyone who asks for reduced
+                 motion; the CSS shows one or the other. */ ?>
+          <img class="bs-world-hint__icon bs-world-hint__icon--moving" alt=""
+               src="<?php echo esc_url( BESPOKE_PLUGIN_URL . 'assets/bespoke-scroll-cue.gif' ); ?>"
+               width="198" height="500">
+          <img class="bs-world-hint__icon bs-world-hint__icon--still" alt=""
+               src="<?php echo esc_url( BESPOKE_PLUGIN_URL . 'assets/bespoke-scroll-cue.png' ); ?>"
+               width="198" height="500">
         </div>
         <div class="bs-world-meter"></div>
       </div>
@@ -342,12 +343,18 @@ function bespoke_hero_world_shortcode( $atts ) {
          TURN. Holds take slightly more of the scroll than turns so the copy
          has time to be read.
 
-         FIRST_HOLD is deliberately tiny. The opening frame has already been
-         sitting on screen while the visitor read it, so a full-length hold
-         there just means scrolling with nothing happening — the world felt
-         like it "kicked in late". A short first hold starts the rotation
-         almost immediately while every later stop keeps its reading time. */
-      var HOLD = 1.25, FIRST_HOLD = 0.18, TURN = 1.6;
+         FIRST_HOLD used to be 0.18 — about 2% of the journey — on the
+         reasoning that the opening frame had already been sitting there
+         being read, so holding it again was just scrolling with nothing
+         happening.
+
+         The scroll cue overturned that. The copy is dimmed behind a scrim
+         until you scroll, so the first thing a scroll did was fade the cue
+         and take the headline away in the same movement — you never got a
+         clean look at it. At 0.85 the opening card holds for about 9% of the
+         journey and the cue is gone by 3.5%, leaving a clear stretch to read
+         it before the world turns. */
+      var HOLD = 1.25, FIRST_HOLD = 0.85, TURN = 1.6;
       function timeline(stops){
         var units = [], seg = [], totalW = 0, acc = 0;
         for (var s = 0; s < stops.length; s++){
