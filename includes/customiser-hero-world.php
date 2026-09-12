@@ -261,7 +261,16 @@ function bespoke_hero_world_shortcode( $atts ) {
                is a real button so it is keyboard reachable; the dots and
                the progress meter are decorative and are not. */ ?>
         <button type="button" class="bs-world-skip">Skip intro</button>
-        <div class="bs-world-hint">Scroll</div>
+        <?php /* The scroll cue. A bare grey word here read as decoration and
+               was missed completely in testing - handed the phone, a 14-year-old
+               tried to TAP THE DOTS rather than scroll. It is now a labelled
+               chevron that nudges downward, and it still fades out at 3% of the
+               journey (see hint.classList.toggle below). aria-hidden because a
+               screen reader reaches the content without being told to scroll. */ ?>
+        <div class="bs-world-hint" aria-hidden="true">
+          <span class="bs-world-hint__label">Scroll</span>
+          <span class="bs-world-hint__chev"></span>
+        </div>
         <div class="bs-world-meter"></div>
       </div>
     </section>

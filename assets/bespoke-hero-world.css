@@ -187,16 +187,48 @@
 }
 .bs-world-dot.on{ background: #5DCAA5; transform: scale(1.5); }
 
+/* The scroll cue. It has one job: tell a first-time visitor that this
+   page is scrolled, not clicked. The old version failed that job - grey
+   #5a5a5a text on a #0D0D0D ground is about 2.6:1 contrast at 11px, and
+   nothing about a static word suggests movement. Motion is the part that
+   actually reads as "scrollable", so the chevron nudges. */
 .bs-world-hint{
 	position: absolute;
 	left: 50%; bottom: 34px;
 	transform: translateX(-50%);
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 8px;
+	z-index: 4;
+	pointer-events: none;   /* never swallows a tap meant for the page */
+	transition: opacity .4s ease;
+}
+.bs-world-hint__label{
 	font-size: 11px;
 	letter-spacing: .24em;
 	text-transform: uppercase;
-	color: #5a5a5a;
-	z-index: 4;
-	transition: opacity .4s ease;
+	color: rgba(245,245,240,.82);
+	text-shadow: 0 1px 3px rgba(0,0,0,.65);   /* legible over grass too */
+}
+/* Chevron built from two borders: nothing to load, and it takes the brand
+   mint directly. */
+.bs-world-hint__chev{
+	width: 10px; height: 10px;
+	border-right: 2px solid #5DCAA5;
+	border-bottom: 2px solid #5DCAA5;
+	transform: rotate(45deg);
+	filter: drop-shadow(0 1px 3px rgba(0,0,0,.75));
+	animation: bs-world-nudge 1.9s ease-in-out infinite;
+}
+/* rotate() is listed first, so translate(3px,3px) runs along the rotated
+   axes and reads as straight DOWN on screen rather than diagonally. */
+@keyframes bs-world-nudge{
+	0%, 100% { transform: rotate(45deg) translate(0, 0);     opacity: .7; }
+	50%      { transform: rotate(45deg) translate(3px, 3px); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce){
+	.bs-world-hint__chev{ animation: none; opacity: .9; }
 }
 .bs-world-hint.gone{ opacity: 0; }
 
@@ -247,9 +279,13 @@
 			rgba(13,13,13, calc(0.62 * var(--bs-world-veil, 1))) 33%,
 			rgba(13,13,13, 0) 44%);
 	}
+	/* Raised from 30px to make a clear band along the bottom for the scroll
+	   cue. At 30px the cue had to sit at bottom:9px UNDER this block, which
+	   is why nobody saw it. 34px costs ~4% of a phone screen and the veil
+	   still covers the copy. */
 	.bs-world-copy{
 		left: 6vw; right: 6vw;
-		top: auto; bottom: 30px;
+		top: auto; bottom: 64px;
 		transform: none;
 		max-width: none;
 	}
@@ -262,7 +298,7 @@
 	/* Dots sit up in the empty sky — at mid-height they'd cross the
 	   right-hand floodlight. */
 	.bs-world-dots{ right: 4vw; top: 32%; }
-	.bs-world-hint{ bottom: 9px; }
+	.bs-world-hint{ bottom: 18px; gap: 6px; }
 }
 
 /* A phone held sideways: landscape layout, but there's little height, so
