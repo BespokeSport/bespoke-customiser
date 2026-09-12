@@ -192,51 +192,55 @@
    #5a5a5a text on a #0D0D0D ground is about 2.6:1 contrast at 11px, and
    nothing about a static word suggests movement. Motion is the part that
    actually reads as "scrollable", so the chevron nudges. */
-/* Landscape: the cue sits at the LEFT, under the copy. Bottom-centre is the
-   brightest, busiest part of this particular render - the floodlit grass
-   mound - and an 11px label with a 10px chevron disappears into it however
-   much shadow you add. At left:6vw it sits on the veil, which is 95% opaque
-   at that edge, and it follows the reading order: headline, body, price,
-   button, scroll. Portrait re-centres it below. */
+/* THE SCROLL CUE.
+
+   One job: tell a first-time visitor that this page is scrolled, not
+   clicked. Two attempts failed that job before this one - grey #5a5a5a
+   text on #0D0D0D is about 2.6:1 contrast at 11px, and even at full
+   brightness in a corner it was still missed. So it now dims the whole
+   hero and stands in the middle of it.
+
+   The scrim is the important half: it makes the hero look temporarily
+   "off", which is what makes someone act. Opacity is driven per frame
+   from scroll progress (see the hint block in the script), so it lifts as
+   you scroll rather than snapping away - hence no CSS transition here,
+   which would fight the per-frame updates. */
 .bs-world-hint{
 	position: absolute;
-	left: 6vw; bottom: 34px;
-	transform: none;
+	inset: 0;
 	display: flex;
 	flex-direction: column;
-	align-items: flex-start;
-	gap: 8px;
-	z-index: 4;
-	pointer-events: none;   /* never swallows a tap meant for the page */
-	transition: opacity .4s ease;
+	align-items: center;
+	justify-content: center;
+	gap: 16px;
+	background: rgba(13,13,13,.55);
+	z-index: 5;
+	pointer-events: none;   /* the CTA underneath stays clickable */
 }
 .bs-world-hint__label{
-	font-size: 11px;
-	letter-spacing: .24em;
+	font-family: 'Anton', sans-serif;
+	font-size: 15px;
+	letter-spacing: .18em;
 	text-transform: uppercase;
-	color: rgba(245,245,240,.82);
-	text-shadow: 0 1px 3px rgba(0,0,0,.65);   /* legible over grass too */
+	color: #FFFFFF;
+	text-shadow: 0 2px 6px rgba(0,0,0,.6);
 }
-/* Chevron built from two borders: nothing to load, and it takes the brand
-   mint directly. */
-.bs-world-hint__chev{
-	width: 10px; height: 10px;
-	border-right: 2px solid #5DCAA5;
-	border-bottom: 2px solid #5DCAA5;
-	transform: rotate(45deg);
-	filter: drop-shadow(0 1px 3px rgba(0,0,0,.75));
-	animation: bs-world-nudge 1.9s ease-in-out infinite;
+.bs-world-hint__icon{
+	filter: drop-shadow(0 8px 22px rgba(0,0,0,.5));
 }
-/* rotate() is listed first, so translate(3px,3px) runs along the rotated
-   axes and reads as straight DOWN on screen rather than diagonally. */
-@keyframes bs-world-nudge{
-	0%, 100% { transform: rotate(45deg) translate(0, 0);     opacity: .7; }
-	50%      { transform: rotate(45deg) translate(3px, 3px); opacity: 1; }
+/* The three chevrons pulse in sequence, so the movement reads downward. */
+.bs-world-hint__chevs path{ animation: bs-world-chev 1.6s ease-in-out infinite; }
+.bs-world-hint__chevs path:nth-child(2){ animation-delay: .18s; }
+.bs-world-hint__chevs path:nth-child(3){ animation-delay: .36s; }
+@keyframes bs-world-chev{
+	0%, 100% { opacity: .22; }
+	45%      { opacity: 1; }
 }
 @media (prefers-reduced-motion: reduce){
-	.bs-world-hint__chev{ animation: none; opacity: .9; }
+	.bs-world-hint__chevs path{ animation: none; opacity: .85; }
 }
-.bs-world-hint.gone{ opacity: 0; }
+/* Fully faded - taken out of the box model so it cannot be hit-tested. */
+.bs-world-hint.gone{ visibility: hidden; }
 
 .bs-world-meter{
 	position: absolute;
@@ -285,13 +289,9 @@
 			rgba(13,13,13, calc(0.62 * var(--bs-world-veil, 1))) 33%,
 			rgba(13,13,13, 0) 44%);
 	}
-	/* Raised from 30px to make a clear band along the bottom for the scroll
-	   cue. At 30px the cue had to sit at bottom:9px UNDER this block, which
-	   is why nobody saw it. 34px costs ~4% of a phone screen and the veil
-	   still covers the copy. */
 	.bs-world-copy{
 		left: 6vw; right: 6vw;
-		top: auto; bottom: 64px;
+		top: auto; bottom: 30px;
 		transform: none;
 		max-width: none;
 	}
@@ -304,9 +304,11 @@
 	/* Dots sit up in the empty sky — at mid-height they'd cross the
 	   right-hand floodlight. */
 	.bs-world-dots{ right: 4vw; top: 32%; }
-	/* Portrait puts the copy along the bottom, so the cue centres underneath
-	   it where the veil is heaviest. */
-	.bs-world-hint{ left: 50%; transform: translateX(-50%); align-items: center; bottom: 18px; gap: 6px; }
+	/* The cue is centred in the window on every screen; on a phone it just
+	   needs to be a touch smaller so it clears the copy along the bottom. */
+	.bs-world-hint{ gap: 12px; }
+	.bs-world-hint__icon{ width: 46px; height: 125px; }
+	.bs-world-hint__label{ font-size: 13px; }
 }
 
 /* A phone held sideways: landscape layout, but there's little height, so

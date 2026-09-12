@@ -261,15 +261,30 @@ function bespoke_hero_world_shortcode( $atts ) {
                is a real button so it is keyboard reachable; the dots and
                the progress meter are decorative and are not. */ ?>
         <button type="button" class="bs-world-skip">Skip intro</button>
-        <?php /* The scroll cue. A bare grey word here read as decoration and
-               was missed completely in testing - handed the phone, a 14-year-old
-               tried to TAP THE DOTS rather than scroll. It is now a labelled
-               chevron that nudges downward, and it still fades out at 3% of the
-               journey (see hint.classList.toggle below). aria-hidden because a
-               screen reader reaches the content without being told to scroll. */ ?>
+        <?php /* The scroll cue: a scrim over the whole hero with a mouse and
+               chevrons in the middle, fading out as the journey starts.
+
+               It began as a small grey word bottom-centre. Handed the phone,
+               a 14-year-old tried to TAP THE DOTS - scrolling never occurred
+               to him - and a brighter corner label still was not enough. A
+               first-time visitor has to be told, plainly, in the middle of the
+               screen.
+
+               Inline SVG, not a GIF: nothing extra to upload, sharp at any
+               pixel density, and the chevrons animate independently. */ ?>
         <div class="bs-world-hint" aria-hidden="true">
-          <span class="bs-world-hint__label">Scroll</span>
-          <span class="bs-world-hint__chev"></span>
+          <span class="bs-world-hint__label">Scroll down</span>
+          <svg class="bs-world-hint__icon" viewBox="0 0 56 152" width="56" height="152" fill="none">
+            <rect x="2" y="2" width="52" height="84" rx="26" fill="#5DCAA5"/>
+            <path d="M28 15 V73" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"/>
+            <rect x="20" y="27" width="16" height="30" rx="8" stroke="#FFFFFF" stroke-width="3"/>
+            <g class="bs-world-hint__chevs" stroke="#5DCAA5" stroke-width="5"
+               stroke-linecap="round" stroke-linejoin="round">
+              <path d="M11 102 L28 118 L45 102"/>
+              <path d="M11 118 L28 134 L45 118"/>
+              <path d="M11 134 L28 150 L45 134"/>
+            </g>
+          </svg>
         </div>
         <div class="bs-world-meter"></div>
       </div>
@@ -479,7 +494,12 @@ function bespoke_hero_world_shortcode( $atts ) {
           if (dots[i]) dots[i].classList.toggle('on', i === res.card);
         }
         meter.style.width = (p*100) + '%';
-        hint.classList.toggle('gone', p > 0.03);
+        /* Lift the cue AS the journey starts rather than snapping it off at a
+           threshold: full strength at rest, gone by 3.5% of the scroll (about
+           five wheel clicks). Driven per frame, so it tracks a finger drag. */
+        var _hf = Math.max(0, Math.min(1, 1 - (p / 0.035)));
+        hint.style.opacity = _hf;
+        hint.classList.toggle('gone', _hf === 0);
       }
 
       useSet(pick());

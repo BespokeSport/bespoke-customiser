@@ -411,15 +411,16 @@ swaps live if the phone is turned):
   sat across the headline and the button hung off the bottom of short windows.
 
 **The scroll cue (12 Sep 2026).** Nick handed his phone to his 14-year-old, whose first
-instinct was to TAP THE DOTS — it never occurred to him to scroll. The cue that should
-have said so was invisible: `#5a5a5a` on `#0D0D0D` is about 2.6:1 contrast at 11px, and on
-portrait it sat at `bottom: 9px`, underneath the copy block. It is now a label plus a
-chevron that nudges downward in the brand mint — `pointer-events: none` so it can never
-swallow a tap, no animation under `prefers-reduced-motion`, and it still fades at 3% of
-the journey. It sits bottom-LEFT on landscape, at `left: 6vw` on the veil: bottom-centre
-is the floodlit grass mound, the brightest part of the frame, where an 11px label vanishes
-whatever shadow you give it. Portrait centres it below the copy, which moved up from
-`bottom: 30px` to `64px` to make room.
+instinct was to TAP THE DOTS — it never occurred to him to scroll. Two quiet versions
+failed before this one: grey `#5a5a5a` on `#0D0D0D` is about 2.6:1 contrast at 11px, and
+even a bright corner label was still missed. What works is dimming the whole hero — a
+scrim at `rgba(13,13,13,.55)` over the sticky window with a mouse and three chevrons in
+the middle of it, drawn as inline SVG (nothing extra to upload, sharp at any pixel
+density, and each chevron animates on its own delay). Opacity is driven per frame from
+scroll progress: full at rest, gone by 3.5%, so it lifts AS you scroll rather than
+snapping off at a threshold — which is why there is no CSS transition on it, it would
+fight the per-frame updates. `pointer-events: none` keeps the CTA underneath clickable,
+and the chevrons stop animating under `prefers-reduced-motion`.
 
 **The dots are still decorative `span`s.** That tap was the real signal. If they keep
 drawing taps they should either become buttons that jump to that product, or stop looking
