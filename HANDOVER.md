@@ -342,6 +342,27 @@ Hero button text is now `#0D0D0D`: 9.7:1 on mint, and 5.1:1 under the scroll-cue
 which dims it. White was considered and rejected: on mint it is 4.0:1, under the AA
 threshold of 4.5:1 for normal text.
 
+### 6.12 A full-bleed rule has to be undone ALL AT ONCE
+
+`bespoke-product-page.css` section 6 makes the description tabs full-bleed with four
+properties that only work as a set: `position: relative`, `left: 50%` (push right by half
+the parent), `width: 100vw`, and a `-50vw` margin (pull back).
+
+When the tabs were moved into `.bs-tabs-grid` beside the At a glance sidebar, the override
+reset only the margins. That removed the pull-back while keeping the push and the width, so
+on **every product page with that grid** the tabs were a whole viewport wide and shoved
+right by half their column. Desktop: the `2fr` column blew out to the full screen width and
+the sidebar sat off-screen. Phone: the right half of every line of the description was cut
+off. Found 12 Sep 2026 when Nick looked at the mug page after editing its table — it was
+never caused by the edit and affected shin pads identically.
+
+Fixed by resetting `width`, `max-width`, `left` and `right` in the grid override, and by
+making the grid `minmax(0, 2fr) minmax(0, 1fr)` rather than bare `fr` — a bare `fr` column
+will not shrink below its content, so one over-wide child blows out the whole grid.
+
+Verified against a local reproduction (`World Animation/PP-TEST.html`, same element chain
+as the live page) loading the old and new stylesheet in turn, at 1600px and 375px.
+
 ## 7. Tooling notes (for you, on the new machine)
 
 - **There is no PHP locally.** `tools/` in the repo has what you need — run `npm install`

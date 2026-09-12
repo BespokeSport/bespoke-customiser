@@ -751,14 +751,31 @@ body.single-product #bespoke-marquee .bespoke-marquee-dot {
 /* Tabs + at-a-glance side-by-side */
 body.single-product .bs-tabs-grid {
   display: grid !important;
-  grid-template-columns: 2fr 1fr !important;
+  /* minmax(0, ...) rather than bare fr. A bare fr column will not shrink
+     below its content, so a single over-wide child blows out the whole
+     grid - which is how the 100vw tabs pushed the sidebar off-screen. */
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) !important;
   gap: 56px !important;
   align-items: start !important;
   padding: 32px 0 !important;
 }
 body.single-product .bs-tabs-grid .woocommerce-tabs {
-  /* Override section 6 of this file — inside the grid we don't want
-     the negative-margin full-bleed treatment. */
+  /* Undo section 6 inside the grid, where the tabs must NOT be full-bleed.
+
+     Zeroing the margins alone was not enough, and it broke every product
+     page that has this grid (found 12 Sep 2026). Section 6 does full-bleed
+     with FOUR properties that only work together: position relative,
+     left 50% to push the tabs right by half their parent, width 100vw, and
+     a -50vw margin to pull them back. This override removed the pull-back
+     and kept the push and the width. So inside the grid the tabs stayed a
+     whole viewport wide and sat shoved right by half their column: on
+     desktop that blew the 2fr column out to the full screen width and
+     pushed the At a glance sidebar off-screen, and on a phone it cut off
+     the right half of every line of the description. Reset all of them. */
+  width: auto !important;
+  max-width: none !important;
+  left: auto !important;
+  right: auto !important;
   margin: 0 !important;
   padding: 0 !important;
   background: transparent !important;
@@ -770,7 +787,7 @@ body.single-product .bs-tabs-grid .woocommerce-tabs {
   body.single-product .bs-hero { grid-template-columns: 1fr !important; gap: 16px !important; }
   body.single-product .bs-hero__right { align-items: flex-start !important; text-align: left !important; }
   body.single-product .bs-hero__right .price { text-align: left !important; }
-  body.single-product .bs-tabs-grid { grid-template-columns: 1fr !important; gap: 24px !important; }
+  body.single-product .bs-tabs-grid { grid-template-columns: minmax(0, 1fr) !important; gap: 24px !important; }
 }
 
 
