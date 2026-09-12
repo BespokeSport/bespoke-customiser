@@ -180,11 +180,25 @@
 	z-index: 4;
 }
 .bs-world-dot{
+	appearance: none; -webkit-appearance: none;
+	border: 0; padding: 0; margin: 0;
 	width: 9px; height: 9px;
 	border-radius: 50%;
 	background: #3a3a3a;
+	cursor: pointer;
+	position: relative;
 	transition: background .35s ease, transform .35s ease;
 }
+/* A 9px circle is nowhere near a thumb. This widens the TOUCH area to about
+   37x21 without changing anything drawn. The dots sit 23px apart centre to
+   centre, so the targets stop just short of overlapping. */
+.bs-world-dot::before{
+	content: "";
+	position: absolute;
+	inset: -6px -14px;
+}
+.bs-world-dot:not(.on):hover{ background: #6f6f6f; }
+.bs-world-dot:focus-visible{ outline: 2px solid #5DCAA5; outline-offset: 5px; }
 .bs-world-dot.on{ background: #5DCAA5; transform: scale(1.5); }
 
 /* The scroll cue. It has one job: tell a first-time visitor that this
@@ -252,7 +266,10 @@
 .bs-world.bs-world-static .bs-world-copy{ position: relative; top: auto; bottom: auto; transform: none; max-width: none; padding-right: 6vw; display: block; }
 .bs-world.bs-world-static .bs-world-card{ position: relative; opacity: 1; transform: none; pointer-events: auto; margin-bottom: 46px; }
 .bs-world.bs-world-static .bs-world-dots,
+/* The static layout stacks every card as ordinary content, so there is no
+   journey for a dot to jump to - they would be four dead buttons. */
 .bs-world.bs-world-static .bs-world-hint,
+.bs-world.bs-world-static .bs-world-dots,
 .bs-world.bs-world-static .bs-world-meter{ display: none; }
 
 /* --------------------------------------------------------------------------
@@ -323,8 +340,8 @@
    found, but the site header is sticky and slides straight over it the
    moment you scroll — which is exactly when you want the skip.
    Quiet until hovered or focused, so it is findable without competing with
-   the product copy. A real <button>, so it is keyboard reachable, unlike
-   the dots and the meter.
+   the product copy. A real <button>, so it is keyboard reachable — as are
+   the dots now. Only the meter is decorative.
    -------------------------------------------------------------------------- */
 .bs-world-skip{
 	position: absolute;

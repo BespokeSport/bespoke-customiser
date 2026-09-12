@@ -467,9 +467,19 @@ get (4.8 of 9.4, not 4.8 of 8.73), which alone would speed the rotation up 7% pe
 click, so `scroll` went 1600 → 1720 to keep the pacing Nick signed off on:
 (1720−92) × 0.5106 = 831px of turning against (1600−92) × 0.5498 = 829px before.
 
-**The dots are still decorative `span`s.** That tap was the real signal. If they keep
-drawing taps they should either become buttons that jump to that product, or stop looking
-tappable. Left as-is pending a decision.
+**The dots jump to their product (12 Sep 2026).** That tap was the real signal, so rather
+than make them look less like controls they became controls. They are real `<button>`s now
+instead of `<span>`s, each with an aria-label ("Show shin pads", derived from the CTA text),
+so they are keyboard reachable too. A click scrolls to the MIDDLE of that product hold, so
+you arrive with the card up and the world still.
+
+`scrollToCard()` is the exact inverse of the mapping in `onScroll`, run-up allowance
+included — not an approximation. Verified by clicking all four out of order and
+pixel-matching the canvas against the expected stop frames: every one landed exactly, diff
+0.0. A `::before` widens the touch target to roughly 37x21px without changing anything
+drawn; the dots sit 23px apart centre to centre, so targets stop just short of touching.
+They are hidden in the reduced-motion layout, where every card is stacked as ordinary
+content and there is no journey to jump to.
 
 - Full-bleed width subtracts the scrollbar (`--bs-world-sbw`, set by the script) — plain
   `100vw` includes it and pushed the hero 8px off the left edge on desktop.

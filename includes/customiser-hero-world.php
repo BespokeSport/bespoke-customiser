@@ -256,14 +256,22 @@ function bespoke_hero_world_shortcode( $atts ) {
         </div>
 
         <div class="bs-world-dots">
-          <?php foreach ( $products as $i => $p ) : ?>
-            <span class="bs-world-dot" data-dot="<?php echo (int) $i; ?>"></span>
+          <?php foreach ( $products as $i => $p ) :
+              /* Label from the CTA: "Customise armbands" becomes "Show armbands".
+                 A pager dot with no accessible name is just "button" to a screen
+                 reader, four times over. */
+              $dot_name = trim( preg_replace( '/^customise\s+/i', '', (string) $p['cta'] ) );
+              if ( $dot_name === '' ) { $dot_name = 'product ' . ( $i + 1 ); }
+          ?>
+            <button type="button" class="bs-world-dot" data-dot="<?php echo (int) $i; ?>"
+                    aria-label="<?php echo esc_attr( 'Show ' . $dot_name ); ?>"></button>
           <?php endforeach; ?>
         </div>
 
-        <?php /* Skip lives top-right, where an intro-skip is expected. It
-               is a real button so it is keyboard reachable; the dots and
-               the progress meter are decorative and are not. */ ?>
+        <?php /* Skip and the dots are both real buttons, so both are keyboard
+               reachable. Only the progress meter is decorative. (Skip is
+               positioned bottom-right by the stylesheet, not top-right — the
+               sticky site header slid straight over it up there.) */ ?>
         <button type="button" class="bs-world-skip">Skip intro</button>
         <?php /* The scroll cue: a scrim over the whole hero with a mouse and
                chevrons in the middle, fading out as the journey starts.
@@ -521,6 +529,34 @@ function bespoke_hero_world_shortcode( $atts ) {
         cards.forEach(function(c){ c.classList.add('on'); });
         return;
       }
+
+      /* ---- Dots jump to their product -----------------------------------
+         Handed the page, a 14-year-old went straight for these and nothing
+         happened. They look like a carousel pager, so they now behave like
+         one.
+
+         Lands on the MIDDLE of the hold, so you arrive with the card up and
+         the world still. The maths is the inverse of onScroll: it folds in
+         the same run-up allowance, so a dot goes exactly where the timeline
+         puts that stop rather than approximately there. */
+      function scrollToCard(i){
+        var seg = null;
+        for (var s = 0; s < SEG.length; s++){
+          if (SEG[s].card === i){ seg = SEG[s]; break; }
+        }
+        if (!seg) return;
+        var travel = root.offsetHeight - sticky.offsetHeight;
+        var absTop = root.getBoundingClientRect().top + window.pageYOffset;
+        var pre    = Math.min(absTop, 400);
+        var y      = (absTop - pre) + ((seg.t0 + seg.t1) / 2) * (travel + pre);
+        try { window.scrollTo({ top: y, behavior: 'smooth' }); }
+        catch(e){ window.scrollTo(0, y); }
+      }
+      dots.forEach(function(d){
+        d.addEventListener('click', function(){
+          scrollToCard(parseInt(d.getAttribute('data-dot'), 10) || 0);
+        });
+      });
 
       /* ---- Skip intro --------------------------------------------------
          Jumps past the hero to whatever follows it. The choice is
