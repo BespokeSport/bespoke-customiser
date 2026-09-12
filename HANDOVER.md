@@ -317,6 +317,31 @@ actually on the server before debugging, since a stale upload wastes the whole e
 
 ---
 
+### 6.11 The site-wide link colour swallows custom buttons
+
+`bespoke-master.css` paints every link mint:
+
+```
+body.bespoke-themed:not(.bs-light) a:not([class*="elementor-"]):not(.button):not(.add_to_cart_button):not(.checkout-button)
+```
+
+Anything that is an `<a>` styled as a button but does not carry one of those classes
+gets mint text, and pure white on hover. That selector is far more specific than a plain
+`.my-btn { color: ... }`, so the button loses its own colour silently.
+
+It caught `.bs-world-btn`. The hero CTA was rendering pale mint on mint at **1.40:1** —
+effectively invisible — while the hero stylesheet plainly said `#04342C`. Nick spotted it
+by eye on 12 Sep 2026. Reading the stylesheet would never have found it; what found it was
+measuring `getComputedStyle` on the live button and then walking `document.styleSheets`
+for every rule matching that element.
+
+**Adding a custom button? Add its class to that exclusion list — both the base rule and
+the `:hover`.** Otherwise this recurs.
+
+Hero button text is now `#0D0D0D`: 9.7:1 on mint, and 5.1:1 under the scroll-cue scrim,
+which dims it. White was considered and rejected: on mint it is 4.0:1, under the AA
+threshold of 4.5:1 for normal text.
+
 ## 7. Tooling notes (for you, on the new machine)
 
 - **There is no PHP locally.** `tools/` in the repo has what you need — run `npm install`

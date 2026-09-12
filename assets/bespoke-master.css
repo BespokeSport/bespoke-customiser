@@ -126,11 +126,11 @@ body.bespoke-themed:not(.bs-light) .elementor-widget-text-editor li {
    4. LINKS — mint by default, white on hover. Scoped to non-Elementor
    anchors so existing Elementor button widgets keep their own colour.
    -------------------------------------------------------------------------- */
-body.bespoke-themed:not(.bs-light) a:not([class*="elementor-"]):not(.button):not(.add_to_cart_button):not(.checkout-button) {
+body.bespoke-themed:not(.bs-light) a:not([class*="elementor-"]):not(.button):not(.add_to_cart_button):not(.checkout-button):not(.bs-world-btn) {
   color: var(--bs-mint);
   transition: color 0.2s ease;
 }
-body.bespoke-themed:not(.bs-light) a:not([class*="elementor-"]):not(.button):not(.add_to_cart_button):not(.checkout-button):hover {
+body.bespoke-themed:not(.bs-light) a:not([class*="elementor-"]):not(.button):not(.add_to_cart_button):not(.checkout-button):not(.bs-world-btn):hover {
   color: #fff;
 }
 
