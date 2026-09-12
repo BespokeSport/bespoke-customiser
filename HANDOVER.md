@@ -384,6 +384,15 @@ threshold of 4.5:1 for normal text.
   are normalised to CRLF now. If a multi-line anchor misses on text you can see, check
   the line endings before you doubt the text, or join anchor lines with a `?
 ` regex.
+- **Programmatic scrolling looks broken in the pane, and is not.** The site sets
+  `html { scroll-behavior: smooth }`, and the hero passes `behavior: smooth` explicitly
+  when a dot or Skip is clicked. A smooth scroll is an ANIMATION, and a hidden pane
+  produces no frames, so `scrollY` simply stays where it was — for direct calls and for
+  clicks alike. Three attempts were burned on this before it was spotted, each looking
+  exactly like a dead click handler. To observe a jump in the pane you need BOTH:
+  `document.documentElement.style.scrollBehavior = auto` and a `window.scrollTo` patched
+  to drop the options object. Real browsers are unaffected — verified on staging that all
+  four dots land pixel-exact on their stop frames.
 - **Testing mobile:** the Browser pane's `resize_window` (preset `mobile`, or an explicit
   width/height) genuinely changes the viewport, so `@media` and `(orientation: portrait)`
   rules apply. Trap: preset `desktop` only restores the pane's own size, which is itself
