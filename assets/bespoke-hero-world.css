@@ -192,13 +192,19 @@
    #5a5a5a text on a #0D0D0D ground is about 2.6:1 contrast at 11px, and
    nothing about a static word suggests movement. Motion is the part that
    actually reads as "scrollable", so the chevron nudges. */
+/* Landscape: the cue sits at the LEFT, under the copy. Bottom-centre is the
+   brightest, busiest part of this particular render - the floodlit grass
+   mound - and an 11px label with a 10px chevron disappears into it however
+   much shadow you add. At left:6vw it sits on the veil, which is 95% opaque
+   at that edge, and it follows the reading order: headline, body, price,
+   button, scroll. Portrait re-centres it below. */
 .bs-world-hint{
 	position: absolute;
-	left: 50%; bottom: 34px;
-	transform: translateX(-50%);
+	left: 6vw; bottom: 34px;
+	transform: none;
 	display: flex;
 	flex-direction: column;
-	align-items: center;
+	align-items: flex-start;
 	gap: 8px;
 	z-index: 4;
 	pointer-events: none;   /* never swallows a tap meant for the page */
@@ -298,7 +304,9 @@
 	/* Dots sit up in the empty sky — at mid-height they'd cross the
 	   right-hand floodlight. */
 	.bs-world-dots{ right: 4vw; top: 32%; }
-	.bs-world-hint{ bottom: 18px; gap: 6px; }
+	/* Portrait puts the copy along the bottom, so the cue centres underneath
+	   it where the veil is heaviest. */
+	.bs-world-hint{ left: 50%; transform: translateX(-50%); align-items: center; bottom: 18px; gap: 6px; }
 }
 
 /* A phone held sideways: landscape layout, but there's little height, so

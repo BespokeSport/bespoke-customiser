@@ -409,6 +409,22 @@ swaps live if the phone is turned):
 - The copy block is a CSS grid (eyebrow on row 1, all four cards stacked on row 2). It
   used to be absolutely positioned cards, which gave the block a 34px height — the eyebrow
   sat across the headline and the button hung off the bottom of short windows.
+
+**The scroll cue (12 Sep 2026).** Nick handed his phone to his 14-year-old, whose first
+instinct was to TAP THE DOTS — it never occurred to him to scroll. The cue that should
+have said so was invisible: `#5a5a5a` on `#0D0D0D` is about 2.6:1 contrast at 11px, and on
+portrait it sat at `bottom: 9px`, underneath the copy block. It is now a label plus a
+chevron that nudges downward in the brand mint — `pointer-events: none` so it can never
+swallow a tap, no animation under `prefers-reduced-motion`, and it still fades at 3% of
+the journey. It sits bottom-LEFT on landscape, at `left: 6vw` on the veil: bottom-centre
+is the floodlit grass mound, the brightest part of the frame, where an 11px label vanishes
+whatever shadow you give it. Portrait centres it below the copy, which moved up from
+`bottom: 30px` to `64px` to make room.
+
+**The dots are still decorative `span`s.** That tap was the real signal. If they keep
+drawing taps they should either become buttons that jump to that product, or stop looking
+tappable. Left as-is pending a decision.
+
 - Full-bleed width subtracts the scrollbar (`--bs-world-sbw`, set by the script) — plain
   `100vw` includes it and pushed the hero 8px off the left edge on desktop.
 
