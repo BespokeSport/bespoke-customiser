@@ -773,8 +773,8 @@ paste-ready copy: <https://claude.ai/code/artifact/6680476b-51b8-4db5-ab7e-15826
    Its size guidance also disagrees: 24cm is "U11-U15" on standard bands, "U14-U16" here.
 
 ### Bigger pieces
-9. ~~Go-live plan~~ — **WRITTEN 6 Sep 2026, then rewritten twice the same day.** Full
-   runbook: <https://claude.ai/code/artifact/756410b7-3776-41ce-9c00-0a6516718707>
+9. ~~Go-live plan~~ — **WRITTEN 6 Sep 2026, then rewritten twice the same day; updated
+   13 Sep 2026.** Full runbook: <https://claude.ai/code/artifact/756410b7-3776-41ce-9c00-0a6516718707>
 
    **Do NOT use SiteGround Full Deploy.** It copies the staging database over the live
    one, destroying every order taken since the staging copy. It is also unnecessary.
@@ -811,6 +811,33 @@ paste-ready copy: <https://claude.ai/code/artifact/6680476b-51b8-4db5-ab7e-15826
      (checked five, all matched — staging inherited them from live), but images
      uploaded to staging since the copy have IDs that mean something else on live, so
      expect a few wrong design thumbnails. Visible immediately in the design picker.
+
+   **⚠ Three more, found 13 Sep 2026:**
+   - **WooCommerce's CSV export cannot carry the BEspoke Page content.**
+     `WC_Product_CSV_Exporter::prepare_meta_for_export()` skips any meta value that is
+     not scalar (unless `woocommerce_product_export_meta_value` converts it), and
+     `_bespoke_at_a_glance`, `_bespoke_sizing_chart`, `_bespoke_sizing_headers` and
+     `_bespoke_customiser_sizes` are all arrays. The importer then writes every column
+     the file has (`set_meta_data()` → `update_meta_data()`), so a full export would
+     also reset live prices and stock to staging's. Plan: a small copy tool in the
+     plugin that exports only `_bespoke_*` meta plus description and short description
+     for chosen product IDs, and imports them on live after a preview. NOT BUILT YET.
+   - **Live and staging differ structurally on three products** (Store API on both
+     shops): shin pads are variable on live (Size S/M/L, all £20) but simple on staging;
+     the pennant is variable on live (Frilled / Non Frilled, £10–12) but simple £12 on
+     staging; the glass Player of the Match trophy is £13–23 on live, £15–25 on staging.
+     Shin pads must be made simple on live before its customiser appears; the other two
+     are Nick's decisions. The other 13 of the 16 compared match on type, options and
+     price range; player cards, the grassroots mug and the Man of the Match trophy are
+     identical.
+   - **The copy fixes exist on staging only.** Descriptions changed on 13 products,
+     including the Manchester City and Nottingham Forest mugs, which are outside the
+     14, so the copy tool has to cover 16. Copy edited on live before launch would be
+     overwritten.
+
+   Also found 13 Sep: both 60fps hero zips (`assets/hero-world.zip` 11.4MB,
+   `assets/hero-world-m.zip` 14.9MB) are still on the staging server and publicly
+   downloadable, and the two unfinished products (4e) are published on LIVE too.
 
    Sequence matters: everything invisible happens first. Uploading and activating the
    plugin changes nothing a customer sees, because the customiser only appears once a
