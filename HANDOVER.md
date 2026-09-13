@@ -662,14 +662,14 @@ live — nothing is sitting in git waiting.*
    the three-step `[bespoke_how]` "how it works" section (pick → design → we make it).
    Nothing on the homepage had explained the process, and its old copy duplicated both
    the new hero's eyebrow and the "Why Choose BEspoke" bullets further down.
-3. **The three mugs.** Football Legends, Grassroots Football and Aston Villa Inspired.
-   Grassroots Football was moved onto our customiser on 6 Sep 2026 and Nick confirmed
-   "the mugs are good", so they ARE going on the new site — an earlier note here saying
-   otherwise was out of date. Two things still open: Football Legends has **no price**,
-   so it cannot be bought and shows "Read more" where every other product says
-   "CUSTOMISE"; and the Aston Villa mug names a real club, while the homepage small
-   print says designs using copyright-protected badges such as Premier League clubs
-   cannot be used.
+3. **The mugs.** Grassroots Football and the club-inspired mugs (Aston Villa and the
+   rest). Grassroots Football was moved onto our customiser on 6 Sep 2026 and Nick
+   confirmed "the mugs are good", so they ARE going on the new site — an earlier note
+   here saying otherwise was out of date. One thing still open: the Aston Villa mug
+   names a real club, while the homepage small print says designs using
+   copyright-protected badges such as Premier League clubs cannot be used.
+   "Football Legends Mug – Choose Your Team" is NOT a mug to sell: it is the umbrella
+   tile for the club mugs (see 4e). The £0 / "Read more" it shows is by design.
 4. ~~Player Cards position dropdown~~ — **DONE 5 Sep 2026: now required.** Leaving it
    blank used to produce a card with an empty position box AND the outfield stat labels,
    so a goalkeeper got PAC/SHO/PAS instead of DIV/HAN/KIC.
@@ -709,10 +709,16 @@ paste-ready copy: <https://claude.ai/code/artifact/6680476b-51b8-4db5-ab7e-15826
     exist only on shin pads and grip socks. Shin pad sleeves and the glass trophy
     already list measurements in their descriptions, so those two are ready.
 
-4e. **Two products are unfinished and unbuyable but publicly reachable** (still true
-    13 Sep): `pre-designed-custom-captains-armbands` and
-    `football-legends-mug-choose-your-team` have no description, no price and no
-    customiser.
+4e. ~~Two products are unfinished and unbuyable~~ — **WRONG, corrected 13 Sep 2026.**
+    `football-legends-mug-choose-your-team` (product 5494) and
+    `pre-designed-custom-captains-armbands` (product 6060) are deliberate umbrella
+    tiles, confirmed by Nick. Each is a £0 product whose permalink opens a collection
+    page: "Custom Shirt Mugs" (page 5495, `/custom-shirt-mugs/`, 45 club mugs) and
+    "Pre-Designed Custom Captains Armbands" (page 6061, 29 armbands). That is how the
+    two ranges get a tile in the shop grid and on the homepage. Set up identically on
+    live. **Leave them published** — Draft would remove the only tiles leading into
+    those two ranges. Detection tip: their Store API `permalink` is not under
+    `/product/`.
 
 4f. **Basket test passed.** All 14 customiser products add to basket correctly via the
     real server path, recording design, size, colours, names and numbers. Detection
@@ -837,7 +843,7 @@ paste-ready copy: <https://claude.ai/code/artifact/6680476b-51b8-4db5-ab7e-15826
 
    Also found 13 Sep: both 60fps hero zips (`assets/hero-world.zip` 11.4MB,
    `assets/hero-world-m.zip` 14.9MB) are still on the staging server and publicly
-   downloadable, and the two unfinished products (4e) are published on LIVE too.
+   downloadable.
 
    Sequence matters: everything invisible happens first. Uploading and activating the
    plugin changes nothing a customer sees, because the customiser only appears once a
