@@ -1106,18 +1106,37 @@ function bespoke_handle_add_to_cart() {
    ========================================================================= */
 
 /**
- * Returns a flexible-match check between two attribute values. WC
+ * True when a customer's choice matches a variation value at all. WC
  * variation values often look slightly different from what the
- * customiser sends ("5cm" vs "5cm band", "small" vs "Small"), so we
- * normalise case + whitespace and accept a substring match in either
- * direction. Exact and case-insensitive matches still win first.
+ * customiser sends ("5cm" vs "5cm band", "small" vs "Small"), so an exact
+ * label or a shared whole word both count. Anything choosing BETWEEN
+ * options should compare bespoke_attr_match_quality() instead, which
+ * tells those two apart.
  *
  * @param string $customer_value  e.g. "24cm" or "5cm band"
  * @param string $variation_value e.g. "24cm" or "5cm"
  * @return bool
  */
 function bespoke_attr_values_match( $customer_value, $variation_value ) {
-    if ( $customer_value === '' || $variation_value === '' ) return false;
+    return bespoke_attr_match_quality( $customer_value, $variation_value ) > 0;
+}
+
+/**
+ * How well a customer's choice matches a variation value:
+ *   2 — the same label once case and punctuation are ignored ("No Frill" ↔ "no-frill")
+ *   1 — they only share a whole word ("5cm" ↔ "5cm band")
+ *   0 — no match
+ *
+ * Callers keep the best-scoring option rather than the first that matches
+ * at all. Two options that share a word — "With Frill" and "No Frill" —
+ * otherwise both "match" either choice, and whichever variation is listed
+ * first wins: a No Frill pennant would go in the basket as With Frill, at
+ * the With Frill price.
+ *
+ * @return int 0, 1 or 2
+ */
+function bespoke_attr_match_quality( $customer_value, $variation_value ) {
+    if ( $customer_value === '' || $variation_value === '' ) return 0;
 
     // Fast path — case + non-alphanumeric normalised exact match.
     // Handles label-case + separator mismatches like:
@@ -1129,8 +1148,8 @@ function bespoke_attr_values_match( $customer_value, $variation_value ) {
     };
     $c_norm = $normalize( $customer_value );
     $v_norm = $normalize( $variation_value );
-    if ( $c_norm === '' || $v_norm === '' ) return false;
-    if ( $c_norm === $v_norm ) return true;
+    if ( $c_norm === '' || $v_norm === '' ) return 0;
+    if ( $c_norm === $v_norm ) return 2;
 
     // Word-boundary match — split each value into alphanumeric words
     // and accept a match if ANY word appears verbatim in BOTH lists.
@@ -1152,10 +1171,10 @@ function bespoke_attr_values_match( $customer_value, $variation_value ) {
     $wv = $words( $variation_value );
     foreach ( $wc as $c_word ) {
         foreach ( $wv as $v_word ) {
-            if ( $c_word === $v_word ) return true;
+            if ( $c_word === $v_word ) return 1;
         }
     }
-    return false;
+    return 0;
 }
 
 /**
@@ -1204,16 +1223,43 @@ function bespoke_match_variation( $product, $customer_values ) {
         ];
     };
 
+    // How closely a variation's SPECIFIC (non-Any) values fit the
+    // customer's choices: for each choice, its best match quality
+    // (2 exact label, 1 shared word), summed. Both passes keep the
+    // highest-scoring variation, so an exact "No Frill" beats a
+    // "With Frill" that merely shares the word "frill".
+    $quality = function( $variation ) use ( $customer_values ) {
+        $total = 0;
+        foreach ( $customer_values as $cust ) {
+            $best_q = 0;
+            foreach ( $variation['attributes'] as $attr_value ) {
+                if ( $attr_value === '' ) continue;
+                $best_q = max( $best_q, bespoke_attr_match_quality( $cust, $attr_value ) );
+            }
+            $total += $best_q;
+        }
+        return $total;
+    };
+
     // Pass 1 — STRICT: every customer value must match a SPECIFIC
     // (non-Any) attribute. Prefers concrete variations over
     // fallback "Any/Any" catch-alls, so a product that DOES have
     // specific size + thickness variations returns the right one
-    // instead of the first Any/Any it stumbles on.
-    $allow_any = false;
+    // instead of the first Any/Any it stumbles on. It used to return
+    // the first strict match; it now keeps the best (see $quality).
+    $allow_any  = false;
+    $best       = null;
+    $best_score = -1;
     foreach ( $variations as $v ) {
         $match = $try( $v );
-        if ( $match ) return $match;
+        if ( ! $match ) continue;
+        $score = $quality( $v );
+        if ( $score > $best_score ) {
+            $best_score = $score;
+            $best       = $match;
+        }
     }
+    if ( $best ) return $best;
 
     // Pass 2 — LOOSE: "Any" attributes count as an implicit match
     // for anything. Kicks in when the admin has configured the
@@ -1237,15 +1283,7 @@ function bespoke_match_variation( $product, $customer_values ) {
     foreach ( $variations as $v ) {
         $match = $try( $v );
         if ( ! $match ) continue;
-        $score = 0;
-        foreach ( $customer_values as $cust ) {
-            foreach ( $v['attributes'] as $attr_value ) {
-                if ( $attr_value !== '' && bespoke_attr_values_match( $cust, $attr_value ) ) {
-                    $score++;
-                    break;
-                }
-            }
-        }
+        $score = $quality( $v );
         if ( $score > $best_score ) {
             $best_score = $score;
             $best       = $match;
@@ -1325,16 +1363,22 @@ function bespoke_resolve_variation_attributes( $product, $variation_attrs, $cust
                 }
             }
         }
+        // Customer values are tried in order (size first), and for each
+        // one the best-quality option wins, so an exact label beats an
+        // option that only shares a word with it.
         $picked = '';
         foreach ( $customer_values as $cv ) {
+            $best_q = 0;
             foreach ( $candidates as $cand ) {
                 foreach ( $cand['match'] as $m ) {
-                    if ( bespoke_attr_values_match( $cv, $m ) ) {
+                    $q = bespoke_attr_match_quality( $cv, $m );
+                    if ( $q > $best_q ) {
+                        $best_q = $q;
                         $picked = $cand['post'];
-                        break 3;
                     }
                 }
             }
+            if ( $best_q > 0 ) break;
         }
         if ( $picked === '' ) {
             // Last-ditch fallback so the cart call doesn't bail with
