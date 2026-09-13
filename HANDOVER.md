@@ -851,8 +851,8 @@ paste-ready copy: <https://claude.ai/code/artifact/6680476b-51b8-4db5-ab7e-15826
      overwritten.
 
    Also found 13 Sep: both 60fps hero zips (`assets/hero-world.zip` 11.4MB,
-   `assets/hero-world-m.zip` 14.9MB) are still on the staging server and publicly
-   downloadable. And **Fancy Product Designer is still active on live** (its assets
+   `assets/hero-world-m.zip` 14.9MB) were still on the staging server and publicly
+   downloadable (Nick deleted both the same day; both now 404). And **Fancy Product Designer is still active on live** (its assets
    load on shin pads and the armbands), along with Custom Code entry 4910 that exists
    only to fix its phone buttons. The runbook's step 5 now deactivates both on live,
    immediately before the product content is brought across.
@@ -869,6 +869,30 @@ paste-ready copy: <https://claude.ai/code/artifact/6680476b-51b8-4db5-ab7e-15826
 
    Both sites run the same Astra theme and the same 18 plugins. The only differences:
    staging has our plugin + `woocommerce-services`, live has `official-facebook-pixel`.
+
+   **But not the same versions (read from asset `?ver=` strings, 13 Sep 2026).** Live
+   auto-updates; staging doesn't. Live: WooCommerce 11.1.0, Elementor 4.2.3, Elementor
+   Pro 4.2.2, Astra 4.13.11, Astra Pro 4.13.8. Staging: WooCommerce 10.7.0, Elementor
+   3.35.8, Elementor Pro 3.35.1, Astra 4.13.1, Astra Pro 4.12.4. Elementor 4 is a major
+   version. Bring staging up to date and retest the customiser, basket, checkout and
+   homepage BEFORE launch. PHP is not exposed (no `X-Powered-By`) and doesn't need
+   checking: the plugin needs 7.4+ (arrow functions, no PHP 8-only syntax), and live
+   already runs WooCommerce 11.1.
+
+   **SEO (13 Sep 2026).** Both sites run Rank Math PRO. On the homepage and the 14
+   customiser products, SEO titles and descriptions are identical on staging and live
+   (14 of 15; the pennant differs only because it has no custom description and falls
+   back to its short description). So nothing was ever edited on staging, and the
+   problems are live in Google now: player cards carries the captains armbands
+   description; "BESpoke" is misspelt in five descriptions; sleeves (296 chars),
+   captains and player cards (256) are far too long, six more slightly over; titles mix
+   "BEspoke Sport"/"BEspoke Sports"; the homepage title names only shin pads and
+   captains armbands; the Man of the Match title says "GameChanger Award". Rank Math
+   fields are post meta (`rank_math_title`, `rank_math_description`, …), so SEO edits
+   made on staging must travel in the copy tool. Staging pages are `noindex, nofollow`
+   (correct for staging, must never reach live); live pages are `index, follow` with
+   canonicals. Product schema (ProductGroup, or Product with offers) comes from Rank
+   Math on both and is unaffected by our template.
 
 10. **Meta tracking is failing.** Every page POSTs to Facebook's conversions endpoint and
     gets a 500 back. Unrelated to any of our work and invisible to visitors, but if
