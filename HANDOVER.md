@@ -190,6 +190,13 @@ Band" at £18.00, so 5cm orders were overcharged. Matches now score 2 (same labe
 (shared word), and both passes keep the best score. **Rule for product setup:** name
 variation options so the customiser's label matches exactly one option EXACTLY. The
 pennant's variations must be "With Frill" / "No Frill" — the toggle's own labels.
+(76cc42f: a non-exact match now scores the number of shared words, exact = 1000, so
+"6 Flags" picks "6 Corner Flags" over "4 Corner Flags" instead of tying.)
+
+**Empty size buttons trap.** If a variable product has no customiser size buttons
+(`_bespoke_customiser_sizes` empty), the size selector is hidden, `bespoke_size` is
+sent empty, and the handler silently takes the FIRST variation — every order is that
+size at that price. Shin pad sleeves and player cards were in this state on 13 Sep.
 
 ### 6.4 SiteGround
 - SiteGround **minifies/combines CSS**. Plugin stylesheets are excluded (see
@@ -738,8 +745,20 @@ paste-ready copy: <https://claude.ai/code/artifact/6680476b-51b8-4db5-ab7e-15826
     those two ranges. Detection tip: their Store API `permalink` is not under
     `/product/`.
 
-4f. **Basket test passed.** All 14 customiser products add to basket correctly via the
-    real server path, recording design, size, colours, names and numbers. Detection
+4f. ~~Basket test passed~~ — **TOO SHALLOW, corrected 13 Sep 2026.** The 9 Sep test
+    checked that each add-to-cart SUCCEEDED, not WHICH variation and price it landed on.
+    Re-tested through the real handler, reading the Store API cart line back: captains
+    8cm went in as 5cm at £10, double-sided 5cm as 8cm at £18 (both fixed, commit
+    5341713, verified on staging); corner flags "6 Flags" as 4 flags at £60 (fixed in
+    76cc42f, needs uploading and re-testing); shin pad sleeves and player cards ALWAYS
+    go in as Small at £15, because neither has customiser size buttons, so no size is
+    sent and the handler falls back to the first variation (needs size buttons whose
+    labels equal the variation names). Grip socks can never select "Inside & Outside
+    Facing (extra £2)" — the customiser has no control for it. Correct: referee,
+    remembrance, grip socks sizes, glass trophy sizes, 1 and 4 flags, shin pads.
+    **Any future basket test must read the cart line's variation and price back.**
+    Original note: all 14 customiser products add to basket via the real server path,
+    recording design, size, colours, names and numbers. Detection
     tip: a product has the customiser if its page contains `BespokeConfig`.
     `bespoke-customiser-root` is NOT a valid test — it appears in the CSS on every
     product page, and `productType` matches WooCommerce's own "variable" on many.
