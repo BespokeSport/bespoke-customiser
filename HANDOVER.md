@@ -180,6 +180,17 @@ attribute will happily swallow a real choice** — a customer's "8cm band" was s
 an unrelated Any-Length attribute, returning the wrong variation. Loose matches are now
 **scored** by how many customer values hit a *specific* (non-Any) attribute; best wins.
 
+**Shared words — fixed 13 Sep 2026.** A match used to mean "shares any whole word", and
+the strict pass returned the FIRST matching variation. Captains and double-sided
+thickness terms are `5cm-band` / `8cm-band`, and the customer's "8cm band" shares "band"
+with both — so the band choice was decided by list order. Reproduced through the real
+add-to-cart handler on staging before fixing: on captains both choices landed as "Band
+Thickness=5cm Band" at £10.00; on double-sided (8cm listed first) both landed as "8cm
+Band" at £18.00, so 5cm orders were overcharged. Matches now score 2 (same label ignoring case and punctuation) or 1
+(shared word), and both passes keep the best score. **Rule for product setup:** name
+variation options so the customiser's label matches exactly one option EXACTLY. The
+pennant's variations must be "With Frill" / "No Frill" — the toggle's own labels.
+
 ### 6.4 SiteGround
 - SiteGround **minifies/combines CSS**. Plugin stylesheets are excluded (see
   `customiser-master.php`) because stale `.min.css` caused hours of confusion.
@@ -745,7 +756,16 @@ paste-ready copy: <https://claude.ai/code/artifact/6680476b-51b8-4db5-ab7e-15826
     response size before trusting a grep count** — it silently produced a wrong
     "0 references" result during this audit.
 
-4h. **Armband ages disagree — Nick to decide.** The 29 armbands on the global
+4h. **Armband ages — DECIDED 13 Sep 2026: the captains scale everywhere** (16cm U6–U8,
+    20cm U8–U12, 24cm U11–U15, 28cm Young Adult/Smaller Build, 32cm "Average" build,
+    36cm Bigger Build). Two more places carry ages and must follow: (1) the CUSTOMISER
+    size buttons (`_bespoke_customiser_sizes`, Line 1) on all four customiser armbands
+    show a third scale — 16cm U6/U10, 20cm U10/U13, 24cm U12/U16 — and that is what
+    customers actually pick from; (2) referee armbands offer 16cm and 20cm buttons
+    although the product only has 24–36cm lengths (such an order resolves to 24cm).
+    The three custom Length attributes use "Any" length on every variation (verified in
+    the Store API), so renaming their values is safe without re-picking variations.
+    Original finding: The 29 armbands on the global
     `pa_band-width` attribute say 20cm = U8–U12 and 24cm = U11–U15. Remembrance,
     referee and Black History Month use a CUSTOM "Length" attribute saying 20cm =
     U9–U13/14 and 24cm = U14–U16, so an U13 player is sent to different bands. The
@@ -893,6 +913,23 @@ paste-ready copy: <https://claude.ai/code/artifact/6680476b-51b8-4db5-ab7e-15826
    (correct for staging, must never reach live); live pages are `index, follow` with
    canonicals. Product schema (ProductGroup, or Product with offers) comes from Rank
    Math on both and is unaffected by our template.
+
+   **Theme settings (compared from the page code, 13 Sep 2026).** Astra global colours,
+   fonts, container widths, the Elementor kit, the header menu items and the footer are
+   identical. Two things are not: (1) staging's header is an **Elementor Theme Builder
+   header, template 6607**, while live renders Astra's own `#masthead` — so the header
+   template must be exported and imported at launch (runbook step 6), or live keeps the
+   old header; (2) on BOTH sites eight footer menu links point at `#` (menus "Usefull
+   Links" and the collection menu: Home, Shop, Design Studio, Contact Us, three
+   products, and Personalised Water Bottles, a dropped product). Menus and the Site Title
+   ("BEspoke Sports", which feeds the footer copyright and Rank Math's `%sitename%`;
+   Nick chose "BEspoke Sport") live in each database, so they're fixed on both sites.
+   Nick confirmed nothing else was changed on staging.
+
+   **Decisions from Nick, 13 Sep 2026:** pennant keeps both options — With Frill £12,
+   No Frill £10 (names must equal the customiser toggle labels, see §6.3); glass trophy
+   keeps live's £13–23; launch on a Wednesday or Thursday; Aston Villa mug stays;
+   umbrella tiles stay as they are; build the copy tool the week before launch.
 
 10. **Meta tracking is failing.** Every page POSTs to Facebook's conversions endpoint and
     gets a 500 back. Unrelated to any of our work and invisible to visitors, but if
