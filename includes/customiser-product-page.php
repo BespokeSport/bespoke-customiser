@@ -517,7 +517,10 @@ add_shortcode( 'bespoke_sizing_chart', function( $atts ) {
         'product_id' => '',
         'eyebrow'    => 'SPEC / SIZING',
         'title'      => 'How they measure up.',
-        'caption'    => 'Approximate measurements so you can check against a pair you already own.',
+        // No caption by default. The old one ("...against a pair you already
+        // own") only suited pairs, and Nick dropped it on 13 Sep 2026. A caption
+        // can still be passed in the shortcode if a product ever needs one.
+        'caption'    => '',
     ], $atts );
     $pid = bespoke_pdp_get_product_id( $atts );
     if ( ! $pid ) return '';
@@ -542,8 +545,11 @@ add_shortcode( 'bespoke_sizing_chart', function( $atts ) {
         <div class="bs-sizing-chart__head"><?php echo esc_html( $atts['eyebrow'] ); ?></div>
         <div class="bs-sizing-chart__topline">
             <h2 class="bs-sizing-chart__title"><?php echo esc_html( $atts['title'] ); ?></h2>
-            <p class="bs-sizing-chart__caption"><?php echo esc_html( $atts['caption'] ); ?></p>
+            <?php if ( $atts['caption'] !== '' ) : ?>
+                <p class="bs-sizing-chart__caption"><?php echo esc_html( $atts['caption'] ); ?></p>
+            <?php endif; ?>
         </div>
+        <div class="bs-sizing-chart__scroll">
         <table class="bs-sizing-chart__table">
             <thead>
                 <tr>
@@ -562,6 +568,7 @@ add_shortcode( 'bespoke_sizing_chart', function( $atts ) {
                 <?php endforeach; ?>
             </tbody>
         </table>
+        </div>
     </section>
     <?php
     return ob_get_clean();

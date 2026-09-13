@@ -861,53 +861,87 @@ body.single-product .bs-sizing-chart__caption {
   text-align: right !important;
   margin: 0 !important;
 }
+/* The table is sized like the At a glance box, not like a headline.
+   It used to scale with the window - 36px text, 80px size pills, 124px rows,
+   stretched 1313px wide on a desktop - so four sock sizes took 770px of page.
+   Now it is capped at 640px, with 15px text and 34px pills.
+
+   The scroll wrapper is a safety net: values never wrap (so "Age 5-8" stays on
+   one line), and on a phone a chart with long values scrolls sideways inside
+   its own box instead of being clipped by the page's overflow-x: hidden. */
+body.single-product .bs-sizing-chart__scroll {
+  overflow-x: auto !important;
+  max-width: 640px !important;
+}
 body.single-product .bs-sizing-chart__table {
   width: 100% !important;
+  margin: 0 !important;
+  border: 0 !important;
   border-collapse: collapse !important;
   font-family: var(--bs-font-ui) !important;
 }
+/* Astra boxes every table cell in; only the rule under each row is wanted. */
+body.single-product .bs-sizing-chart__table th,
+body.single-product .bs-sizing-chart__table td {
+  border: 0 !important;
+  border-bottom: 1px solid var(--bs-line) !important;
+  background: transparent !important;
+}
 body.single-product .bs-sizing-chart__table th {
   font-family: var(--bs-font-mono) !important;
-  font-size: clamp(12px, 1.2vw, 18px) !important;
+  font-size: 11px !important;
   letter-spacing: 0.14em !important;
   text-transform: uppercase !important;
   color: var(--bs-muted) !important;
   text-align: left !important;
-  padding: 12px 16px !important;
-  border-bottom: 1px solid var(--bs-line) !important;
+  vertical-align: bottom !important;
+  /* A long heading wraps as "DIMENSIONS / (W × H)", not "DIMENSIONS (W / × H)" */
+  text-wrap: balance !important;
+  padding: 0 16px 10px 0 !important;
   font-weight: 500 !important;
 }
-body.single-product .bs-sizing-chart__table th:last-child {
-  text-align: right !important;
-}
 body.single-product .bs-sizing-chart__table td {
-  padding: 22px 16px !important;
-  border-bottom: 1px solid var(--bs-line) !important;
+  padding: 10px 16px 10px 0 !important;
   color: var(--bs-text) !important;
-  font-size: clamp(18px, 2.6vw, 36px) !important;
+  font-size: 15px !important;
+  white-space: nowrap !important;
   vertical-align: middle !important;
 }
+body.single-product .bs-sizing-chart__table th:last-child,
 body.single-product .bs-sizing-chart__table td:last-child {
   text-align: right !important;
+  padding-right: 0 !important;
+}
+body.single-product .bs-sizing-chart__table td:last-child {
   font-family: var(--bs-font-mono) !important;
-  font-size: clamp(18px, 2.6vw, 36px) !important;
+  font-size: 14px !important;
 }
 body.single-product .bs-sizing-chart__table tr:last-child td {
   border-bottom: 0 !important;
 }
 body.single-product .bs-size-pill {
   display: inline-flex !important;
-  width: clamp(54px, 5.5vw, 80px) !important;
-  height: clamp(54px, 5.5vw, 80px) !important;
+  width: 34px !important;
+  height: 34px !important;
   align-items: center !important;
   justify-content: center !important;
   background: var(--bs-panel) !important;
   border: 1px solid var(--bs-line) !important;
-  border-radius: 6px !important;
+  border-radius: 5px !important;
   font-family: var(--bs-font-ui) !important;
   font-weight: 800 !important;
-  font-size: clamp(20px, 2.4vw, 42px) !important;
+  font-size: 14px !important;
   color: #fff !important;
+}
+@media (max-width: 600px) {
+  body.single-product .bs-sizing-chart__table th,
+  body.single-product .bs-sizing-chart__table td {
+    padding-right: 12px !important;
+  }
+  body.single-product .bs-sizing-chart__table th:last-child,
+  body.single-product .bs-sizing-chart__table td:last-child {
+    padding-right: 0 !important;
+  }
 }
 
 
