@@ -5,7 +5,7 @@
  * Adds a "BEspoke Page" tab to the WooCommerce Product Data box where the
  * site owner fills in the content specific to the redesigned product page:
  *
- *   - Eyebrow text          (e.g. "SERIES 03 · THE CUSTOMISER")
+ *   - Eyebrow text          (e.g. "THE CUSTOMISER")
  *   - Subtitle              (the sentence under the title)
  *   - Price suffix          (e.g. "PER PAIR · INC. VAT")
  *   - Sizing chart rows     (size / age / height / dimensions, repeatable)
@@ -132,7 +132,7 @@ function bespoke_pdp_render_panel() {
             woocommerce_wp_text_input( [
                 'id'          => '_bespoke_eyebrow',
                 'label'       => 'Eyebrow text',
-                'placeholder' => 'SERIES 03 · THE CUSTOMISER',
+                'placeholder' => 'THE CUSTOMISER',
                 'description' => 'Small green label above the title. Shortcode: <code>[bespoke_eyebrow]</code>',
                 'desc_tip'    => false,
                 'value'       => $eyebrow,
@@ -140,7 +140,7 @@ function bespoke_pdp_render_panel() {
             woocommerce_wp_textarea_input( [
                 'id'          => '_bespoke_subtitle',
                 'label'       => 'Subtitle',
-                'placeholder' => 'Sublimated edge to edge with your crest, name & number. FA-safety compliant. Made in Hampshire — five-day turnaround.',
+                'placeholder' => 'Add your club crest, name & number. Sizes to suit all and lightweight. Designed and made in Hampshire — 3-5 day turnaround.',
                 'description' => 'Short paragraph under the title. Shortcode: <code>[bespoke_subtitle]</code>',
                 'desc_tip'    => false,
                 'value'       => $subtitle,
@@ -237,18 +237,28 @@ function bespoke_pdp_render_panel() {
                 <tbody class="bespoke-pdp-rows" data-prefix="_bespoke_at_a_glance">
                     <?php
                     if ( empty( $glance ) ) {
-                        // Sensible starter set so the user can see the shape
-                        $glance = [
-                            [ 'label' => 'Print',      'value' => 'Fully sublimated' ],
-                            [ 'label' => 'Compliance', 'value' => 'FA-safety approved' ],
-                            [ 'label' => 'Quantity',   'value' => 'Sold as a pair' ],
-                            [ 'label' => 'Lead time',  'value' => '5 working days' ],
-                            [ 'label' => 'Made in',    'value' => 'Hampshire, UK' ],
-                            [ 'label' => 'Returns',    'value' => 'Bespoke — non-returnable' ],
+                        // Empty starter rows, with grey hints to show the shape.
+                        //
+                        // These used to be filled in with real text ("FA-safety
+                        // approved", "Sold as a pair"), and that text saved as
+                        // the product's own the first time Update was pressed.
+                        // Found on 12 products in the 13 Sep 2026 copy audit,
+                        // mugs and trophies included. Placeholders never
+                        // submit, and the save handler drops empty rows, so an
+                        // untouched box now stays empty.
+                        $glance_hints = [
+                            [ 'Print',     'e.g. Full colour, dyed into the fabric' ],
+                            [ 'Quantity',  'e.g. Sold individually - No MOQ' ],
+                            [ 'Lead time', 'e.g. 3-5 working days' ],
+                            [ 'Made in',   'e.g. Hampshire, UK' ],
                         ];
-                    }
-                    foreach ( $glance as $i => $row ) {
-                        bespoke_pdp_render_glance_row( $i, $row );
+                        foreach ( $glance_hints as $i => $hint ) {
+                            bespoke_pdp_render_glance_row( $i, [], $hint );
+                        }
+                    } else {
+                        foreach ( $glance as $i => $row ) {
+                            bespoke_pdp_render_glance_row( $i, $row );
+                        }
                     }
                     ?>
                 </tbody>
@@ -329,14 +339,17 @@ function bespoke_pdp_render_sizing_row( $i, $row ) {
 
 /**
  * Render one row of the at-a-glance repeater.
+ *
+ * $hint is the [ label, value ] pair of grey placeholders. The default suits
+ * a row added with "+ Add row"; the empty-box starter rows pass their own.
  */
-function bespoke_pdp_render_glance_row( $i, $row ) {
+function bespoke_pdp_render_glance_row( $i, $row, $hint = [ 'Lead time', 'e.g. 3-5 working days' ] ) {
     $label = esc_attr( $row['label'] ?? '' );
     $value = esc_attr( $row['value'] ?? '' );
     ?>
     <tr>
-        <td><input type="text" data-key="label" name="_bespoke_at_a_glance[<?php echo esc_attr( $i ); ?>][label]" value="<?php echo $label; ?>" placeholder="Lead time"/></td>
-        <td><input type="text" data-key="value" name="_bespoke_at_a_glance[<?php echo esc_attr( $i ); ?>][value]" value="<?php echo $value; ?>" placeholder="5 working days"/></td>
+        <td><input type="text" data-key="label" name="_bespoke_at_a_glance[<?php echo esc_attr( $i ); ?>][label]" value="<?php echo $label; ?>" placeholder="<?php echo esc_attr( $hint[0] ); ?>"/></td>
+        <td><input type="text" data-key="value" name="_bespoke_at_a_glance[<?php echo esc_attr( $i ); ?>][value]" value="<?php echo $value; ?>" placeholder="<?php echo esc_attr( $hint[1] ); ?>"/></td>
         <td><button type="button" class="button-link bespoke-pdp-remove" style="color:#a00;">Remove</button></td>
     </tr>
     <?php
