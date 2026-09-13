@@ -195,6 +195,13 @@ When hunting a stray `<script>`, check both. Simple Custom CSS and JS wraps its 
 On 2026-07-20 I deactivated **"BEspoke Customise Button Fix"** (post 6622), a broken
 "Read more"→"View Options" script with 4 extra `}` that threw a SyntaxError on every page.
 
+**13 Sep 2026, checked from the rendered pages (homepage, shop, cart, a product, a
+collection page):** nothing from Simple Custom CSS and JS runs on staging's front end,
+so nothing in Custom Code needs to travel at launch. Live runs exactly one entry on every
+page: **4910 "FPD Inside/Outside Button Fix"** (copy in `custom-css-js/`), which makes
+Fancy Product Designer's inside/outside buttons work on phones. FPD itself is still
+active on live. Both are switched off on launch day — see §9, step 5 of the runbook.
+
 ### 6.6 Load-order trap
 `customiser-frontend.php` echoes `customiser.html` at ~line 182 but only defines
 `window.BESPOKE_PRODUCT_ASSETS` at ~line 352. **Anything in customiser.html that runs at
@@ -798,7 +805,9 @@ paste-ready copy: <https://claude.ai/code/artifact/6680476b-51b8-4db5-ab7e-15826
    1. The design library, ~70 `bespoke_design` posts (Tools → Export/Import)
    2. The font list — a single option, `bespoke_customiser_fonts`
    3. Customiser setup on **14 products** (not 88 — verified 6 Sep 2026)
-   4. The homepage + How It Works Elementor layouts
+   4. The homepage Elementor layout. (There is no separate How It Works page — checked
+      13 Sep 2026. How It Works is the `[bespoke_how]` section on the homepage, rendered
+      by the plugin, so it travels as a file.)
 
    The 14: shin pads, shin pad sleeves, captains armbands, double-sided armbands,
    referee armbands, remembrance armbands, grip socks, corner flags, pennant, player
@@ -843,7 +852,10 @@ paste-ready copy: <https://claude.ai/code/artifact/6680476b-51b8-4db5-ab7e-15826
 
    Also found 13 Sep: both 60fps hero zips (`assets/hero-world.zip` 11.4MB,
    `assets/hero-world-m.zip` 14.9MB) are still on the staging server and publicly
-   downloadable.
+   downloadable. And **Fancy Product Designer is still active on live** (its assets
+   load on shin pads and the armbands), along with Custom Code entry 4910 that exists
+   only to fix its phone buttons. The runbook's step 5 now deactivates both on live,
+   immediately before the product content is brought across.
 
    Sequence matters: everything invisible happens first. Uploading and activating the
    plugin changes nothing a customer sees, because the customiser only appears once a
