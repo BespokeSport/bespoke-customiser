@@ -676,37 +676,43 @@ live — nothing is sitting in git waiting.*
 
 ### Ready to action
 
-**PRODUCT COPY AUDIT — 9 Sep 2026.** Full findings and draft copy:
-<https://claude.ai/code/artifact/6680476b-51b8-4db5-ab7e-15826158bf72>
+**PRODUCT COPY AUDIT — 9 Sep 2026, re-checked and updated 13 Sep 2026.** Findings and
+paste-ready copy: <https://claude.ai/code/artifact/6680476b-51b8-4db5-ab7e-15826158bf72>
 
-4a. **The "At a glance" sidebar is copy-pasted and factually WRONG on 12 products.**
-    The armband block was duplicated onto the mug, all three trophies, corner flags,
-    pennant, player cards and the rest without being edited. It currently tells
-    customers the grassroots mug is **"FA-safety approved"** and **"Sold as a pair"**.
-    Only "Made in: Hampshire, UK" and "Returns: non-returnable" are true across the
-    board. This is the highest-priority copy fix — two of those claims could generate
-    a genuine complaint.
+4a. ~~The "At a glance" sidebar is copy-pasted and factually WRONG on 12 products~~ —
+    **DONE 13 Sep 2026.** Nick rewrote all 12; nothing claims FA-safety approval and
+    only shin pads, sleeves and grip socks say "sold as a pair". Almost certainly not
+    a copy-paste: the product editor pre-filled an EMPTY box with exactly that armband
+    set as real input values, and they saved with the product on its first Update. The
+    starter rows are now placeholders only (`bespoke_pdp_render_glance_row()` takes a
+    `$hint` pair), so an untouched box saves nothing. Returns rows were removed on
+    purpose — everything is personalised, so returns are not accepted.
 
-4b. **The lead time contradicts itself** on shin pads, shin pad sleeves and the
-    pennant: the sidebar says 5 working days, the short description (in capitals)
-    says 7. Both are on the same screen. The notice also reads as seasonal and may
-    be stale.
+4b. ~~The lead time contradicts itself~~ — **DONE 13 Sep 2026.** All 14 boxes say 3-5
+    working days, the capitals "allow up to 7 days" notice is gone from all three
+    pages, and the shin pads subtitle says "3-5 day turnaround".
 
-4c. **Typos:** "exisiting" (shin pad sleeves), "ackowledhing" (pennant), "ONE OF THE
-    MOST BUSIEST TIMES" (3 products), "Sizes to suits all" (the subtitle on BOTH
-    products that have one). Brand written **BESpoke** instead of BEspoke on 4
-    products. A space sits before the comma/full stop in 36 descriptions.
+4c. ~~Typos~~ — **DONE 13 Sep 2026.** The re-check read every customiser product's full
+    copy (the 9 Sep pass had not) and found 23 fixes across 13 products, all made and
+    verified on staging. The worst was corner flags saying "full sets of four" when
+    they sell 1, 4 or 6. The "36 descriptions with a space before punctuation" figure
+    did not reproduce: a check that keeps paragraph breaks found 2, both fixed. The
+    other 74 products have not been proofread word by word.
 
-4d. **Only 2 of 16 products have the full page treatment.** Shin pads and grip socks
-    have eyebrow, subtitle, price note and sizing chart; the other 14 have only the
-    sidebar. That is 56 empty fields. Draft eyebrow/subtitle/price-note copy for all
-    of them is in the audit above, written from Nick's own descriptions. Sizing
-    charts are deliberately NOT drafted — they need real measurements, and inventing
-    those is how the sidebar ended up claiming a mug is sold as a pair.
+4d. ~~Only 2 of 16 products have the full page treatment~~ — **DONE 13 Sep 2026** for
+    eyebrow, subtitle and price suffix on all 14 customiser products. The eyebrow is
+    now **"THE CUSTOMISER"** everywhere — Nick's call; "SERIES 03 ·" was dropped, and
+    the admin placeholder follows. The hero price now reads "FROM £10.00", not
+    "FROM £10.00 – £12.00": the template collapses WooCommerce's range to the lowest
+    price whenever the FROM caption shows, via a `woocommerce_format_price_range`
+    filter added and removed around that one call. **Still open:** sizing charts
+    exist only on shin pads and grip socks. Shin pad sleeves and the glass trophy
+    already list measurements in their descriptions, so those two are ready.
 
-4e. **Two products are unfinished and unbuyable but publicly reachable:**
-    `pre-designed-custom-captains-armbands` and `football-legends-mug-choose-your-team`
-    have no description, no price and no customiser.
+4e. **Two products are unfinished and unbuyable but publicly reachable** (still true
+    13 Sep): `pre-designed-custom-captains-armbands` and
+    `football-legends-mug-choose-your-team` have no description, no price and no
+    customiser.
 
 4f. **Basket test passed.** All 14 customiser products add to basket correctly via the
     real server path, recording design, size, colours, names and numbers. Detection
@@ -718,12 +724,25 @@ live — nothing is sitting in git waiting.*
     listings, XML-RPC blocked, user enumeration blocked, and the badge folder's PHP
     deny rule verified LIVE (a non-existent .php returns 403, not 404). Missing:
     X-Frame-Options, Strict-Transport-Security, Referrer-Policy, CSP — none urgent,
-    the first two worth adding in SiteGround before launch.
+    the first two worth adding in SiteGround before launch. (All four still missing
+    13 Sep 2026. The removed `bespoke_get_designs` endpoint confirmed gone: 400 "0".)
 
     NB: heavy automated testing trips SiteGround's bot protection (sgcaptcha) and
     then returns a 249-byte challenge page instead of the file. **Always assert the
     response size before trusting a grep count** — it silently produced a wrong
     "0 references" result during this audit.
+
+4h. **Armband ages disagree — Nick to decide.** The 29 armbands on the global
+    `pa_band-width` attribute say 20cm = U8–U12 and 24cm = U11–U15. Remembrance,
+    referee and Black History Month use a CUSTOM "Length" attribute saying 20cm =
+    U9–U13/14 and 24cm = U14–U16, so an U13 player is sent to different bands. The
+    option names clash too: "Band Width" is the size round the arm on the 29, but
+    "Width" is 5cm/8cm on the other three. If the remembrance ages are right, rename
+    the six `pa_band-width` term NAMES (never the slugs — variations store slugs) and
+    all 29 update safely. If the captains ages are right, the custom values must
+    change AND every variation of those three products be re-picked, because
+    variations of a custom attribute store the literal text. A 13 Sep check found all
+    261 variation attribute values still matching their options.
 
 5. ~~Fancy Product Designer~~ — **REMOVED 6 Sep 2026.** Every product is off it, it is
    deactivated, and the `Customize`→`Customise` patch script it required has been deleted
