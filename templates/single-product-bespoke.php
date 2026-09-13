@@ -62,7 +62,20 @@ if ( ! $product ) {
                 ?>
                     <span class="bs-from">FROM</span>
                 <?php endif; ?>
+                <?php
+                // Under "FROM", WooCommerce's range says the price twice
+                // ("FROM £10.00 – £12.00"), so the hero shows the lowest price
+                // instead, as the shop tiles already do. Scoped to this one
+                // call: related products further down keep the normal range.
+                $bespoke_lowest_only = function ( $range, $from ) {
+                    return is_numeric( $from ) ? wc_price( $from ) : $from;
+                };
+                if ( $price_suffix ) {
+                    add_filter( 'woocommerce_format_price_range', $bespoke_lowest_only, 10, 2 );
+                }
+                ?>
                 <p class="price"><?php echo $product->get_price_html(); ?></p>
+                <?php remove_filter( 'woocommerce_format_price_range', $bespoke_lowest_only, 10 ); ?>
                 <?php echo do_shortcode( '[bespoke_price_suffix]' ); ?>
             </div>
         </header>
