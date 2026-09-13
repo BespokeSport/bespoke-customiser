@@ -1123,17 +1123,18 @@ function bespoke_attr_values_match( $customer_value, $variation_value ) {
 
 /**
  * How well a customer's choice matches a variation value:
- *   2 — the same label once case and punctuation are ignored ("No Frill" ↔ "no-frill")
- *   1 — they only share a whole word ("5cm" ↔ "5cm band")
- *   0 — no match
+ *   1000 — the same label once case and punctuation are ignored ("No Frill" ↔ "no-frill")
+ *   1..n — how many whole words they share ("6 Flags" ↔ "6 Corner Flags" = 2)
+ *   0    — no match
  *
  * Callers keep the best-scoring option rather than the first that matches
- * at all. Two options that share a word — "With Frill" and "No Frill" —
- * otherwise both "match" either choice, and whichever variation is listed
- * first wins: a No Frill pennant would go in the basket as With Frill, at
- * the With Frill price.
+ * at all. Options often share a word — "With Frill" / "No Frill", "5cm band"
+ * / "8cm band", "4 Corner Flags" / "6 Corner Flags" — so "any shared word"
+ * alone lets whichever variation is listed first win: an 8cm captains
+ * armband went in the basket as 5cm at the 5cm price. An exact label always
+ * wins; otherwise the option sharing the most words does.
  *
- * @return int 0, 1 or 2
+ * @return int 0 = no match; higher = closer
  */
 function bespoke_attr_match_quality( $customer_value, $variation_value ) {
     if ( $customer_value === '' || $variation_value === '' ) return 0;
@@ -1149,10 +1150,10 @@ function bespoke_attr_match_quality( $customer_value, $variation_value ) {
     $c_norm = $normalize( $customer_value );
     $v_norm = $normalize( $variation_value );
     if ( $c_norm === '' || $v_norm === '' ) return 0;
-    if ( $c_norm === $v_norm ) return 2;
+    if ( $c_norm === $v_norm ) return 1000;
 
     // Word-boundary match — split each value into alphanumeric words
-    // and accept a match if ANY word appears verbatim in BOTH lists.
+    // and count the words that appear verbatim in BOTH lists.
     //
     //   customer "5cm"          ↔ variation "5cm band"       → word "5cm" in both  ✓
     //   customer "XL"           ↔ variation "UK 10-12 (XL)"  → word "xl"  in both  ✓
@@ -1167,14 +1168,9 @@ function bespoke_attr_match_quality( $customer_value, $variation_value ) {
         $parts = preg_split( '/[^a-z0-9]+/i', (string) $v );
         return array_values( array_filter( array_map( 'strtolower', $parts ), function( $x ) { return $x !== ''; } ) );
     };
-    $wc = $words( $customer_value );
-    $wv = $words( $variation_value );
-    foreach ( $wc as $c_word ) {
-        foreach ( $wv as $v_word ) {
-            if ( $c_word === $v_word ) return 1;
-        }
-    }
-    return 0;
+    $wc = array_unique( $words( $customer_value ) );
+    $wv = array_unique( $words( $variation_value ) );
+    return count( array_intersect( $wc, $wv ) );
 }
 
 /**
@@ -1225,7 +1221,7 @@ function bespoke_match_variation( $product, $customer_values ) {
 
     // How closely a variation's SPECIFIC (non-Any) values fit the
     // customer's choices: for each choice, its best match quality
-    // (2 exact label, 1 shared word), summed. Both passes keep the
+    // (exact label, else number of shared words), summed. Both passes keep the
     // highest-scoring variation, so an exact "No Frill" beats a
     // "With Frill" that merely shares the word "frill".
     $quality = function( $variation ) use ( $customer_values ) {
