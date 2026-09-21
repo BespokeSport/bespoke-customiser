@@ -1040,7 +1040,21 @@ paste-ready copy: <https://claude.ai/code/artifact/6680476b-51b8-4db5-ab7e-15826
    customiser-frontend.php used to wait for `.font-card` elements, which armbands no
    longer have. It now waits for `FONTS` / `buildFontGrid()` and redraws both pickers
    through it. Previewed on the staging page (code loaded into Claude's browser only):
-   all 12 fonts load in the list, none clipped.
+   all 12 fonts load in the list, none clipped. **Uploaded and verified 21 Sep:** real
+   baskets carry the picked font on captains (Sporten), double-sided (Villain outside,
+   Borg inside), referee (RaceSport) and remembrance (Archive); the shin pad basket no
+   longer lists a removed name (89ccf16 live).
+
+   **Extra text boxes, 21 Sep 2026** (commit bb7a9cb, not yet uploaded): armbands'
+   Text step has "+ Add text box" (max 10). `S.textBoxes` = [{id, text, font, color,
+   size}], positions/rotation in `S.pos` / `S.rot` under the id ('tb1'…), so the drag
+   code moves them; `textBoxes` is in `BESPOKE_FACE_FIELDS`. On the band-mirror view
+   they borrow nameL's mirror mapping. Resizing (handles, pinch, wheel) has a 'tb'
+   branch; `fastPinchSize` matches a box's id exactly. The font dropdown became
+   `bespokeFontSelect(host, current, onPick)` so each box has one. Sent as
+   `bespoke_text_boxes` JSON (and `text_boxes` in the inside-face blob), sanitised by
+   `bespoke_parse_text_boxes()`; basket/email "Extra text", admin "Extra text" section
+   with font, size, position, rotation and a colour swatch.
 
    **Fixes 3–6 checked on staging 21 Sep: none done yet.** Armband Line 1 labels are
    still the old ages, referee's Length still lacks 16/20cm, the pennant is still a
