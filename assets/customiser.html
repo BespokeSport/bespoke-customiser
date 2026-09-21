@@ -3032,9 +3032,16 @@ function syncAll(){ Object.keys(previews).forEach(function(k){updatePreview(pars
  * variant choice. Returns null for simple products (no variation data)
  * or when no variation matches.
  *
- * Mirrors the PHP-side bespoke_attr_values_match — normalise to alnum-only
- * lowercase, then exact-or-substring compare. Empty variation values mean
- * "Any …" and are skipped.
+ * Mirrors the PHP-side bespoke_attr_match_quality (customiser-ajax.php): an
+ * exact label (ignoring case and punctuation) scores 1000, otherwise the
+ * number of whole words shared. Every specific variation value must match
+ * one of the customer's choices, and the best total wins — not the first
+ * match. Empty variation values mean "Any …" and are skipped.
+ *
+ * It used to take the first variation where each value was a SUBSTRING of a
+ * choice. "outsidefacing" is inside "insideoutsidefacingextra2", so grip
+ * socks showed whichever print option was listed first; same for the
+ * armbands' "5cm band" / "8cm band".
  */
 function bespokeFindVariation(){
   var cfg = window.BespokeConfig || {};
@@ -3050,26 +3057,36 @@ function bespokeFindVariation(){
   var size = window.S && window.S.padSize ? window.S.padSize : '';
   var customer = [size, variantLabel].filter(function(v){ return v; });
   function norm(v){ return String(v || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
-  function matches(c, v){
-    var nc = norm(c), nv = norm(v);
-    if (!nc || !nv) return false;
-    return nc === nv || nc.indexOf(nv) !== -1 || nv.indexOf(nc) !== -1;
+  function words(v){
+    var seen = {}, out = [];
+    String(v || '').toLowerCase().split(/[^a-z0-9]+/).forEach(function(w){
+      if (w && !seen[w]) { seen[w] = true; out.push(w); }
+    });
+    return out;
   }
+  function quality(c, v){
+    var nc = norm(c), nv = norm(v);
+    if (!nc || !nv) return 0;
+    if (nc === nv) return 1000;
+    var wv = words(v), n = 0;
+    words(c).forEach(function(w){ if (wv.indexOf(w) !== -1) n++; });
+    return n;
+  }
+  var best = null, bestScore = -1;
   for (var i = 0; i < list.length; i++) {
     var V = list[i];
-    var ok = true;
+    var score = 0, ok = true;
     for (var k in V.attributes) {
       var av = V.attributes[k];
       if (av === '' || av === null) continue; // "Any …"
-      var found = false;
-      for (var j = 0; j < customer.length; j++) {
-        if (matches(customer[j], av)) { found = true; break; }
-      }
-      if (!found) { ok = false; break; }
+      var q = 0;
+      for (var j = 0; j < customer.length; j++) q = Math.max(q, quality(customer[j], av));
+      if (!q) { ok = false; break; }
+      score += q;
     }
-    if (ok) return V;
+    if (ok && score > bestScore) { best = V; bestScore = score; }
   }
-  return null;
+  return best;
 }
 
 /**
@@ -5897,7 +5914,15 @@ var BG_VARIANT_LABELS = {
   // captures it. NB: any future type using requireAlt:true will hit the same
   // ordering trap.
   pennant:  { section: 'Pennant style',  primary: 'With Frill', alt: 'No Frill', requireAlt: false },
-  armbands: { section: 'Band thickness', primary: '5cm band',   alt: '8cm band', requireAlt: false }
+  armbands: { section: 'Band thickness', primary: '5cm band',   alt: '8cm band', requireAlt: false },
+  // Grip socks sell "Outside Facing" and "Inside & Outside Facing (extra £2)",
+  // but until 21 Sep 2026 nothing in the customiser chose between them, so
+  // every order went through as Outside Facing and the £2 option could never
+  // be bought. There is no alt background for socks; the preview stays the
+  // same and only the choice (and the price) changes. The primary label is
+  // the variation's own name, so it matches exactly; the alt shares more
+  // words with the inside-and-outside variation than with the other one.
+  gripsocks: { section: 'Print', primary: 'Outside Facing', alt: 'Inside & Outside', requireAlt: false }
 };
 function initBgVariantToggle(){
   var row = document.getElementById('bg-variant-row');
