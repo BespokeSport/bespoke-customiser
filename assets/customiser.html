@@ -2022,9 +2022,28 @@ function buildFontGrid(target) {
 function bespokeUseFontDropdown(){
   return typeof bespokeBaseType === 'function' && bespokeBaseType() === 'armbands';
 }
+// Armband text starts in this font (Nick, 21 Sep 2026) — matched on its
+// name in the uploaded font list, since the uploads' family ids are just
+// numbered. Leave the name blank to start in the built-in default.
+var ARMBAND_START_FONT = 'Villain';
+// Move armband text still in the built-in default (a font the customer
+// can't pick, so they haven't chosen it) onto ARMBAND_START_FONT, once the
+// uploaded fonts are in the list. Text boxes still on that default follow.
+function bespokeArmbandStartFont(){
+  if (!ARMBAND_START_FONT || !bespokeUseFontDropdown() || !window.S) return;
+  var cur = S.nameFontFamily;
+  if (FONTS.some(function(f){ return f.family === cur; })) return;
+  var want = ARMBAND_START_FONT.toLowerCase();
+  var start = FONTS.find(function(f){ return String(f.label || '').toLowerCase() === want; });
+  if (!start) return;
+  S.nameFontFamily = start.family;
+  (S.textBoxes || []).forEach(function(b){ if (b.font === cur) b.font = start.family; });
+  try { syncAll(); } catch(_){}
+}
 function buildFontSelect(target){
   var host = document.getElementById(target === 'num' ? 'font-select-num' : 'font-select-name');
   if (!host) return;
+  if (target !== 'num') bespokeArmbandStartFont();
   var current = (target === 'num') ? S.numFontFamily : S.nameFontFamily;
   bespokeFontSelect(host, current, function(family){
     if (target === 'num') S.numFontFamily = family;
