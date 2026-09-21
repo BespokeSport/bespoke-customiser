@@ -1054,7 +1054,15 @@ paste-ready copy: <https://claude.ai/code/artifact/6680476b-51b8-4db5-ab7e-15826
    `bespokeFontSelect(host, current, onPick)` so each box has one. Sent as
    `bespoke_text_boxes` JSON (and `text_boxes` in the inside-face blob), sanitised by
    `bespoke_parse_text_boxes()`; basket/email "Extra text", admin "Extra text" section
-   with font, size, position, rotation and a colour swatch.
+   with font, size, position, rotation and a colour swatch. **Uploaded and verified 21
+   Sep** with real baskets on captains, double-sided (inside boxes → "Inside extra
+   text"), referee and remembrance.
+
+   **Armbands start in Villain** (Nick, 21 Sep; commit c1c0b81, not yet uploaded):
+   `ARMBAND_START_FONT` in customiser.html, applied by `bespokeArmbandStartFont()`
+   whenever the armband font field is drawn. It only moves text still in a font the
+   customer can't pick (the built-in Arial Black), matched by label because uploaded
+   fonts' family ids are just `bespoke-font-N`.
 
    **Fixes 3–6 checked on staging 21 Sep: none done yet.** Armband Line 1 labels are
    still the old ages, referee's Length still lacks 16/20cm, the pennant is still a
