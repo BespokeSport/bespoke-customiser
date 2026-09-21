@@ -1251,6 +1251,21 @@ function bespoke_badge_sides( $d ) {
 }
 
 /**
+ * An armband's extra text boxes ("+ Add text box") as one line for the
+ * basket and the confirmation email, e.g. "VICE CAPTAIN · JS". '' if none.
+ */
+function bespoke_text_box_list( $d ) {
+    $boxes = ( isset( $d['text_boxes'] ) && is_array( $d['text_boxes'] ) ) ? $d['text_boxes'] : [];
+    $texts = [];
+    foreach ( $boxes as $b ) {
+        if ( is_array( $b ) && (string) ( $b['text'] ?? '' ) !== '' ) {
+            $texts[] = (string) $b['text'];
+        }
+    }
+    return implode( ' · ', $texts );
+}
+
+/**
  * The armband badge layout as one short line for the basket and the
  * confirmation email, e.g. "Club badge left, second badge right".
  */
@@ -1411,6 +1426,11 @@ function bespoke_render_cart_armbands( $item_data, $d ) {
     if ( ! empty( $d['left']['name'] ) ) {
         $item_data[] = [ 'name' => 'Text', 'value' => esc_html( $d['left']['name'] ) ];
     }
+    // Extra text boxes, in the order they were added.
+    $extra = bespoke_text_box_list( $d );
+    if ( $extra !== '' ) {
+        $item_data[] = [ 'name' => 'Extra text', 'value' => esc_html( $extra ) ];
+    }
     // Which badge went on which side, e.g. "Club badge left, second badge
     // right". An empty side is said here, so it's left out of "Removed".
     if ( empty( $d['badge']['url'] ) ) {
@@ -1455,13 +1475,17 @@ function bespoke_render_cart_double_sided_armbands( $item_data, $d ) {
                         ? esc_html( $inside['left']['name'] ) . ' — separate design'
                         : 'Separate design',
         ];
-        // The inside has its own Left / Right badges.
+        // The inside has its own Left / Right badges and extra text.
         $item_data[] = [
             'name'  => 'Inside badges',
             'value' => ! empty( $inside['badge']['url'] )
                         ? esc_html( bespoke_badge_sides_text( $inside ) )
                         : 'Not added',
         ];
+        $inside_extra = bespoke_text_box_list( $inside );
+        if ( $inside_extra !== '' ) {
+            $item_data[] = [ 'name' => 'Inside extra text', 'value' => esc_html( $inside_extra ) ];
+        }
     }
     return $item_data;
 }
@@ -2016,6 +2040,28 @@ function bespoke_render_admin_generic_card( $product_label, $d, $opts = [] ) {
                     }
                 }
                 if ( $text_rows ) echo $section( 'Text', $text_rows );
+
+                // Extra text boxes (armbands' "+ Add text box"): what to
+                // print, in which font, size and colour, and where.
+                $tb_rows = '';
+                $tb_list = ( isset( $d['text_boxes'] ) && is_array( $d['text_boxes'] ) ) ? $d['text_boxes'] : [];
+                foreach ( array_values( $tb_list ) as $n => $tb ) {
+                    if ( ! is_array( $tb ) || (string) ( $tb['text'] ?? '' ) === '' ) continue;
+                    $bits = [];
+                    if ( ! empty( $tb['font'] ) ) $bits[] = esc_html( $clean_font( $tb['font'] ) );
+                    if ( ! empty( $tb['size'] ) ) $bits[] = 'size ' . floatval( $tb['size'] );
+                    $bits[] = 'at (' . floatval( $tb['x'] ?? 0 ) . ', ' . floatval( $tb['y'] ?? 0 ) . ')';
+                    if ( abs( (float) ( $tb['rotation'] ?? 0 ) ) >= 0.1 ) {
+                        $bits[] = 'rotated ' . round( (float) $tb['rotation'], 1 ) . '°';
+                    }
+                    $detail = esc_html( $tb['text'] )
+                        . '<br><span style="font-weight:400;color:#666;">' . implode( ' · ', $bits ) . '</span>';
+                    if ( ! empty( $tb['colour'] ) ) {
+                        $detail .= '<br>' . $swatch( $tb['colour'] );
+                    }
+                    $tb_rows .= $row( 'Text box ' . ( $n + 1 ), $detail );
+                }
+                if ( $tb_rows ) echo $section( 'Extra text', $tb_rows );
 
                 $hidden_list = (array) ( $d['hidden_elements'] ?? [] );
                 if ( $badge_sides ) {

@@ -618,6 +618,46 @@ function bespoke_parse_hidden_elements( $csv ) {
 }
 
 /**
+ * Sanitise an armband's extra text boxes (the customiser's "+ Add text box").
+ *
+ * Each box arrives as { text, font, colour, size, x, y, rotation }: the font
+ * as its name in the font list, the colour as hex, the rest as numbers in
+ * the preview's 1200-unit space. Empty boxes are dropped, and at most 10 are
+ * kept, matching the customiser's own limit.
+ *
+ * @param  mixed $boxes Decoded JSON list (anything else gives []).
+ * @return array[]
+ */
+function bespoke_parse_text_boxes( $boxes ) {
+    if ( ! is_array( $boxes ) ) {
+        return [];
+    }
+    $out = [];
+    foreach ( $boxes as $b ) {
+        if ( count( $out ) >= 10 ) {
+            break;
+        }
+        if ( ! is_array( $b ) ) {
+            continue;
+        }
+        $text = mb_substr( sanitize_text_field( (string) ( $b['text'] ?? '' ) ), 0, 60 );
+        if ( $text === '' ) {
+            continue;
+        }
+        $out[] = [
+            'text'     => $text,
+            'font'     => mb_substr( sanitize_text_field( (string) ( $b['font'] ?? '' ) ), 0, 100 ),
+            'colour'   => (string) sanitize_hex_color( is_string( $b['colour'] ?? null ) ? $b['colour'] : '' ),
+            'size'     => max( 0, min( 1000, round( (float) ( $b['size'] ?? 0 ), 1 ) ) ),
+            'x'        => round( (float) ( $b['x'] ?? 0 ), 1 ),
+            'y'        => round( (float) ( $b['y'] ?? 0 ), 1 ),
+            'rotation' => round( (float) ( $b['rotation'] ?? 0 ), 1 ),
+        ];
+    }
+    return $out;
+}
+
+/**
  * Parse + sanitise the INSIDE face of a double-sided armband from POST.
  *
  * The customiser sends the outside face as the usual flat bespoke_* fields
@@ -726,6 +766,8 @@ function bespoke_parse_inside_face() {
             'swap'     => ! empty( $raw['badge2_swap'] ),
         ],
         'hidden_elements' => $hidden,
+        // This face's extra text boxes (armbands).
+        'text_boxes' => bespoke_parse_text_boxes( $raw['text_boxes'] ?? [] ),
         'sizes' => [
             'badge' => floatval( $siz['badge'] ?? 0 ),
             'name'  => floatval( $siz['name']  ?? 0 ),
@@ -930,6 +972,13 @@ function bespoke_handle_add_to_cart() {
             // Server-side hard cap at 2k chars so a malicious customer
             // can't bloat session / postmeta with a megabyte of "notes".
             'notes' => mb_substr( sanitize_textarea_field( $_POST['bespoke_notes'] ?? '' ), 0, 2000 ),
+
+            // ── Extra text boxes (armbands, "+ Add text box") ─────────────────
+            // Each: text, font name, colour, size, position, rotation. JSON in
+            // one field, slashed by WP like the rest of $_POST.
+            'text_boxes' => bespoke_parse_text_boxes(
+                json_decode( wp_unslash( $_POST['bespoke_text_boxes'] ?? '' ), true )
+            ),
 
             // ── Background variant ────────────────────────────────────────────
             // Customer's pick from a per-product variant toggle:

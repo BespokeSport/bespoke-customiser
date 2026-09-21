@@ -74,7 +74,7 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
 #bespoke-customiser-root .bcp-slot-x:hover,
 #bespoke-customiser-root .bcp-slot-x:focus{position:absolute;top:4px;right:4px;margin:0 !important;padding:2px 8px !important;background:none !important;border:none !important;box-shadow:none !important;color:#777777 !important;font-size:20px !important;line-height:1 !important;cursor:pointer;}
 #bespoke-customiser-root .bcp-slot-x:hover{color:#F5F5F0 !important;}
-#bespoke-customiser-root .bcp-badge-add{display:block;width:100%;box-sizing:border-box;margin:0 0 14px;padding:12px 14px;text-align:center;background:#161616;border:1px solid #5DCAA5;border-radius:10px;color:#5DCAA5;font-size:14px;font-weight:600;cursor:pointer;user-select:none;}
+#bespoke-customiser-root .bcp-badge-add{display:block;width:100%;box-sizing:border-box;margin:0 0 14px;padding:12px 14px;text-align:center;background:#161616;border:1px solid #5DCAA5;border-radius:10px;color:#5DCAA5;font-family:inherit;font-size:14px;font-weight:600;line-height:1.3;text-transform:none;letter-spacing:0;cursor:pointer;user-select:none;}
 #bespoke-customiser-root .bcp-badge-add:hover{background:rgba(93,202,165,.10);}
 #bespoke-customiser-root .bcp-badge-links{display:flex;flex-wrap:wrap;gap:6px 18px;margin:-4px 0 14px;}
 #bespoke-customiser-root .bcp-badge-link,
@@ -104,6 +104,15 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
 #bespoke-customiser-root .bcp-fs-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:20px;font-weight:700;line-height:1.25;}
 #bespoke-customiser-root .bcp-fs-tick{flex-shrink:0;font-size:14px;color:#5DCAA5;visibility:hidden;}
 #bespoke-customiser-root .bcp-fs-opt[aria-selected="true"] .bcp-fs-tick{visibility:visible;}
+/* Extra text boxes (armbands): one card per box, each with its own text,
+   font, colour and size, and "+ Add text box" underneath. */
+#bespoke-customiser-root .bcp-tb-card{position:relative;margin:0 0 12px;padding:12px 12px 2px;background:#131313;border:1px solid #2A2A2A;border-radius:10px;}
+#bespoke-customiser-root .bcp-tb-title{margin:0 30px 10px 0;font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#888888;}
+#bespoke-customiser-root .bcp-tb-card .text-row,
+#bespoke-customiser-root .bcp-tb-card .bcp-font-select,
+#bespoke-customiser-root .bcp-tb-card .zone-row,
+#bespoke-customiser-root .bcp-tb-card .size-row{margin-bottom:10px;}
+#bespoke-customiser-root .bcp-tb-card .text-row input{box-sizing:border-box;}
 .pad-tabs{display:flex;margin-bottom:12px;border:1px solid #2A2A2A;border-radius:10px;overflow:hidden;}
 .pad-tab{flex:1;padding:9px;font-size:13px;font-weight:600;text-align:center;cursor:pointer;background:#161616;color:#888888;border:none;font-family:inherit;}
 .pad-tab.active{background:#5DCAA5;color:white;}
@@ -1225,6 +1234,16 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
     <p class="hint" id="hint-no-name">Leave blank for no text.</p>
     <!-- Add-back panel for names (Stage 2 delete + re-add). -->
     <div class="add-back-panel" id="add-back-name"></div>
+    <!-- ARMBANDS: extra text boxes (Nick, 21 Sep 2026) — extra wording,
+         names or initials, each its own piece of text on the band with its
+         own font, colour and size. Cards built by renderTextBoxes(); hidden
+         on every other product. -->
+    <div id="text-boxes-wrap" style="display:none;">
+      <div class="sec-label">Extra text <span class="opt-tag">optional</span></div>
+      <div id="text-boxes"></div>
+      <button type="button" class="bcp-badge-add" id="text-box-add" onclick="bespokeAddTextBox()">+ Add text box</button>
+      <p class="hint" id="text-box-max" style="display:none;">That's the limit of 10 text boxes.</p>
+    </div>
     </div><!-- /data-mug-hide: everything above is the normal text step, and
          is swapped out for the squad list on the Team Mug. The nav row below
          stays visible either way. -->
@@ -1397,6 +1416,7 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
       </div>
       <div class="sum-row"><span class="sum-k">Design</span><span class="sum-v" id="sum-design">Vanguard</span></div>
       <div class="sum-row"><span class="sum-k">Badge</span><span class="sum-v" id="sum-badge">Not added</span></div>
+      <div class="sum-row" id="sum-tb-row" style="display:none;"><span class="sum-k">Extra text</span><span class="sum-v" id="sum-tb"></span></div>
       <div class="sum-head" id="sum-head-left">LEFT</div>
       <div class="sum-row"><span class="sum-k">Name</span><span class="sum-v" id="sum-nL">-</span></div>
       <div class="sum-row"><span class="sum-k">Number</span><span class="sum-v" id="sum-nuL">-</span></div>
@@ -1597,6 +1617,8 @@ var S = {
   // empty via the existing hidden-elements mechanism. badgeSwap moves that
   // second spot to the LEFT (see BADGE SPOTS).
   badge2:null, badge2URL:null, badge2Mode:'same', badgeSwap:false,
+  // Armbands: extra text boxes (see EXTRA TEXT BOXES).
+  textBoxes:[],
   padSize:bespokeDefaultSize(), orderNotes:"", badgeSize:DEFSZ.badgeSize, nameSize:DEFSZ.nameSize, numSize:DEFSZ.numSize, nameFontFamily:'"Arial Black", Arial, sans-serif', numFontFamily:'"Arial Black", Arial, sans-serif', useBgAlt:false, hidden:{badgeL:false,badgeR:false,nameL:false,nameR:false,numL:false,numR:false}, selected:null, rot:{badgeL:0,badgeR:0,nameL:0,nameR:0,numL:0,numR:0},
   pos: JSON.parse(JSON.stringify(DEF)),
 
@@ -1654,6 +1676,8 @@ var BESPOKE_FACE_FIELDS = [
   // Second badge spot — per face, so the outside can be club+charity while
   // the inside stays club-only (or any mix).
   'badge2','badge2URL','badge2Mode','badgeSwap',
+  // Armbands' extra text boxes — each face has its own.
+  'textBoxes',
   // Per-face "which design's palette have we already seeded" flag. MUST be
   // snapshotted with the face: applyRegisteredDesignSVG (customiser-frontend.php)
   // re-seeds the admin's DEFAULT layer colours whenever _bcpSeededDesign !=
@@ -1759,6 +1783,8 @@ function bespokeRepaintFaceControls(){
   bespokeSyncSizeSliders();
   // Font picker shows the newly-loaded face's font.
   try { buildFontGrid('name'); buildFontGrid('num'); } catch(_){}
+  // Text box cards show the newly-loaded face's boxes.
+  try { renderTextBoxes(); } catch(_){}
   // Design gallery selection highlight + full preview repaint.
   // Left / Right badge cards reflect the newly-loaded face's badges.
   try { if (typeof bespokeShowBadge2UI === 'function') bespokeShowBadge2UI(); } catch(_){}
@@ -2000,6 +2026,16 @@ function buildFontSelect(target){
   var host = document.getElementById(target === 'num' ? 'font-select-num' : 'font-select-name');
   if (!host) return;
   var current = (target === 'num') ? S.numFontFamily : S.nameFontFamily;
+  bespokeFontSelect(host, current, function(family){
+    if (target === 'num') S.numFontFamily = family;
+    else S.nameFontFamily = family;
+    buildFontGrid(target);   // redraws the field, closed, showing the new font
+  });
+}
+// Draw a font dropdown into `host` showing `current`. `onPick(family)`
+// stores the choice and redraws the field; the preview repaint and the
+// focus return happen here. Shared by the main text and each text box.
+function bespokeFontSelect(host, current, onPick){
   var chosen  = FONTS.find(function(f){ return f.family === current; });
   var listId  = host.id + '-list';
   host.innerHTML = '';
@@ -2044,7 +2080,7 @@ function buildFontSelect(target){
     tick.setAttribute('aria-hidden', 'true');
     tick.textContent = '✓';
     li.appendChild(tick);
-    li.onclick = function(){ _bespokePickFont(target, f.family); };
+    li.onclick = function(){ _bespokePickFont(host, onPick, f.family); };
     li.onmousemove = function(){ _bespokeFontActive(host, i); };
     list.appendChild(li);
   });
@@ -2061,7 +2097,7 @@ function buildFontSelect(target){
     else if (e.key === 'ArrowUp')   { e.preventDefault(); _bespokeFontActive(host, Math.max(0, at - 1), true); }
     else if (e.key === 'Home')      { e.preventDefault(); _bespokeFontActive(host, 0, true); }
     else if (e.key === 'End')       { e.preventDefault(); _bespokeFontActive(host, opts.length - 1, true); }
-    else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (FONTS[at]) _bespokePickFont(target, FONTS[at].family); }
+    else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (FONTS[at]) _bespokePickFont(host, onPick, FONTS[at].family); }
     else if (e.key === 'Escape')    { e.preventDefault(); _bespokeFontOpen(host, false); btn.focus(); }
     else if (e.key === 'Tab')       { _bespokeFontOpen(host, false); }
   };
@@ -2109,13 +2145,208 @@ function _bespokeFontActive(host, i, scroll){
     }
   }
 }
-function _bespokePickFont(target, family){
-  if (target === 'num') S.numFontFamily = family;
-  else S.nameFontFamily = family;
-  buildFontGrid(target);   // redraws the field, closed, showing the new font
+function _bespokePickFont(host, onPick, family){
+  onPick(family);
   syncAll();
-  var btn = document.querySelector('#' + (target === 'num' ? 'font-select-num' : 'font-select-name') + ' .bcp-fs-btn');
+  var btn = host.querySelector('.bcp-fs-btn');
   if (btn) { try { btn.focus({ preventScroll: true }); } catch(_){ btn.focus(); } }
+}
+
+/* ============================================================
+   EXTRA TEXT BOXES — armbands (Nick, 21 Sep 2026)
+   ============================================================
+   "+ Add text box" adds another piece of text (extra wording, a name,
+   initials), as many as the customer likes up to TEXT_BOX_MAX. Each box
+   has its own text, font, colour and size, and is dragged, resized and
+   rotated on the preview like the main text.
+
+   S.textBoxes holds [{id, text, font, color, size}]. Positions and
+   rotation live in S.pos / S.rot under the box's id ('tb1', 'tb2' …), so
+   the existing drag code moves them. Per face on double-sided
+   ('textBoxes' is in BESPOKE_FACE_FIELDS; 'pos' and 'rot' already were).
+   Sent with the order as bespoke_text_boxes. */
+var TEXT_BOX_MAX = 10;
+// Where each new box starts, sideways from the centre of the band, so a
+// second or third box doesn't land exactly on top of the last one.
+var TEXT_BOX_STEP = [0, 150, -150, 75, -75, 225, -225, 0, 150, -150];
+
+function bespokeUseTextBoxes(){
+  return typeof bespokeBaseType === 'function' && bespokeBaseType() === 'armbands';
+}
+function bespokeTextBox(id){
+  var list = (window.S && S.textBoxes) || [];
+  for (var i = 0; i < list.length; i++){ if (list[i].id === id) return list[i]; }
+  return null;
+}
+function bespokeAddTextBox(){
+  if (!window.S) return;
+  if (!S.textBoxes) S.textBoxes = [];
+  if (S.textBoxes.length >= TEXT_BOX_MAX) return;
+  var n = 1;
+  while (bespokeTextBox('tb' + n)) n++;
+  var id = 'tb' + n;
+  // Starts in the main text's font and colour, smaller, just below it.
+  S.textBoxes.push({ id: id, text: '', font: S.nameFontFamily, color: S.nameColor || '#FFFFFF', size: 70 });
+  var base = (window.DEF && DEF.nameL) || { x: 600, y: 290 };
+  var step = TEXT_BOX_STEP[(S.textBoxes.length - 1) % TEXT_BOX_STEP.length];
+  S.pos[id] = { x: Math.round(base.x + step), y: Math.round(base.y + 70) };
+  if (!S.rot) S.rot = {};
+  S.rot[id] = 0;
+  renderTextBoxes();
+  var inp = document.getElementById('tb-text-' + id);
+  if (inp) { try { inp.focus(); } catch(_){} }
+}
+function bespokeRemoveTextBox(id){
+  if (!window.S || !S.textBoxes) return;
+  S.textBoxes = S.textBoxes.filter(function(b){ return b.id !== id; });
+  if (S.pos) delete S.pos[id];
+  if (S.rot) delete S.rot[id];
+  if (S.selected === id) S.selected = null;
+  renderTextBoxes();
+  syncAll();
+}
+// Colour changes arrive many times a second while the picker is dragged;
+// repaint once they settle.
+var _bespokeTbPaintTimer = null;
+function _bespokeTextBoxRepaint(){
+  clearTimeout(_bespokeTbPaintTimer);
+  _bespokeTbPaintTimer = setTimeout(function(){ syncAll(); }, 30);
+}
+function _bespokeTextBoxFont(b, host){
+  bespokeFontSelect(host, b.font, function(family){
+    b.font = family;
+    _bespokeTextBoxFont(b, host);
+  });
+}
+// Keep a box's size slider in step when it's resized on the preview.
+function _bespokeTextBoxSizeUI(id){
+  var b = bespokeTextBox(id);
+  if (!b) return;
+  var sl = document.getElementById('tb-size-' + id);
+  var sv = document.getElementById('tb-size-val-' + id);
+  if (sl) sl.value = b.size;
+  if (sv) sv.textContent = b.size;
+}
+// One card per text box: title and ×, the text, a font dropdown, a colour
+// swatch (opens the same colour picker as the main text) and a size slider.
+function renderTextBoxes(){
+  var wrap = document.getElementById('text-boxes-wrap');
+  if (!wrap) return;
+  var on = bespokeUseTextBoxes();
+  wrap.style.display = on ? '' : 'none';
+  if (!on || !window.S) return;
+  var host = document.getElementById('text-boxes');
+  var list = S.textBoxes || [];
+  host.innerHTML = '';
+  list.forEach(function(b, i){
+    var card = document.createElement('div');
+    card.className = 'bcp-tb-card';
+    card.setAttribute('data-tb', b.id);
+
+    var title = document.createElement('div');
+    title.className = 'bcp-tb-title';
+    title.textContent = 'Text box ' + (i + 1);
+    card.appendChild(title);
+    var x = document.createElement('button');
+    x.type = 'button';
+    x.className = 'bcp-slot-x';
+    x.setAttribute('aria-label', 'Remove text box ' + (i + 1));
+    x.textContent = '×';
+    x.onclick = function(){ bespokeRemoveTextBox(b.id); };
+    card.appendChild(x);
+
+    var row = document.createElement('div');
+    row.className = 'text-row';
+    var inp = document.createElement('input');
+    inp.type = 'text';
+    inp.id = 'tb-text-' + b.id;
+    inp.maxLength = 30;
+    inp.placeholder = 'e.g. VICE CAPTAIN or initials';
+    inp.value = b.text || '';
+    inp.setAttribute('aria-label', 'Text box ' + (i + 1) + ' text');
+    inp.oninput = function(){ b.text = inp.value; syncAll(); };
+    row.appendChild(inp);
+    card.appendChild(row);
+
+    var fs = document.createElement('div');
+    fs.className = 'bcp-font-select';
+    fs.id = 'font-select-' + b.id;
+    card.appendChild(fs);
+    _bespokeTextBoxFont(b, fs);
+
+    var zr = document.createElement('div');
+    zr.className = 'zone-row';
+    zr.innerHTML = '<div class="zone-info"><div class="zone-lbl">Colour</div></div>';
+    var ct = document.createElement('div');
+    ct.className = 'ct';
+    ct.id = 'ct-' + b.id;
+    ct.style.background = b.color;
+    var cp = document.createElement('input');
+    cp.type = 'color';
+    cp.id = 'cp-' + b.id;
+    cp.value = b.color;
+    cp.style.pointerEvents = 'none';   // the swatch opens the site's picker
+    cp.oninput = function(){ b.color = cp.value; ct.style.background = cp.value; _bespokeTextBoxRepaint(); };
+    ct.appendChild(cp);
+    zr.appendChild(ct);
+    card.appendChild(zr);
+
+    var sr = document.createElement('div');
+    sr.className = 'size-row';
+    var small = document.createElement('label');
+    small.textContent = 'Small';
+    sr.appendChild(small);
+    var sl = document.createElement('input');
+    sl.type = 'range';
+    sl.min = '30';
+    sl.max = '300';
+    sl.value = String(b.size);
+    sl.id = 'tb-size-' + b.id;
+    sl.setAttribute('aria-label', 'Text box ' + (i + 1) + ' size');
+    var large = document.createElement('label');
+    large.textContent = 'Large';
+    var sv = document.createElement('span');
+    sv.className = 'size-val';
+    sv.id = 'tb-size-val-' + b.id;
+    sv.textContent = b.size;
+    sl.oninput = function(){ b.size = parseInt(sl.value, 10) || 70; sv.textContent = b.size; syncAll(); };
+    sr.appendChild(sl);
+    sr.appendChild(large);
+    sr.appendChild(sv);
+    card.appendChild(sr);
+
+    host.appendChild(card);
+  });
+  var full = list.length >= TEXT_BOX_MAX;
+  var add = document.getElementById('text-box-add');
+  var max = document.getElementById('text-box-max');
+  if (add) add.style.display = full ? 'none' : '';
+  if (max) max.style.display = full ? '' : 'none';
+}
+// What goes to the order: the boxes with something typed, each with its
+// font's name, colour, size, position and rotation. Takes a state object
+// so the double-sided inside face can be sent from its snapshot.
+function bespokeTextBoxesPayload(st){
+  var out = [];
+  (st.textBoxes || []).forEach(function(b){
+    var txt = String(b.text || '').trim();
+    if (!txt) return;
+    var f = FONTS.find(function(x){ return x.family === b.font; });
+    var p = (st.pos && st.pos[b.id]) || { x: 0, y: 0 };
+    out.push({
+      text: txt,
+      font: f ? f.label : b.font,
+      colour: b.color,
+      size: b.size,
+      x: p.x, y: p.y,
+      rotation: (st.rot && st.rot[b.id]) || 0
+    });
+  });
+  return out;
+}
+// Review-step wording: the typed text of each box, in order.
+function bespokeTextBoxesText(){
+  return bespokeTextBoxesPayload(S).map(function(b){ return b.text; }).join(' · ');
 }
 
 
@@ -2619,6 +2850,15 @@ function updatePreview(stepId) {
     if (typeof isPlayerCard === 'function' && isPlayerCard()) {
       items = items.filter(function(it){ return it.key === 'nameL'; });
     }
+    // Armbands' extra text boxes — drawn, dragged, resized and rotated
+    // exactly like the main text, each with its own font, colour and size.
+    if (bespokeUseTextBoxes() && S.textBoxes) {
+      S.textBoxes.forEach(function(b){
+        var _tp = S.pos[b.id];
+        if (!_tp) return;
+        items.push({key:b.id, x:_tp.x, y:_tp.y, txt:b.text, size:b.size, col:b.color, sw:Math.max(8,b.size*0.12), font:b.font});
+      });
+    }
     // Drop any text items the customer has explicitly hidden via the
     // delete X button (Stage 2: per-element delete).
     items = items.filter(function(it){ return !(S.hidden && S.hidden[it.key]); });
@@ -2852,8 +3092,11 @@ function updatePreview(stepId) {
       var _invT    = String(1 / _mScaleT);
       Array.prototype.forEach.call(tl.querySelectorAll('.draggable'), function(node){
         var _key = node.getAttribute('data-drag');
-        var _mp  = _mirCfgT.positions[_key];
-        var _def = (window.DEF || {})[_key];
+        // Text boxes have no mirror position of their own: they ride on the
+        // main text's, so they sit in the same place relative to the "C".
+        var _mk  = (_key.indexOf('tb') === 0) ? 'nameL' : _key;
+        var _mp  = _mirCfgT.positions[_mk];
+        var _def = (window.DEF || {})[_mk];
         if (!_mp || !_def) return;
         var _ox = _mp.x - _mScaleT * _def.x;
         var _oy = _mp.y - _mScaleT * _def.y;
@@ -2946,6 +3189,7 @@ function setupDrag(svg, stepId) {
     if      (resizing.indexOf('badge') === 0) resizeStartSize = S.badgeSize;
     else if (resizing.indexOf('name')  === 0) resizeStartSize = S.nameSize;
     else if (resizing.indexOf('num')   === 0) resizeStartSize = S.numSize;
+    else if (resizing.indexOf('tb')    === 0) resizeStartSize = (bespokeTextBox(resizing) || {}).size || 70;
   }
   function _doResize(pt){
     if (!resizing || !resizeStart) return;
@@ -2979,6 +3223,13 @@ function setupDrag(svg, stepId) {
       if (msl) msl.value = S.numSize;
       if (msv) msv.textContent = S.numSize;
       fastPinchSize('num');
+    } else if (resizing.indexOf('tb') === 0) {
+      var _rb = bespokeTextBox(resizing);
+      if (_rb) {
+        _rb.size = Math.max(30, Math.min(300, Math.round(newSize)));
+        _bespokeTextBoxSizeUI(resizing);
+        fastPinchSize(resizing);
+      }
     }
   }
   function _endResize(){
@@ -3131,6 +3382,7 @@ function setupDrag(svg, stepId) {
       if(dragging && dragging.startsWith('badge')) { pinchKey='badge'; pinchStartSize=S.badgeSize; }
       else if(dragging && dragging.startsWith('name')) { pinchKey='name'; pinchStartSize=S.nameSize; }
       else if(dragging && dragging.startsWith('num')) { pinchKey='num'; pinchStartSize=S.numSize; }
+      else if(dragging && dragging.startsWith('tb') && bespokeTextBox(dragging)) { pinchKey=dragging; pinchStartSize=bespokeTextBox(dragging).size; }
     }
   },{passive:false});
 
@@ -3183,6 +3435,7 @@ function setupDrag(svg, stepId) {
       if(pinchKey==='badge'){ S.badgeSize=Math.round(Math.max(50,Math.min(500,pinchStartSize*ratio))); document.getElementById('badge-size-slider').value=S.badgeSize; document.getElementById('badge-size-val').textContent=S.badgeSize; }
       if(pinchKey==='name') { S.nameSize=Math.round(Math.max(40,Math.min(300,pinchStartSize*ratio))); document.getElementById('name-size-slider').value=S.nameSize; document.getElementById('name-size-val').textContent=S.nameSize; }
       if(pinchKey==='num')  { S.numSize=Math.round(Math.max(60,Math.min(220,pinchStartSize*ratio))); document.getElementById('num-size-slider').value=S.numSize; document.getElementById('num-size-val').textContent=S.numSize; }
+      if(pinchKey.indexOf('tb')===0 && bespokeTextBox(pinchKey)) { bespokeTextBox(pinchKey).size=Math.round(Math.max(30,Math.min(300,pinchStartSize*ratio))); _bespokeTextBoxSizeUI(pinchKey); }
       fastPinchSize(pinchKey);
     }
   },{passive:false});
@@ -3216,6 +3469,7 @@ function setupDrag(svg, stepId) {
     if(key.startsWith('badge')){ S.badgeSize=Math.max(50,Math.min(500,S.badgeSize+delta*4)); document.getElementById('badge-size-slider').value=S.badgeSize; document.getElementById('badge-size-val').textContent=S.badgeSize; }
     if(key.startsWith('name')) { S.nameSize=Math.max(40,Math.min(300,S.nameSize+delta*2)); document.getElementById('name-size-slider').value=S.nameSize; document.getElementById('name-size-val').textContent=S.nameSize; }
     if(key.startsWith('num'))  { S.numSize=Math.max(60,Math.min(220,S.numSize+delta*3)); document.getElementById('num-size-slider').value=S.numSize; document.getElementById('num-size-val').textContent=S.numSize; }
+    if(key.startsWith('tb') && bespokeTextBox(key)) { var _wb = bespokeTextBox(key); _wb.size=Math.max(30,Math.min(300,_wb.size+delta*2)); _bespokeTextBoxSizeUI(key); }
     syncAll();
   },{passive:false});
 }
@@ -3562,7 +3816,10 @@ function fastDragTransform(key){
  * A full syncAll runs on touchend to settle.
  */
 function fastPinchSize(kind){
-  var nodes = document.querySelectorAll('[data-drag^="' + kind + '"]');
+  // A text box ('tb3') is patched on its own — a prefix match would also
+  // catch 'tb30'-style ids.
+  var isTb  = kind.indexOf('tb') === 0;
+  var nodes = document.querySelectorAll(isTb ? '[data-drag="' + kind + '"]' : '[data-drag^="' + kind + '"]');
   if (kind === 'badge') {
     var hs   = S.badgeSize / 2;
     var hitW = Math.max(S.badgeSize + 60, 200);
@@ -3584,9 +3841,10 @@ function fastPinchSize(kind){
         rect.setAttribute('height', hitW);
       }
     }
-  } else if (kind === 'name' || kind === 'num') {
-    var newSize = (kind === 'name') ? S.nameSize : S.numSize;
-    var sw      = (kind === 'name') ? Math.max(8, newSize*0.12) : Math.max(10, newSize*0.1);
+  } else if (kind === 'name' || kind === 'num' || isTb) {
+    var newSize = isTb ? ((bespokeTextBox(kind) || {}).size || 70)
+                       : (kind === 'name') ? S.nameSize : S.numSize;
+    var sw      = (kind === 'num') ? Math.max(10, newSize*0.1) : Math.max(8, newSize*0.12);
     for (var j = 0; j < nodes.length; j++) {
       var ng = nodes[j];
       var t  = ng.querySelector('text');
@@ -4743,6 +5001,12 @@ function fillSummary(){
   // Armbands say which badge is on which side.
   document.getElementById('sum-badge').textContent =
     (bespokeBaseType() === 'armbands') ? bespokeBadgeSidesText() : (S.badge || 'Not added');
+  // Armbands' extra text boxes, when there are any.
+  var _tbTxt = bespokeUseTextBoxes() ? bespokeTextBoxesText() : '';
+  var _tbRow = document.getElementById('sum-tb-row');
+  if (_tbRow) _tbRow.style.display = _tbTxt ? 'flex' : 'none';
+  var _tbVal = document.getElementById('sum-tb');
+  if (_tbVal) _tbVal.textContent = _tbTxt;
   S.orderNotes = document.getElementById('order-notes').value;
   var notesRow = document.getElementById('sum-notes-row');
   if(notesRow) { notesRow.style.display = S.orderNotes ? 'flex' : 'none'; }
@@ -4771,7 +5035,7 @@ function fillSummary(){
   setSumRow('sd-nu',  'sh-nu',  S.numColor,  null);
 }
 function reset(){
-  S={step:0,bgColor:'#feef00',patColor:'#211d33',patColors:[],bgGradient:null,patGradients:[],nameColor:DEFCOL.name,numColor:DEFCOL.num,nameL:'',nameR:'',numL:'',numR:'',sameName:true,sameNum:true,sameBadge:true,badge:null,badgeURL:null,badge2:null,badge2URL:null,badge2Mode:'same',badgeSwap:false,design:DEFDESIGN,padSize:bespokeDefaultSize(),orderNotes:"",badgeSize:DEFSZ.badgeSize,nameSize:DEFSZ.nameSize,numSize:DEFSZ.numSize,nameFontFamily:'"Arial Black", Arial, sans-serif',numFontFamily:'"Arial Black", Arial, sans-serif',useBgAlt:false, hidden:{badgeL:false,badgeR:false,nameL:false,nameR:false,numL:false,numR:false}, selected:null, rot:{badgeL:0,badgeR:0,nameL:0,nameR:0,numL:0,numR:0},pos:JSON.parse(JSON.stringify(DEF))};
+  S={step:0,bgColor:'#feef00',patColor:'#211d33',patColors:[],bgGradient:null,patGradients:[],nameColor:DEFCOL.name,numColor:DEFCOL.num,nameL:'',nameR:'',numL:'',numR:'',sameName:true,sameNum:true,sameBadge:true,badge:null,badgeURL:null,badge2:null,badge2URL:null,badge2Mode:'same',badgeSwap:false,textBoxes:[],design:DEFDESIGN,padSize:bespokeDefaultSize(),orderNotes:"",badgeSize:DEFSZ.badgeSize,nameSize:DEFSZ.nameSize,numSize:DEFSZ.numSize,nameFontFamily:'"Arial Black", Arial, sans-serif',numFontFamily:'"Arial Black", Arial, sans-serif',useBgAlt:false, hidden:{badgeL:false,badgeR:false,nameL:false,nameR:false,numL:false,numR:false}, selected:null, rot:{badgeL:0,badgeR:0,nameL:0,nameR:0,numL:0,numR:0},pos:JSON.parse(JSON.stringify(DEF))};
   previews={};
   for(var i=0;i<6;i++){var pb=document.getElementById('pb'+i);if(pb)pb.innerHTML='';}
   document.getElementById('s6').classList.remove('active');
@@ -4789,6 +5053,7 @@ function reset(){
   try { bespokeShowBadge2UI(); } catch(_){}
   // Fresh S is back on the default font — redraw the pickers to match.
   try { buildFontGrid('name'); buildFontGrid('num'); } catch(_){}
+  try { renderTextBoxes(); } catch(_){}
   goTo(0);
 }
 
@@ -5371,6 +5636,8 @@ function applyStepConfig(){
   try { bespokeBuildFaceSwitcher(); } catch(_){}
   // Left / Right badge cards — reveal themselves only on armband base types.
   try { bespokeShowBadge2UI(); } catch(_){}
+  // Extra text boxes — armband base types only.
+  try { renderTextBoxes(); } catch(_){}
 
   /* Land on the first VISIBLE step.
 
@@ -6568,6 +6835,8 @@ function _bespokeFaceInsideJson(data){
     // "Swap sides" put it on the left.
     badge2_mode: data.badge2Mode || 'same',
     badge2_swap: !!(data.badgeSwap && (data.badge2Mode || 'same') !== 'same'),
+    // This face's extra text boxes (armbands).
+    text_boxes: bespokeTextBoxesPayload(data),
     colours: {
       background:  data.bgColor, pattern: data.patColor,
       patterns:    patCols,
@@ -6909,6 +7178,11 @@ function _bespokeCommitAddToCart(cfg, btn, insideFace) {
     var numFont  = FONTS.find(function(f){return f.family===S.numFontFamily;});
     formData.append('bespoke_font_name',     nameFont ? nameFont.label : S.nameFontFamily);
     formData.append('bespoke_font_number',   numFont  ? numFont.label  : S.numFontFamily);
+
+    // Extra text boxes (armbands) — JSON list of the boxes with text in
+    // them: text, font name, colour, size, position, rotation. "[]" when
+    // there are none.
+    formData.append('bespoke_text_boxes', JSON.stringify(bespokeTextBoxesPayload(S)));
 
     // Badge
     formData.append('bespoke_badge_url',      badgeData.url      || '');
