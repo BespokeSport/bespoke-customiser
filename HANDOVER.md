@@ -993,9 +993,9 @@ paste-ready copy: <https://claude.ai/code/artifact/6680476b-51b8-4db5-ab7e-15826
    Strict-Transport-Security sent on every page. **Tracking:** live now runs Meta for
    WooCommerce only (the plugin Meta renamed from Facebook for WooCommerce; folder still
    `facebook-for-woocommerce`), one pixel per page. On staging, Meta pixel for
-   WordPress, Meta for WooCommerce, Google for WooCommerce and Site Kit are off, but
-   "Google Analytics for WooCommerce" (`woocommerce-google-analytics-integration`) still
-   sends staging visits to live's GA4 property (G-B9X…) — to deactivate.
+   WordPress, Meta for WooCommerce, Google for WooCommerce, Site Kit and "Google
+   Analytics for WooCommerce" (`woocommerce-google-analytics-integration`) are all off;
+   checked 21 Sep, staging pages send nothing to Facebook or GA4.
 
    **Armband badge section rebuilt, 21 Sep 2026** (from the mockup Nick approved). After
    the club badge is uploaded, the upload box gives way to a Left and a Right card. The
@@ -1023,8 +1023,29 @@ paste-ready copy: <https://claude.ai/code/artifact/6680476b-51b8-4db5-ab7e-15826
    right"; double-sided with the inside swapped → outside "Club badge on both sides",
    "Inside badges: Second badge left, club badge right"; referee → "Club badge left,
    second badge right". The one-badge basket read "Club badge on both sides", which
-   exposed the removed-elements bug in §6.13. Fixed the same day; it needs
-   customiser-ajax.php and customiser-woocommerce.php uploading again.
+   exposed the removed-elements bug in §6.13. Fixed the same day, uploaded and
+   retested: one badge only → "Club badge left, right side empty" (swapped: "Club
+   badge right, left side empty"), and a shin pad basket with the right name removed
+   → "Removed: Right name". That exposed one more display gap: the typed text of a
+   removed name still showed as "Right pad: …". Commit 89ccf16 leaves removed shin pad /
+   grip sock text out of the basket line and shows "Removed by customer" on the admin
+   card (not yet uploaded).
+
+   **Font dropdown, 21 Sep 2026** (commit 1453170, not yet uploaded): on armbands
+   (base type, so captains, double-sided, referee and remembrance) the Text step's
+   card strip becomes one field that opens into a list, each font's name set in that
+   font. Every other product keeps the cards. It reads "Choose a font" until one is
+   picked, because armband text starts in Arial Black, which isn't in Nick's
+   uploaded list (12 fonts, "Villain" first). The uploaded-fonts script in
+   customiser-frontend.php used to wait for `.font-card` elements, which armbands no
+   longer have. It now waits for `FONTS` / `buildFontGrid()` and redraws both pickers
+   through it. Previewed on the staging page (code loaded into Claude's browser only):
+   all 12 fonts load in the list, none clipped.
+
+   **Fixes 3–6 checked on staging 21 Sep: none done yet.** Armband Line 1 labels are
+   still the old ages, referee's Length still lacks 16/20cm, the pennant is still a
+   simple £12 product, the footer links still point at "#" with "© 2026 BEspoke
+   Sports", and sleeves / player cards still have no size buttons.
 
 10. **Meta tracking is failing.** Every page POSTs to Facebook's conversions endpoint and
     gets a 500 back. Unrelated to any of our work and invisible to visitors, but if
