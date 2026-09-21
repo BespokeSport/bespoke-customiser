@@ -230,3 +230,31 @@ function bespoke_header_cart_fragment( $fragments ) {
 		. ( $count > 0 ? '' : ' hidden' ) . '>' . esc_html( $count ) . '</span>';
 	return $fragments;
 }
+
+/**
+ * Two browser security headers, on every front-end page. Added 21 Sep 2026;
+ * both were missing on staging and live in the 9 and 13 Sep checks.
+ *
+ * X-Frame-Options: SAMEORIGIN — no other website can show this shop inside
+ * one of its own pages. That trick ("clickjacking") lays an invisible copy of
+ * the site under a decoy page, so a click that seems to land on theirs really
+ * presses a button on ours — in My Account, or the basket. Payments still
+ * come to us either way; the risk is to what signed-in customers click.
+ * SAMEORIGIN keeps the site's own frames working (Elementor's editor, the
+ * Customizer). WordPress already sends it on wp-admin and the login page.
+ *
+ * Strict-Transport-Security — browsers remember to use https only, for a
+ * year, so nobody on shared Wi-Fi can quietly drop a visit to plain http.
+ * Sent only over https, and without includeSubDomains, so the staging site
+ * and any other subdomain decide for themselves.
+ */
+add_action( 'send_headers', 'bespoke_security_headers' );
+function bespoke_security_headers() {
+	if ( headers_sent() ) {
+		return;
+	}
+	header( 'X-Frame-Options: SAMEORIGIN' );
+	if ( is_ssl() ) {
+		header( 'Strict-Transport-Security: max-age=31536000' );
+	}
+}
