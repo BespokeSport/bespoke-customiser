@@ -964,6 +964,15 @@ paste-ready copy: <https://claude.ai/code/artifact/6680476b-51b8-4db5-ab7e-15826
    first: a clearer badge section (upload, "+ Add another badge", "Swap sides"), a
    Photoshop-style font dropdown, and "Add text box" with no fixed limit.
 
+   **Verified on staging 21 Sep 2026, after Nick's uploads** (real add-to-cart, cart
+   line read back): corner flags 1 / 4 / 6 → £20 / £60 / £90; grip socks XL outside
+   £12, XL inside and outside £14, S inside and outside £12; X-Frame-Options and
+   Strict-Transport-Security sent on every page. **Tracking:** live now runs Meta for
+   WooCommerce only (the plugin Meta renamed from Facebook for WooCommerce; folder still
+   `facebook-for-woocommerce`), one pixel per page. On staging, Meta pixel for
+   WordPress, Meta for WooCommerce and Google for WooCommerce are off, but Site Kit by
+   Google still sends staging visits to live's GA4 property (G-B9X…) — to deactivate.
+
 10. **Meta tracking is failing.** Every page POSTs to Facebook's conversions endpoint and
     gets a 500 back. Unrelated to any of our work and invisible to visitors, but if
     conversion data is expected at launch it currently will not arrive.
