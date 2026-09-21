@@ -237,48 +237,24 @@ function bespoke_render_customiser( $atts ) {
         window.BESPOKE_CUSTOM_FONTS = <?php echo wp_json_encode( $js_fonts ); ?>;
 
         (function(){
-            // Wait until the customiser has populated window.FONTS, then replace it
-            // with the uploaded fonts and rebuild the .font-card grid in the picker.
+            // Wait until the customiser has set up window.FONTS and its own
+            // picker builder, swap the uploaded fonts into the list, then let
+            // buildFontGrid() redraw both pickers (Name and Number).
+            //
+            // This used to wait for .font-card elements and draw its own cards.
+            // Armbands now use a font dropdown with no cards, so that wait
+            // would never have ended there. Its own cards also guessed which
+            // picker they were in from markup that doesn't exist, so any grid
+            // it redrew behaved as the Name picker.
             function rebuildPicker() {
-                if (!window.FONTS || !document.querySelector('.font-card')) {
+                if (!window.FONTS || !window.S || typeof window.buildFontGrid !== 'function') {
                     return setTimeout(rebuildPicker, 200);
                 }
                 // Replace FONTS contents (mutate in place so internal references update)
                 window.FONTS.length = 0;
                 window.BESPOKE_CUSTOM_FONTS.forEach(function(f){ window.FONTS.push(f); });
-
-                // Rebuild every .font-card grid on the page (Name + Number tabs each have one)
-                var grids = new Set();
-                document.querySelectorAll('.font-card').forEach(function(c){ grids.add(c.parentElement); });
-
-                grids.forEach(function(grid){
-                    // Detect which target this grid is for (name vs num) from existing cards
-                    var firstCard = grid.querySelector('.font-card');
-                    var isNum = grid.closest('[data-target=num], .step-num, #step-num') || (firstCard && firstCard.getAttribute('data-target') === 'num');
-                    var target = isNum ? 'num' : 'name';
-                    var currentFamily = window.S ? (target === 'num' ? window.S.numFontFamily : window.S.nameFontFamily) : null;
-
-                    grid.innerHTML = '';
-                    window.FONTS.forEach(function(f){
-                        var card = document.createElement('div');
-                        card.className = 'font-card' + (currentFamily === f.family ? ' sel' : '');
-                        card.setAttribute('data-target', target);
-                        card.innerHTML = '<div class="font-preview" style="font-family:' + f.family + '">' + (f.preview || 'SMITH') + '</div><div class="font-name">' + f.label + '</div>';
-                        card.addEventListener('click', function(){
-                            grid.querySelectorAll('.font-card').forEach(function(c){ c.classList.remove('sel'); });
-                            card.classList.add('sel');
-                            if (window.S) {
-                                if (target === 'num') window.S.numFontFamily = f.family;
-                                else window.S.nameFontFamily = f.family;
-                            }
-                            // Trigger SVG re-render (function name varies; try common ones)
-                            if (typeof window.makeSVG === 'function') window.makeSVG();
-                            if (typeof window.render === 'function') window.render();
-                            if (typeof window.updatePreview === 'function') window.updatePreview();
-                        });
-                        grid.appendChild(card);
-                    });
-                });
+                window.buildFontGrid('name');
+                window.buildFontGrid('num');
             }
 
             if (document.readyState === 'loading') {
