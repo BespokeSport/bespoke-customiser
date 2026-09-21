@@ -603,10 +603,10 @@ function bespoke_render_cart_shinpads( $item_data, $d ) {
         ];
     }
 
-    // Left pad – only show if name or number was entered
+    // Left pad – only show if name or number was entered (and not removed)
     $left_parts = array_filter( [
-        $d['left']['name']   ?? '',
-        $d['left']['number'] ?? '',
+        bespoke_printed_text( $d, 'left', 'name' ),
+        bespoke_printed_text( $d, 'left', 'number' ),
     ] );
     if ( $left_parts ) {
         $item_data[] = [
@@ -617,8 +617,8 @@ function bespoke_render_cart_shinpads( $item_data, $d ) {
 
     // Right pad
     $right_parts = array_filter( [
-        $d['right']['name']   ?? '',
-        $d['right']['number'] ?? '',
+        bespoke_printed_text( $d, 'right', 'name' ),
+        bespoke_printed_text( $d, 'right', 'number' ),
     ] );
     if ( $right_parts ) {
         $item_data[] = [
@@ -665,8 +665,8 @@ function bespoke_render_cart_gripsocks( $item_data, $d ) {
         $item_data[] = [ 'name' => 'Size', 'value' => esc_html( $d['size'] ) ];
     }
     $left_parts = array_filter( [
-        $d['left']['name']   ?? '',
-        $d['left']['number'] ?? '',
+        bespoke_printed_text( $d, 'left', 'name' ),
+        bespoke_printed_text( $d, 'left', 'number' ),
     ] );
     if ( $left_parts ) {
         $item_data[] = [
@@ -675,8 +675,8 @@ function bespoke_render_cart_gripsocks( $item_data, $d ) {
         ];
     }
     $right_parts = array_filter( [
-        $d['right']['name']   ?? '',
-        $d['right']['number'] ?? '',
+        bespoke_printed_text( $d, 'right', 'name' ),
+        bespoke_printed_text( $d, 'right', 'number' ),
     ] );
     if ( $right_parts ) {
         $item_data[] = [
@@ -863,13 +863,20 @@ function bespoke_render_admin_shinpads( $d, $item ) {
                     $row( 'Size',   $d['size']   ?? '' ) .
                     $row( 'Design', esc_html( bespoke_design_label( $d['design'] ?? '' ) ) )
                 );
+                // A name or number the customer removed says so, rather
+                // than showing the typed text as if it were to be printed.
+                $pad_text = function( $side, $kind ) use ( $d ) {
+                    return bespoke_text_removed( $d, $side, $kind )
+                        ? '<span style="color:#aaa;">Removed by customer</span>'
+                        : ( $d[ $side ][ $kind ] ?? '' );
+                };
                 echo $section( 'Left pad',
-                    $row( 'Name',   $d['left']['name']   ?? '' ) .
-                    $row( 'Number', $d['left']['number'] ?? '' )
+                    $row( 'Name',   $pad_text( 'left', 'name' ) ) .
+                    $row( 'Number', $pad_text( 'left', 'number' ) )
                 );
                 echo $section( 'Right pad',
-                    $row( 'Name',   $d['right']['name']   ?? '' ) .
-                    $row( 'Number', $d['right']['number'] ?? '' )
+                    $row( 'Name',   $pad_text( 'right', 'name' ) ) .
+                    $row( 'Number', $pad_text( 'right', 'number' ) )
                 );
                 ?>
             </div>
@@ -937,9 +944,13 @@ function bespoke_render_admin_shinpads( $d, $item ) {
                         esc_url( $d['badge']['url'] ),
                         esc_url( $d['badge']['url'] )
                     );
+                    // Either badge position the customer removed.
+                    $gone = bespoke_format_hidden( array_values( array_intersect(
+                        (array) ( $d['hidden_elements'] ?? [] ), [ 'badgeL', 'badgeR' ] ) ) );
                     echo $section( 'Club badge',
                         $row( 'Badge image', $badge_html ) .
-                        $row( 'Filename',    esc_html( $d['badge']['filename'] ?? '' ) )
+                        $row( 'Filename',    esc_html( $d['badge']['filename'] ?? '' ) ) .
+                        ( $gone !== '' ? $row( 'Removed', esc_html( $gone ) ) : '' )
                     );
                 } else {
                     echo $section( 'Club badge', $row( 'Badge image', 'Not added' ) );
@@ -1046,13 +1057,20 @@ function bespoke_render_admin_gripsocks( $d, $item ) {
                 echo $section( 'Product',
                     $row( 'Size', $d['size'] ?? '' )
                 );
+                // A name or number the customer removed says so, rather
+                // than showing the typed text as if it were to be printed.
+                $sock_text = function( $side, $kind ) use ( $d ) {
+                    return bespoke_text_removed( $d, $side, $kind )
+                        ? '<span style="color:#aaa;">Removed by customer</span>'
+                        : ( $d[ $side ][ $kind ] ?? '' );
+                };
                 echo $section( 'Left sock',
-                    $row( 'Name',   $d['left']['name']   ?? '' ) .
-                    $row( 'Number', $d['left']['number'] ?? '' )
+                    $row( 'Name',   $sock_text( 'left', 'name' ) ) .
+                    $row( 'Number', $sock_text( 'left', 'number' ) )
                 );
                 echo $section( 'Right sock',
-                    $row( 'Name',   $d['right']['name']   ?? '' ) .
-                    $row( 'Number', $d['right']['number'] ?? '' )
+                    $row( 'Name',   $sock_text( 'right', 'name' ) ) .
+                    $row( 'Number', $sock_text( 'right', 'number' ) )
                 );
                 ?>
             </div>
@@ -1076,9 +1094,13 @@ function bespoke_render_admin_gripsocks( $d, $item ) {
                         esc_url( $d['badge']['url'] ),
                         esc_url( $d['badge']['url'] )
                     );
+                    // Either badge position the customer removed.
+                    $gone = bespoke_format_hidden( array_values( array_intersect(
+                        (array) ( $d['hidden_elements'] ?? [] ), [ 'badgeL', 'badgeR' ] ) ) );
                     echo $section( 'Club badge',
                         $row( 'Badge image', $badge_html ) .
-                        $row( 'Filename',    esc_html( $d['badge']['filename'] ?? '' ) )
+                        $row( 'Filename',    esc_html( $d['badge']['filename'] ?? '' ) ) .
+                        ( $gone !== '' ? $row( 'Removed', esc_html( $gone ) ) : '' )
                     );
                 } else {
                     echo $section( 'Club badge', $row( 'Badge image', 'Not added' ) );
@@ -1182,6 +1204,24 @@ function bespoke_format_hidden( $hidden ) {
     if ( empty( $hidden ) || ! is_array( $hidden ) ) return '';
     $labels = array_map( 'bespoke_friendly_key', $hidden );
     return implode( ', ', $labels );
+}
+
+/**
+ * Did the customer remove this pad / sock's name or number from the design?
+ * $side is 'left' or 'right', $kind 'name' or 'number'.
+ */
+function bespoke_text_removed( $d, $side, $kind ) {
+    $key = ( $kind === 'number' ? 'num' : 'name' ) . ( $side === 'right' ? 'R' : 'L' );
+    return in_array( $key, (array) ( $d['hidden_elements'] ?? [] ), true );
+}
+
+/**
+ * A pad / sock's name or number as it will be printed: '' once the customer
+ * has removed it. The typed text stays in the order data, so without this a
+ * deleted name still read as something to print.
+ */
+function bespoke_printed_text( $d, $side, $kind ) {
+    return bespoke_text_removed( $d, $side, $kind ) ? '' : (string) ( $d[ $side ][ $kind ] ?? '' );
 }
 
 /**
