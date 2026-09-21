@@ -1563,8 +1563,18 @@ function bespoke_render_customiser( $atts ) {
                             clone.setAttribute('height', '800');
 
                             if (badgeServerUrl) {
+                                // Only the CLUB badge's images. An armband's
+                                // second badge (charity / sponsor logo) sits
+                                // in the same layer with its own local href,
+                                // which inlineAllImages() below embeds as it
+                                // is. Swapping every image here drew the club
+                                // badge on both sides of the saved preview.
+                                var clubLocal = (window.S && window.S.badgeURL) || '';
                                 var badgeImgs = clone.querySelectorAll('[id^="badge-layer-"] image');
                                 for (var i = 0; i < badgeImgs.length; i++) {
+                                    var curHref = badgeImgs[i].getAttribute('href') ||
+                                                  badgeImgs[i].getAttributeNS('http://www.w3.org/1999/xlink', 'href') || '';
+                                    if (clubLocal && curHref !== clubLocal) continue;
                                     badgeImgs[i].removeAttributeNS('http://www.w3.org/1999/xlink', 'href');
                                     badgeImgs[i].setAttribute('href', badgeServerUrl);
                                 }
@@ -1647,8 +1657,8 @@ function bespoke_render_customiser( $atts ) {
 
             /* Reorder the Badge step on mobile — BADGE FIRST (designer
                call, 18 Jul 2026), matching the new desktop DOM order:
-               [face switcher] → Upload badge (+ share toggle, second-
-               badge chooser, add-back) → Band thickness → Select size →
+               [face switcher] → Upload badge (+ armband Left / Right
+               badge cards, add-back) → Band thickness → Select size →
                Preview → player-card photo block → Badge size slider →
                For-cleanest-result note.
 
@@ -1670,7 +1680,6 @@ function bespoke_render_customiser( $atts ) {
             .bcp-badge-step > .sec-label[data-bcp="upload"] { order:  2; }
             .bcp-badge-step > .upload-zone                  { order:  3; }
             .bcp-badge-step > .badge-row                    { order:  4; }
-            .bcp-badge-step > #badge-share-row              { order:  5; }
             .bcp-badge-step > #badge2-wrap                  { order:  6; }
             .bcp-badge-step > .add-back-panel               { order:  7; }
             .bcp-badge-step > .bg-variant-row               { order:  8; }

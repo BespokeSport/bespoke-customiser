@@ -62,6 +62,25 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
 .tog-track.on .tog-thumb{left:21px;}
 .tog-label{font-size:13px;color:#F5F5F0;font-weight:500;}
 .tog-sub{font-size:11px;color:#666666;}
+/* Armband badge spots: Left / Right cards, "+ Add another badge", small
+   text links. Scoped to the root with !important because the theme's
+   button:hover / button:focus rules would otherwise repaint them. */
+#bespoke-customiser-root .bcp-badge-slots{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
+#bespoke-customiser-root .bcp-badge-slot{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;min-height:96px;padding:10px;background:#161616;border:1px solid #2A2A2A;border-radius:10px;}
+#bespoke-customiser-root .bcp-slot-side{font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#888888;}
+#bespoke-customiser-root .bcp-slot-img{width:52px;height:52px;object-fit:contain;border-radius:4px;}
+#bespoke-customiser-root .bcp-slot-empty{display:flex;align-items:center;justify-content:center;width:52px;height:52px;border:1.5px dashed #3A3A3A;border-radius:8px;font-size:11px;color:#777777;}
+#bespoke-customiser-root .bcp-slot-x,
+#bespoke-customiser-root .bcp-slot-x:hover,
+#bespoke-customiser-root .bcp-slot-x:focus{position:absolute;top:4px;right:4px;margin:0 !important;padding:2px 8px !important;background:none !important;border:none !important;box-shadow:none !important;color:#777777 !important;font-size:20px !important;line-height:1 !important;cursor:pointer;}
+#bespoke-customiser-root .bcp-slot-x:hover{color:#F5F5F0 !important;}
+#bespoke-customiser-root .bcp-badge-add{display:block;width:100%;box-sizing:border-box;margin:0 0 14px;padding:12px 14px;text-align:center;background:#161616;border:1px solid #5DCAA5;border-radius:10px;color:#5DCAA5;font-size:14px;font-weight:600;cursor:pointer;user-select:none;}
+#bespoke-customiser-root .bcp-badge-add:hover{background:rgba(93,202,165,.10);}
+#bespoke-customiser-root .bcp-badge-links{display:flex;flex-wrap:wrap;gap:6px 18px;margin:-4px 0 14px;}
+#bespoke-customiser-root .bcp-badge-link,
+#bespoke-customiser-root .bcp-badge-link:hover,
+#bespoke-customiser-root .bcp-badge-link:focus{margin:0 !important;padding:0 !important;background:none !important;border:none !important;box-shadow:none !important;color:#8A8A85 !important;font-family:inherit !important;font-size:12px !important;font-weight:400 !important;line-height:1.5 !important;text-decoration:underline !important;text-transform:none !important;letter-spacing:0 !important;cursor:pointer;}
+#bespoke-customiser-root .bcp-badge-link:hover{color:#5DCAA5 !important;}
 .pad-tabs{display:flex;margin-bottom:12px;border:1px solid #2A2A2A;border-radius:10px;overflow:hidden;}
 .pad-tab{flex:1;padding:9px;font-size:13px;font-weight:600;text-align:center;cursor:pointer;background:#161616;color:#888888;border:none;font-family:inherit;}
 .pad-tab.active{background:#5DCAA5;color:white;}
@@ -202,7 +221,7 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
 /* Touch devices get NO in-canvas delete X, on any product: the tap that
    stops a momentum scroll is completely stationary, so no amount of
    tap-vs-scroll detection makes an always-visible X safe under a thumb.
-   Armbands replace it with the Second-badge chooser on the badge step;
+   Armbands replace it with the Left / Right badge cards on the badge step;
    desktop (fine pointer) keeps the X for pads etc., where a mouse can't
    mis-scroll. */
 @media (pointer: coarse) {
@@ -870,35 +889,39 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
       <span style="font-size:13px;color:#F5F5F0;flex:1;" id="badge-fname"></span>
       <button onclick="removeBadge()" style="background:none;border:none;cursor:pointer;color:#555555;font-size:20px;line-height:1;padding:0 4px;">×</button>
     </div>
-    <!-- Double-sided armbands only: share one badge across both faces.
-         Revealed by bespokeBuildFaceSwitcher(); hidden for every other
-         product. ON by default — an upload applies to Outside AND Inside;
-         turn off to give each face its own badge. -->
-    <div class="toggle-row" id="badge-share-row" style="display:none;" onclick="toggleSameBadge()"><div class="tog-track on" id="badge-tog"><div class="tog-thumb"></div></div><div><div class="tog-label">Same badge on both sides</div><div class="tog-sub">Turn off to upload a different badge for each side</div></div></div>
-    <!-- ARMBANDS ONLY (both types): what the SECOND badge position shows.
-         Replaces the old in-canvas delete X (accidental scroll-tap
-         deletions on mobile). Revealed by bespokeShowBadge2UI(); hidden
-         for every other product. -->
+    <!-- ARMBANDS ONLY (both types): where the badges go, from the mockup
+         Nick approved on 21 Sep 2026. Once the club badge is uploaded the
+         upload box gives way to a Left / Right card for each spot:
+           - the club badge goes on both sides to begin with
+           - "+ Add another badge" opens the file picker straight away and
+             puts the new badge on the right
+           - "Swap sides" appears once the two sides differ
+           - the × on the second spot leaves that side empty
+           - "Put the club badge on both sides" undoes that.
+         Drawn by bespokeShowBadge2UI(); hidden for every other product.
+         Replaces the "Badge on the left" and "Same badge left & right"
+         toggles, which customers found confusing. -->
     <div id="badge2-wrap" style="display:none;">
-      <!-- Left-hand badge on/off. Mirrors the right-hand chooser below so
-           a customer can end up with both badges, either one, or none at
-           all. Before this, the right spot could be emptied but the left
-           could not: hideDraggable() refuses to hide the last badge, and
-           the in-canvas delete X is disabled on armbands after repeated
-           accidental scroll-tap deletions on mobile. -->
-      <div class="toggle-row" id="badgeL-row" onclick="toggleBadgeLeft()"><div class="tog-track on" id="badgeL-tog"><div class="tog-thumb"></div></div><div><div class="tog-label">Badge on the left</div><div class="tog-sub">Turn off to leave the left-hand spot empty</div></div></div>
-      <div class="toggle-row" id="badge2-share-row" onclick="toggleBadge2Same()"><div class="tog-track on" id="badge2-tog"><div class="tog-thumb"></div></div><div><div class="tog-label">Same badge left &amp; right</div><div class="tog-sub">Turn off to add a different badge on the right — or leave it for one badge only</div></div></div>
-      <div id="badge2-upload-block" style="display:none;">
-        <label class="upload-zone" id="upload-zone-2"><input type="file" accept="image/*" id="badge2-file" onchange="handleBadge2(event)"/>
-          <div class="upload-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#5DCAA5" stroke-width="2" stroke-linecap="round"><path d="M10 3v10M6 7l4-4 4 4"/><path d="M4 15h12"/></svg></div>
-          <div class="upload-title">Tap to upload right-hand badge</div><div class="upload-sub">e.g. a charity or sponsor logo</div>
-        </label>
-        <div class="badge-row" id="badge2-row">
-          <img id="badge2-thumb" style="width:36px;height:36px;object-fit:contain;border-radius:4px;" src="" alt=""/>
-          <span style="font-size:13px;color:#F5F5F0;flex:1;" id="badge2-fname"></span>
-          <button onclick="removeBadge2()" style="background:none;border:none;cursor:pointer;color:#555555;font-size:20px;line-height:1;padding:0 4px;">×</button>
+      <div id="badge-spots" style="display:none;">
+        <div class="bcp-badge-slots">
+          <div class="bcp-badge-slot" id="badge-slot-L"></div>
+          <div class="bcp-badge-slot" id="badge-slot-R"></div>
+        </div>
+        <label class="bcp-badge-add" id="badge2-add" for="badge2-file" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}">+ Add another badge</label>
+        <input type="file" accept="image/*" id="badge2-file" style="display:none;" onchange="handleBadge2(event)"/>
+        <div class="toggle-row" id="badge-swap-row" onclick="toggleBadgeSwap()"><div class="tog-track" id="badge-swap-tog"><div class="tog-thumb"></div></div><div><div class="tog-label">Swap sides</div><div class="tog-sub">Move each badge to the other side</div></div></div>
+        <div class="bcp-badge-links">
+          <button type="button" class="bcp-badge-link" id="badge-both-link" onclick="bespokeClubBothSides()">Put the club badge on both sides</button>
+          <label class="bcp-badge-link" for="badge-file" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}">Change club badge</label>
+          <button type="button" class="bcp-badge-link" onclick="bespokeRemoveAllBadges()">Remove badges</button>
         </div>
       </div>
+      <!-- Double-sided armbands only: share the club badge across both
+           faces. Revealed by bespokeBuildFaceSwitcher(). ON by default — an
+           upload applies to Outside AND Inside; turn off to give each face
+           its own. Says "inside and outside" rather than "both sides", which
+           now means left and right in the controls above. -->
+      <div class="toggle-row" id="badge-share-row" style="display:none;" onclick="toggleSameBadge()"><div class="tog-track on" id="badge-tog"><div class="tog-thumb"></div></div><div><div class="tog-label">Same club badge inside and outside</div><div class="tog-sub">Turn off to upload a different club badge for the inside</div></div></div>
     </div>
     <!-- 2. Background-variant toggle. Shown only when the admin has
          uploaded a Background (Alt) for this product. The button labels
@@ -1544,8 +1567,9 @@ var S = {
   // Second badge spot (armbands): what position R shows. 'same' (default)
   // renders the club badge in both positions as before; 'different' renders
   // badge2 (e.g. a charity/sponsor logo) at position R; 'none' leaves R
-  // empty via the existing hidden-elements mechanism.
-  badge2:null, badge2URL:null, badge2Mode:'same',
+  // empty via the existing hidden-elements mechanism. badgeSwap moves that
+  // second spot to the LEFT (see BADGE SPOTS).
+  badge2:null, badge2URL:null, badge2Mode:'same', badgeSwap:false,
   padSize:bespokeDefaultSize(), orderNotes:"", badgeSize:DEFSZ.badgeSize, nameSize:DEFSZ.nameSize, numSize:DEFSZ.numSize, nameFontFamily:'"Arial Black", Arial, sans-serif', numFontFamily:'"Arial Black", Arial, sans-serif', useBgAlt:false, hidden:{badgeL:false,badgeR:false,nameL:false,nameR:false,numL:false,numR:false}, selected:null, rot:{badgeL:0,badgeR:0,nameL:0,nameR:0,numL:0,numR:0},
   pos: JSON.parse(JSON.stringify(DEF)),
 
@@ -1602,7 +1626,7 @@ var BESPOKE_FACE_FIELDS = [
   'badge','badgeURL','design',
   // Second badge spot — per face, so the outside can be club+charity while
   // the inside stays club-only (or any mix).
-  'badge2','badge2URL','badge2Mode',
+  'badge2','badge2URL','badge2Mode','badgeSwap',
   // Per-face "which design's palette have we already seeded" flag. MUST be
   // snapshotted with the face: applyRegisteredDesignSVG (customiser-frontend.php)
   // re-seeds the admin's DEFAULT layer colours whenever _bcpSeededDesign !=
@@ -1707,7 +1731,7 @@ function bespokeRepaintFaceControls(){
   // Size sliders + their value labels.
   bespokeSyncSizeSliders();
   // Design gallery selection highlight + full preview repaint.
-  // Second-badge chooser reflects the newly-loaded face's badge2 state.
+  // Left / Right badge cards reflect the newly-loaded face's badges.
   try { if (typeof bespokeShowBadge2UI === 'function') bespokeShowBadge2UI(); } catch(_){}
   try { if (typeof buildDesignGallery === 'function') buildDesignGallery(); } catch(_){}
   try { if (typeof buildDesignScroll  === 'function') buildDesignScroll();  } catch(_){}
@@ -2322,21 +2346,23 @@ function updatePreview(stepId) {
         _hit.setAttribute('pointer-events', 'all');
         g.appendChild(_hit);
         var img = document.createElementNS(ns,'image');
-        // Second-badge spot (armbands): position R renders its own image
-        // when the customer chose "Different badge" and uploaded one —
-        // e.g. club badge at position L, charity/sponsor logo at R. The
-        // 3D band-mirror clones inherit this href via cloneNode below.
-        var _badgeHref = (item.key === 'badgeR' && S.badge2Mode === 'different' && S.badge2URL)
+        // Second badge (armbands): the club badge's "other" spot — the
+        // right, or the left after "Swap sides" — shows the second upload
+        // when there is one, e.g. club badge left, charity/sponsor logo
+        // right. The 3D band-mirror clones inherit this href via cloneNode
+        // below.
+        var _badgeHref = (item.key === bespokeBadgeSpotKeys().other &&
+                          S.badge2Mode === 'different' && S.badge2URL)
           ? S.badge2URL : S.badgeURL;
         img.setAttribute('href', _badgeHref);
         img.setAttribute('x',-hs); img.setAttribute('y',-hs);
         img.setAttribute('width',S.badgeSize); img.setAttribute('height',S.badgeSize);
         img.setAttribute('preserveAspectRatio','xMidYMid meet');
         g.appendChild(img);
-        // Per-element delete X (Stage 2). NOT on armbands — their second
-        // badge spot is owned by the Second-badge chooser on the badge
-        // step (Same / Different / Empty), which replaced the X after
-        // repeated accidental scroll-tap deletions on mobile. The X is
+        // Per-element delete X (Stage 2). NOT on armbands — their badge
+        // spots are owned by the Left / Right badge cards on the badge
+        // step, which replaced the X after repeated accidental
+        // scroll-tap deletions on mobile. The X is
         // also hidden on ALL touch devices via the pointer:coarse CSS
         // rule. Other 2-badge products keep it for desktop mice; never
         // on the last visible badge.
@@ -3316,13 +3342,9 @@ function renderAddBackPanel(){
     host.innerHTML = '';
     grp.keys.forEach(function(k){
       if (!S.hidden[k]) return;
-      // Armbands: the second badge position is owned by the Second-badge
-      // chooser ("Empty" mode). Showing "+ Add right badge" here too
-      // would un-hide it while the chooser still says Empty — skip it;
-      // customers flip it back via the chooser.
-      // Armbands: BOTH badge spots are owned by their own toggles on the
-      // badge step. Offering "+ Add badge" here as well would put them out
-      // of step with the toggles, which would still read "off".
+      // Armbands: BOTH badge spots are owned by the Left / Right badge
+      // cards on the badge step. Offering "+ Add badge" here as well would
+      // un-hide a side while its card still says Empty.
       if ((k === 'badgeR' || k === 'badgeL') && typeof bespokeBaseType === 'function' &&
           bespokeBaseType() === 'armbands') return;
       var side = k.endsWith('L') ? 'left' : 'right';
@@ -3462,71 +3484,191 @@ function onBadgeSize(v){var n=Math.max(50,Math.min(500,parseInt(v)||210));S.badg
 function onNameSize(v){S.nameSize=parseInt(v);document.getElementById('name-size-val').textContent=v;syncAll();}
 function onNumSize(v){S.numSize=parseInt(v);document.getElementById('num-size-val').textContent=v;syncAll();}
 /* ============================================================
-   SECOND BADGE SPOT — armbands (both types)
+   BADGE SPOTS — armbands (both types)
    ============================================================
-   What position R (the second badge position on the band) shows:
-     'same'      → another copy of the club badge (default, the
-                   original behaviour)
-     'different' → its own uploaded image (charity / sponsor logo);
-                   reveals a second upload zone
-     'none'      → empty, via the existing hidden-elements mechanism
-                   (flows to cart + admin as a removed element)
-   Replaces the in-canvas delete X on armbands. Per-face on
-   double-sided (badge2* live in BESPOKE_FACE_FIELDS). */
+   An armband has two badge spots, Left and Right. The club badge
+   (S.badge / S.badgeURL) always has one of them; the other one shows:
+     badge2Mode 'same'      → the club badge again (the default)
+     badge2Mode 'different' → a second upload, S.badge2 / S.badge2URL
+                              (e.g. a charity or sponsor logo)
+     badge2Mode 'none'      → nothing: that side is left empty
+   S.badgeSwap says which spot is the "other" one: false → Right (the
+   default, and where "+ Add another badge" puts a new badge), true →
+   Left. It only means something while the two sides differ, so it's
+   reset whenever the club badge goes back on both sides.
+
+   An empty side rides on S.hidden (badgeL / badgeR), which the renderer
+   already filters on and which reaches the cart and the admin order.
+   Per-face on double-sided (these all live in BESPOKE_FACE_FIELDS).
+   The Left / Right cards replace the old "Badge on the left" and "Same
+   badge left & right" toggles (mockup approved 21 Sep 2026). */
+
+// Which spot holds the club badge, and which holds the other one.
+function bespokeBadgeSpotKeys(){
+  var swap = !!(window.S && S.badgeSwap);
+  return { club: swap ? 'badgeR' : 'badgeL', other: swap ? 'badgeL' : 'badgeR' };
+}
+// Line S.hidden up with the mode + swap: only an empty "other" side hides.
+function bespokeApplyBadgeSpots(){
+  if (!S.hidden) S.hidden = {};
+  if ((S.badge2Mode || 'same') === 'same') S.badgeSwap = false;
+  var keys = bespokeBadgeSpotKeys();
+  S.hidden[keys.club]  = false;
+  S.hidden[keys.other] = (S.badge2Mode === 'none');
+}
+// Back to the start: club badge on both sides, no second badge. Takes a
+// state object so it can also reset the parked face on double-sided.
+function bespokeResetBadgeSpots(st){
+  if (!st) return;
+  st.badge2 = null; st.badge2URL = null;
+  st.badge2Mode = 'same';
+  st.badgeSwap = false;
+  if (!st.hidden) st.hidden = {};
+  st.hidden.badgeL = false;
+  st.hidden.badgeR = false;
+}
+// What one spot shows right now: 'club', 'other' or 'empty'.
+function bespokeBadgeSpotContent(key){
+  if (S.hidden && S.hidden[key]) return 'empty';
+  if (S.badge2Mode === 'different' && S.badge2URL && key === bespokeBadgeSpotKeys().other) return 'other';
+  return 'club';
+}
+// Review-step wording for armbands: which badge is on which side.
+function bespokeBadgeSidesText(){
+  if (!S.badge) return 'Not added';
+  if ((S.badge2Mode || 'same') === 'same') return S.badge + ' (both sides)';
+  var name = function(key){
+    var what = bespokeBadgeSpotContent(key);
+    if (what === 'empty') return 'empty';
+    return (what === 'other') ? (S.badge2 || 'second badge') : S.badge;
+  };
+  return 'Left: ' + name('badgeL') + ' · Right: ' + name('badgeR');
+}
 function bespokeShowBadge2UI(){
   var wrap = document.getElementById('badge2-wrap');
   if (!wrap) return;
   var on = (typeof bespokeBaseType === 'function' && bespokeBaseType() === 'armbands');
   wrap.style.display = on ? '' : 'none';
-  if (!on) return;
-  // Left-hand spot toggle reflects S.hidden.badgeL.
-  var lTog = document.getElementById('badgeL-tog');
-  if (lTog) lTog.className = 'tog-track' + ((window.S && S.hidden && S.hidden.badgeL) ? '' : ' on');
+  if (!on || !window.S) return;
+  // The Left / Right cards stand in for the filename row, and the upload
+  // box only shows until there's a club badge.
+  var hasClub = !!S.badgeURL;
+  var brow  = document.getElementById('badge-row');
+  var zone  = document.getElementById('upload-zone');
+  var spots = document.getElementById('badge-spots');
+  if (brow)  brow.style.display  = 'none';
+  if (zone)  zone.style.display  = hasClub ? 'none' : 'block';
+  if (spots) spots.style.display = hasClub ? '' : 'none';
+  if (!hasClub) return;
 
-  var mode = (window.S && S.badge2Mode) || 'same';
-  var same = (mode === 'same');
-  // Toggle ON = same badge both sides; OFF reveals the right-hand upload.
-  var tog = document.getElementById('badge2-tog');
-  if (tog) tog.className = 'tog-track' + (same ? ' on' : '');
-  var up = document.getElementById('badge2-upload-block');
-  if (up) up.style.display = same ? 'none' : '';
-  var row  = document.getElementById('badge2-row');
-  var zone = document.getElementById('upload-zone-2');
-  if (window.S && S.badge2URL){
-    var th = document.getElementById('badge2-thumb'); if (th) th.src = S.badge2URL;
-    var fn = document.getElementById('badge2-fname'); if (fn) fn.textContent = S.badge2 || '';
-    if (row)  row.style.display  = 'flex';
-    if (zone) zone.style.display = 'none';
-  } else {
-    if (row)  row.style.display  = 'none';
-    if (zone) zone.style.display = 'block';
-  }
+  var mode = S.badge2Mode || 'same';
+  var keys = bespokeBadgeSpotKeys();
+  ['badgeL','badgeR'].forEach(function(key){
+    var card = document.getElementById(key === 'badgeL' ? 'badge-slot-L' : 'badge-slot-R');
+    if (!card) return;
+    var side = (key === 'badgeL') ? 'Left' : 'Right';
+    var what = bespokeBadgeSpotContent(key);
+    card.innerHTML = '';
+    var lbl = document.createElement('div');
+    lbl.className = 'bcp-slot-side';
+    lbl.textContent = side;
+    card.appendChild(lbl);
+    if (what === 'empty'){
+      var em = document.createElement('div');
+      em.className = 'bcp-slot-empty';
+      em.textContent = 'Empty';
+      card.appendChild(em);
+      return;
+    }
+    var img = document.createElement('img');
+    img.className = 'bcp-slot-img';
+    img.src = (what === 'other') ? S.badge2URL : S.badgeURL;
+    img.alt = (what === 'other') ? 'Your second badge' : 'Your club badge';
+    card.appendChild(img);
+    // The × only ever sits on the second spot. The club badge itself is
+    // changed or removed with the links under the cards.
+    if (key === keys.other){
+      var x = document.createElement('button');
+      x.type = 'button';
+      x.className = 'bcp-slot-x';
+      x.setAttribute('aria-label', 'Leave the ' + side.toLowerCase() + ' side empty');
+      x.textContent = '×';
+      x.onclick = function(){ removeBadge2(); };
+      card.appendChild(x);
+    }
+  });
+  var add  = document.getElementById('badge2-add');
+  if (add)  add.style.display  = (mode === 'different') ? 'none' : '';
+  var swap = document.getElementById('badge-swap-row');
+  if (swap) swap.style.display = (mode === 'same') ? 'none' : '';
+  var tog  = document.getElementById('badge-swap-tog');
+  if (tog)  tog.className = 'tog-track' + (S.badgeSwap ? ' on' : '');
+  var both = document.getElementById('badge-both-link');
+  if (both) both.style.display = (mode === 'none') ? '' : 'none';
 }
-function setBadge2Mode(mode){
-  if (mode !== 'same' && mode !== 'different' && mode !== 'none') return;
-  S.badge2Mode = mode;
-  // 'Empty' reuses the hidden-elements mechanism the delete X used, so
-  // the renderer, cart payload and admin "Removed" row all just work.
-  if (!S.hidden) S.hidden = {};
-  S.hidden.badgeR = (mode === 'none');
+// Repaint after any change to the spots.
+function _bespokeBadgeSpotsChanged(){
   bespokeShowBadge2UI();
   if (typeof updateDesignLayers === 'function') updateDesignLayers();
   if (typeof syncAll === 'function') syncAll();
 }
-// One-toggle control (replaces the old Same / Different / Empty buttons):
-//   ON  → both spots show the club badge         (mode 'same')
-//   OFF → right spot is its own uploaded badge    (mode 'different')
-//         or, with nothing uploaded, stays empty  (mode 'none')
-// The three underlying modes are preserved, so the renderer, cart payload
-// and admin summary are all unchanged.
-/**
- * Show or hide the LEFT badge spot.
- *
- * The right-hand spot is owned by the Same-badge chooser below; this is
- * its opposite number. Both write to S.hidden, which the renderer already
- * filters on and which flows through to the cart line and the admin order
- * as a removed element, so nothing downstream needs to change.
- */
+// "+ Add another badge" → the file picker (it's a <label for>) → here.
+function handleBadge2(e){
+  var file = e.target.files[0]; if (!file) return;
+  S.badge2 = file.name; S.badge2URL = URL.createObjectURL(file);
+  // The new badge takes the "other" spot: the right-hand side, or the left
+  // if the customer had swapped and then emptied it.
+  S.badge2Mode = 'different';
+  bespokeApplyBadgeSpots();
+  // Double-sided: keep this face's badge2 File for the add-to-cart upload
+  // (the single file input only ever holds the most recent pick).
+  if (typeof bespokeIsDoubleSided === 'function' && bespokeIsDoubleSided()){
+    if (!S.faceBadge2Files) S.faceBadge2Files = { outside:null, inside:null };
+    S.faceBadge2Files[S.currentFace || 'outside'] = file;
+  }
+  _bespokeBadgeSpotsChanged();
+}
+// × on the second spot: one badge only, the other side left empty.
+function removeBadge2(){
+  S.badge2 = null; S.badge2URL = null;
+  var f = document.getElementById('badge2-file'); if (f) f.value = '';
+  if (typeof bespokeIsDoubleSided === 'function' && bespokeIsDoubleSided() && S.faceBadge2Files){
+    S.faceBadge2Files[S.currentFace || 'outside'] = null;
+  }
+  S.badge2Mode = 'none';
+  bespokeApplyBadgeSpots();
+  _bespokeBadgeSpotsChanged();
+}
+function toggleBadgeSwap(){
+  if (!window.S || (S.badge2Mode || 'same') === 'same') return;
+  S.badgeSwap = !S.badgeSwap;
+  bespokeApplyBadgeSpots();
+  _bespokeBadgeSpotsChanged();
+}
+// "Put the club badge on both sides" — shown while one side is empty.
+function bespokeClubBothSides(){
+  if (!window.S) return;
+  bespokeResetBadgeSpots(S);
+  _bespokeBadgeSpotsChanged();
+}
+// "Remove badges": the club badge, any second badge, back to the upload box.
+function bespokeRemoveAllBadges(){
+  if (!window.S) return;
+  bespokeResetBadgeSpots(S);
+  var f = document.getElementById('badge2-file'); if (f) f.value = '';
+  if (typeof bespokeIsDoubleSided === 'function' && bespokeIsDoubleSided()){
+    if (S.faceBadge2Files) S.faceBadge2Files[S.currentFace || 'outside'] = null;
+    // A shared club badge comes off the other face too (removeBadge does
+    // that), so that face's spots start again with it. A second badge with
+    // no club badge beside it would never be drawn.
+    if (S.sameBadge !== false){
+      var other = (S.currentFace === 'inside') ? 'outside' : 'inside';
+      if (S.faceStore && S.faceStore[other]) bespokeResetBadgeSpots(S.faceStore[other]);
+      if (S.faceBadge2Files) S.faceBadge2Files[other] = null;
+    }
+  }
+  removeBadge();
+}
 var MUG_MIN_PLAYERS = 5, MUG_MAX_PLAYERS = 18;
 var _mugColourTimer = null;
 
@@ -3923,59 +4065,6 @@ function onSquadList(){
   }
 }
 
-function toggleBadgeLeft(){
-  if (!window.S) return;
-  if (!S.hidden) S.hidden = {};
-  S.hidden.badgeL = !S.hidden.badgeL;
-  bespokeShowBadge2UI();
-  if (typeof renderAddBackPanel === 'function') renderAddBackPanel();
-  if (typeof updateDesignLayers === 'function') updateDesignLayers();
-  if (typeof syncAll === 'function') syncAll();
-}
-function toggleBadge2Same(){
-  if (!window.S) return;
-  if (!S.hidden) S.hidden = {};
-  if (S.badge2Mode === 'same'){
-    S.badge2Mode = S.badge2URL ? 'different' : 'none';   // separate the right spot
-  } else {
-    S.badge2Mode = 'same';                                // reunite both spots
-  }
-  S.hidden.badgeR = (S.badge2Mode === 'none');
-  bespokeShowBadge2UI();
-  if (typeof updateDesignLayers === 'function') updateDesignLayers();
-  if (typeof syncAll === 'function') syncAll();
-}
-function handleBadge2(e){
-  var file = e.target.files[0]; if (!file) return;
-  S.badge2 = file.name; S.badge2URL = URL.createObjectURL(file);
-  // Uploading a right-hand badge means the two spots are no longer the same.
-  if (!S.hidden) S.hidden = {};
-  S.badge2Mode = 'different';
-  S.hidden.badgeR = false;
-  // Double-sided: keep this face's badge2 File for the add-to-cart upload
-  // (the single file input only ever holds the most recent pick).
-  if (typeof bespokeIsDoubleSided === 'function' && bespokeIsDoubleSided()){
-    if (!S.faceBadge2Files) S.faceBadge2Files = { outside:null, inside:null };
-    S.faceBadge2Files[S.currentFace || 'outside'] = file;
-  }
-  bespokeShowBadge2UI();
-  if (typeof updateDesignLayers === 'function') updateDesignLayers();
-  syncAll();
-}
-function removeBadge2(){
-  S.badge2 = null; S.badge2URL = null;
-  var f = document.getElementById('badge2-file'); if (f) f.value = '';
-  // Toggle still off but nothing uploaded → the right spot is empty.
-  if (!S.hidden) S.hidden = {};
-  if (S.badge2Mode !== 'same'){ S.badge2Mode = 'none'; S.hidden.badgeR = true; }
-  if (typeof bespokeIsDoubleSided === 'function' && bespokeIsDoubleSided() && S.faceBadge2Files){
-    S.faceBadge2Files[S.currentFace || 'outside'] = null;
-  }
-  bespokeShowBadge2UI();
-  if (typeof updateDesignLayers === 'function') updateDesignLayers();
-  syncAll();
-}
-
 /* Double-sided armbands: flip badge sharing. Turning it ON unifies
    immediately — the CURRENT face's badge (or lack of one) is pushed onto
    the other face, so what's on screen is what both sides get. Turning it
@@ -3991,6 +4080,9 @@ function toggleSameBadge(){
     if (S.faceStore && S.faceStore[other]){
       S.faceStore[other].badge    = S.badge;
       S.faceStore[other].badgeURL = S.badgeURL;
+      // No club badge to share → the other face's Left / Right spots start
+      // again too, so it isn't left holding a second badge on its own.
+      if (!S.badgeURL) bespokeResetBadgeSpots(S.faceStore[other]);
     }
     if (S.faceBadgeFiles){
       S.faceBadgeFiles[other] = S.faceBadgeFiles[S.currentFace || 'outside'];
@@ -4410,6 +4502,8 @@ function handleBadge(e){
   document.getElementById('badge-thumb').src=S.badgeURL;
   document.getElementById('badge-row').style.display='flex';
   document.getElementById('upload-zone').style.display='none';
+  // Armbands swap the filename row for their Left / Right cards.
+  try { bespokeShowBadge2UI(); } catch(_){}
   syncAll();
 }
 function removeBadge(){
@@ -4426,7 +4520,9 @@ function removeBadge(){
       }
     }
   }
-  document.getElementById('badge-row').style.display='none';document.getElementById('upload-zone').style.display='block';syncAll();
+  document.getElementById('badge-row').style.display='none';document.getElementById('upload-zone').style.display='block';
+  try { bespokeShowBadge2UI(); } catch(_){}
+  syncAll();
 }
 // buildDesignGrid replaced by buildDesignGallery
 function fillSummary(){
@@ -4475,7 +4571,9 @@ function fillSummary(){
   var numFont  = FONTS.find(function(f){return f.family===S.numFontFamily;});
   document.getElementById('sum-name-font').textContent = nameFont ? nameFont.label : S.nameFontFamily;
   document.getElementById('sum-num-font').textContent  = numFont  ? numFont.label  : S.numFontFamily;
-  document.getElementById('sum-badge').textContent=S.badge||'Not added';
+  // Armbands say which badge is on which side.
+  document.getElementById('sum-badge').textContent =
+    (bespokeBaseType() === 'armbands') ? bespokeBadgeSidesText() : (S.badge || 'Not added');
   S.orderNotes = document.getElementById('order-notes').value;
   var notesRow = document.getElementById('sum-notes-row');
   if(notesRow) { notesRow.style.display = S.orderNotes ? 'flex' : 'none'; }
@@ -4504,7 +4602,7 @@ function fillSummary(){
   setSumRow('sd-nu',  'sh-nu',  S.numColor,  null);
 }
 function reset(){
-  S={step:0,bgColor:'#feef00',patColor:'#211d33',patColors:[],bgGradient:null,patGradients:[],nameColor:DEFCOL.name,numColor:DEFCOL.num,nameL:'',nameR:'',numL:'',numR:'',sameName:true,sameNum:true,sameBadge:true,badge:null,badgeURL:null,badge2:null,badge2URL:null,badge2Mode:'same',design:DEFDESIGN,padSize:bespokeDefaultSize(),orderNotes:"",badgeSize:DEFSZ.badgeSize,nameSize:DEFSZ.nameSize,numSize:DEFSZ.numSize,nameFontFamily:'"Arial Black", Arial, sans-serif',numFontFamily:'"Arial Black", Arial, sans-serif',useBgAlt:false, hidden:{badgeL:false,badgeR:false,nameL:false,nameR:false,numL:false,numR:false}, selected:null, rot:{badgeL:0,badgeR:0,nameL:0,nameR:0,numL:0,numR:0},pos:JSON.parse(JSON.stringify(DEF))};
+  S={step:0,bgColor:'#feef00',patColor:'#211d33',patColors:[],bgGradient:null,patGradients:[],nameColor:DEFCOL.name,numColor:DEFCOL.num,nameL:'',nameR:'',numL:'',numR:'',sameName:true,sameNum:true,sameBadge:true,badge:null,badgeURL:null,badge2:null,badge2URL:null,badge2Mode:'same',badgeSwap:false,design:DEFDESIGN,padSize:bespokeDefaultSize(),orderNotes:"",badgeSize:DEFSZ.badgeSize,nameSize:DEFSZ.nameSize,numSize:DEFSZ.numSize,nameFontFamily:'"Arial Black", Arial, sans-serif',numFontFamily:'"Arial Black", Arial, sans-serif',useBgAlt:false, hidden:{badgeL:false,badgeR:false,nameL:false,nameR:false,numL:false,numR:false}, selected:null, rot:{badgeL:0,badgeR:0,nameL:0,nameR:0,numL:0,numR:0},pos:JSON.parse(JSON.stringify(DEF))};
   previews={};
   for(var i=0;i<6;i++){var pb=document.getElementById('pb'+i);if(pb)pb.innerHTML='';}
   document.getElementById('s6').classList.remove('active');
@@ -5100,7 +5198,7 @@ function applyStepConfig(){
   // labels + name prefill ("C") are all in place.
   try { bespokeInitFaces(); } catch(_){}
   try { bespokeBuildFaceSwitcher(); } catch(_){}
-  // Second-badge chooser — reveals itself only on armband base types.
+  // Left / Right badge cards — reveal themselves only on armband base types.
   try { bespokeShowBadge2UI(); } catch(_){}
 
   /* Land on the first VISIBLE step.
@@ -6295,8 +6393,10 @@ function _bespokeFaceInsideJson(data){
       name_right:  data.nameR || '', number_right: data.numR || ''
     },
     design: data.design || '',
-    // What this face's second badge position shows (armbands).
+    // What this face's second badge position shows (armbands), and whether
+    // "Swap sides" put it on the left.
     badge2_mode: data.badge2Mode || 'same',
+    badge2_swap: !!(data.badgeSwap && (data.badge2Mode || 'same') !== 'same'),
     colours: {
       background:  data.bgColor, pattern: data.patColor,
       patterns:    patCols,
@@ -6649,6 +6749,10 @@ function _bespokeCommitAddToCart(cfg, btn, insideFace) {
     formData.append('bespoke_badge2_mode',     S.badge2Mode || 'same');
     formData.append('bespoke_badge2_url',      badge2Data.url      || '');
     formData.append('bespoke_badge2_filename', badge2Data.filename || '');
+    // "Swap sides": the second spot is on the LEFT and the club badge on
+    // the right. Only meaningful while the sides differ.
+    formData.append('bespoke_badge2_swap',
+      (S.badgeSwap && (S.badge2Mode || 'same') !== 'same') ? '1' : '0');
 
     // Background variant choice — currently used by the Pennant (With
     // Frill / No Frill) and Armbands (5cm band / 8cm band). Sent for
@@ -6678,9 +6782,11 @@ function _bespokeCommitAddToCart(cfg, btn, insideFace) {
     formData.append('bespoke_bg_variant_label',
       _bgVarLabels ? (S.useBgAlt ? _bgVarLabels.alt : _bgVarLabels.primary) : '');
 
-    // Positions
-    formData.append('bespoke_badge_x',       S.pos.badgeL.x);
-    formData.append('bespoke_badge_y',       S.pos.badgeL.y);
+    // Positions. The club badge's own spot: the left one, unless an
+    // armband customer swapped sides.
+    var _clubPos = S.pos[bespokeBadgeSpotKeys().club] || S.pos.badgeL;
+    formData.append('bespoke_badge_x',       _clubPos.x);
+    formData.append('bespoke_badge_y',       _clubPos.y);
     formData.append('bespoke_badge_size',    S.badgeSize);
     formData.append('bespoke_name_x',        S.pos.nameL.x);
     formData.append('bespoke_name_y',        S.pos.nameL.y);

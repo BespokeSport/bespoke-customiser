@@ -340,6 +340,14 @@ Two traps while doing this, both already noted above: the Browser pane is usuall
 `document.hidden`, which suspends `requestAnimationFrame` — shim it. And check the file
 actually on the server before debugging, since a stale upload wastes the whole exercise.
 
+**There is now a ready-made one:** `node tools/customiser-harness.mjs`, then open
+`http://localhost:5178/armbands.html` (any product type as the page name). It rebuilds the
+page from the current files on every load, fakes admin-ajax in the page, and captures the
+add-to-basket POST in `window.__cartPayload` and each preview PNG in `window.__previews`,
+so a whole order can be checked without touching staging. It has no band artwork or
+registered designs, so add those globals by hand when a bug depends on them. Uploads are
+simulated by building a `File` in the page and calling `handleBadge({target:{files:[f]}})`.
+
 ---
 
 ### 6.11 The site-wide link colour swallows custom buttons
@@ -970,8 +978,29 @@ paste-ready copy: <https://claude.ai/code/artifact/6680476b-51b8-4db5-ab7e-15826
    Strict-Transport-Security sent on every page. **Tracking:** live now runs Meta for
    WooCommerce only (the plugin Meta renamed from Facebook for WooCommerce; folder still
    `facebook-for-woocommerce`), one pixel per page. On staging, Meta pixel for
-   WordPress, Meta for WooCommerce and Google for WooCommerce are off, but Site Kit by
-   Google still sends staging visits to live's GA4 property (G-B9X…) — to deactivate.
+   WordPress, Meta for WooCommerce, Google for WooCommerce and Site Kit are off, but
+   "Google Analytics for WooCommerce" (`woocommerce-google-analytics-integration`) still
+   sends staging visits to live's GA4 property (G-B9X…) — to deactivate.
+
+   **Armband badge section rebuilt, 21 Sep 2026** (from the mockup Nick approved). After
+   the club badge is uploaded, the upload box gives way to a Left and a Right card. The
+   club badge starts on both sides; "+ Add another badge" is a `<label for="badge2-file">`,
+   so it opens the file picker straight away and the new badge goes on the right; "Swap
+   sides" appears once the sides differ; the × on the second spot leaves that side empty;
+   "Put the club badge on both sides" undoes that; "Change club badge" / "Remove badges"
+   sit under the cards. The old "Badge on the left" and "Same badge left & right" toggles
+   are gone, and the double-sided share toggle now reads "Same club badge inside and
+   outside" (it lives inside `#badge2-wrap` now). Data: `S.badge2Mode` ('same' /
+   'different' / 'none') as before, plus `S.badgeSwap`, which puts the second spot on the
+   LEFT (per face, in `BESPOKE_FACE_FIELDS`; sent as `bespoke_badge2_swap` and
+   `badge2_swap` in the inside-face JSON; stored as `badge2.swap`). An empty side still
+   rides in `hidden_elements`. `bespoke_badge_sides()` in customiser-woocommerce.php turns
+   that into Left / Right: the basket and email show one "Badges" row (e.g. "Club badge
+   left, second badge right"), the admin card a "Badge sides" section with the second
+   badge's file linked. **Bug fixed on the way:** the preview capture in
+   customiser-frontend.php swapped EVERY badge image to the club badge's server URL, so an
+   order with a second badge had the club badge on both sides of its preview picture; it
+   now swaps only the club badge's own images.
 
 10. **Meta tracking is failing.** Every page POSTs to Facebook's conversions endpoint and
     gets a 500 back. Unrelated to any of our work and invisible to visitors, but if

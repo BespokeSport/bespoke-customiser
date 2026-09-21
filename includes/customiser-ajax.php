@@ -705,6 +705,8 @@ function bespoke_parse_inside_face() {
                             ? esc_url_raw( $_POST['bespoke_face_inside_badge2_url'] )
                             : '',
             'filename' => sanitize_file_name( $_POST['bespoke_face_inside_badge2_filename'] ?? '' ),
+            // "Swap sides": this face's second spot is on the LEFT.
+            'swap'     => ! empty( $raw['badge2_swap'] ),
         ],
         'hidden_elements' => $hidden,
         'sizes' => [
@@ -876,7 +878,7 @@ function bespoke_handle_add_to_cart() {
             // 'mode' says what the second badge position shows: another copy
             // of the club badge ('same', default), its own uploaded image
             // ('different' — e.g. a charity or sponsor logo), or nothing
-            // ('none' — badgeR also lands in hidden_elements). Same
+            // ('none' — that side also lands in hidden_elements). Same
             // local-upload gating as the main badge.
             'badge2' => [
                 'mode'     => in_array( sanitize_key( $_POST['bespoke_badge2_mode'] ?? 'same' ), [ 'same', 'different', 'none' ], true )
@@ -886,6 +888,10 @@ function bespoke_handle_add_to_cart() {
                                 ? esc_url_raw( $_POST['bespoke_badge2_url'] )
                                 : '',
                 'filename' => sanitize_file_name( $_POST['bespoke_badge2_filename'] ?? '' ),
+                // "Swap sides": the second spot is on the LEFT and the club
+                // badge on the right. Orders from before 21 Sep 2026 have no
+                // swap, which is what they meant.
+                'swap'     => ( $_POST['bespoke_badge2_swap'] ?? '' ) === '1',
             ],
 
             // ── Element positions on the pad (SVG coordinate space) ───────────

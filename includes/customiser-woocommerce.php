@@ -1185,6 +1185,44 @@ function bespoke_format_hidden( $hidden ) {
 }
 
 /**
+ * Which badge is on which side of an armband:
+ * [ 'left' => …, 'right' => … ], each 'club', 'second' or 'empty'.
+ *
+ * The club badge has one spot. The other shows the club badge again
+ * (badge2 mode 'same'), the customer's second upload ('different') or
+ * nothing ('none'). badge2.swap puts that other spot on the LEFT; orders
+ * from before "Swap sides" existed have no swap, which is what they meant.
+ * An empty side is also listed in hidden_elements, which older orders
+ * relied on alone.
+ */
+function bespoke_badge_sides( $d ) {
+    $b2    = ( isset( $d['badge2'] ) && is_array( $d['badge2'] ) ) ? $d['badge2'] : [];
+    $mode  = $b2['mode'] ?? 'same';
+    $other = ( $mode === 'different' ) ? 'second' : 'club';
+    $sides = ( ! empty( $b2['swap'] ) && $mode !== 'same' )
+        ? [ 'left' => $other, 'right' => 'club' ]
+        : [ 'left' => 'club', 'right' => $other ];
+    $hidden = ( isset( $d['hidden_elements'] ) && is_array( $d['hidden_elements'] ) ) ? $d['hidden_elements'] : [];
+    if ( in_array( 'badgeL', $hidden, true ) ) $sides['left']  = 'empty';
+    if ( in_array( 'badgeR', $hidden, true ) ) $sides['right'] = 'empty';
+    return $sides;
+}
+
+/**
+ * The armband badge layout as one short line for the basket and the
+ * confirmation email, e.g. "Club badge left, second badge right".
+ */
+function bespoke_badge_sides_text( $d ) {
+    $s = bespoke_badge_sides( $d );
+    $name = [ 'club' => 'club badge', 'second' => 'second badge' ];
+    if ( $s['left'] === 'empty' && $s['right'] === 'empty' ) return 'None';
+    if ( $s['left'] === $s['right'] ) return ucfirst( $name[ $s['left'] ] ) . ' on both sides';
+    if ( $s['left'] === 'empty' )  return ucfirst( $name[ $s['right'] ] ) . ' right, left side empty';
+    if ( $s['right'] === 'empty' ) return ucfirst( $name[ $s['left'] ] ) . ' left, right side empty';
+    return ucfirst( $name[ $s['left'] ] ) . ' left, ' . $name[ $s['right'] ] . ' right';
+}
+
+/**
  * Build the rotation summary list. Each rotated element becomes a row
  * "Left badge: 12.5°". Empty array when nothing's rotated.
  */
@@ -1331,22 +1369,15 @@ function bespoke_render_cart_armbands( $item_data, $d ) {
     if ( ! empty( $d['left']['name'] ) ) {
         $item_data[] = [ 'name' => 'Text', 'value' => esc_html( $d['left']['name'] ) ];
     }
-    $item_data[] = [
-        'name'  => 'Club badge',
-        'value' => ! empty( $d['badge']['url'] ) ? 'Uploaded' : 'Not added',
-    ];
-    // Second badge spot — only rowed when it deviates from the default
-    // "same badge twice", so ordinary orders stay uncluttered.
-    $b2mode = $d['badge2']['mode'] ?? 'same';
-    if ( $b2mode === 'different' ) {
-        $item_data[] = [
-            'name'  => 'Second badge',
-            'value' => ! empty( $d['badge2']['url'] ) ? 'Uploaded' : 'Not added',
-        ];
-    } elseif ( $b2mode === 'none' ) {
-        $item_data[] = [ 'name' => 'Second badge', 'value' => 'None' ];
+    // Which badge went on which side, e.g. "Club badge left, second badge
+    // right". An empty side is said here, so it's left out of "Removed".
+    if ( empty( $d['badge']['url'] ) ) {
+        $item_data[] = [ 'name' => 'Club badge', 'value' => 'Not added' ];
+    } else {
+        $item_data[] = [ 'name' => 'Badges', 'value' => esc_html( bespoke_badge_sides_text( $d ) ) ];
     }
-    $removed = bespoke_format_hidden( $d['hidden_elements'] ?? [] );
+    $hidden  = array_diff( (array) ( $d['hidden_elements'] ?? [] ), [ 'badgeL', 'badgeR' ] );
+    $removed = bespoke_format_hidden( array_values( $hidden ) );
     if ( $removed !== '' ) {
         $item_data[] = [ 'name' => 'Removed', 'value' => esc_html( $removed ) ];
     }
@@ -1358,6 +1389,7 @@ function bespoke_render_admin_armbands( $d, $item ) {
         'size_label'    => 'Diameter',
         'show_variant'  => 'Band thickness',
         'show_text'     => [ 'left_name' => 'Slogan / name' ],
+        'badge_sides'   => true,
     ] );
 }
 
@@ -1381,6 +1413,13 @@ function bespoke_render_cart_double_sided_armbands( $item_data, $d ) {
                         ? esc_html( $inside['left']['name'] ) . ' — separate design'
                         : 'Separate design',
         ];
+        // The inside has its own Left / Right badges.
+        $item_data[] = [
+            'name'  => 'Inside badges',
+            'value' => ! empty( $inside['badge']['url'] )
+                        ? esc_html( bespoke_badge_sides_text( $inside ) )
+                        : 'Not added',
+        ];
     }
     return $item_data;
 }
@@ -1398,8 +1437,9 @@ function bespoke_render_admin_double_sided_armbands( $d, $item ) {
     if ( is_array( $inside ) ) {
         printf( $band, 'Inside face', '(against the arm)' );
         echo bespoke_render_admin_generic_card( 'Captain Armband — Inside', $inside, [
-            'size_label' => 'Diameter',
-            'show_text'  => [ 'left_name' => 'Slogan / name' ],
+            'size_label'  => 'Diameter',
+            'show_text'   => [ 'left_name' => 'Slogan / name' ],
+            'badge_sides' => true,
         ] );
     } else {
         printf( $band, 'Inside face', '(against the arm)' );
@@ -1885,6 +1925,8 @@ function bespoke_render_admin_generic_card( $product_label, $d, $opts = [] ) {
     $size_label   = $opts['size_label']   ?? 'Size';
     $show_variant = $opts['show_variant'] ?? '';
     $show_text    = $opts['show_text']    ?? [];
+    // Armbands: list what's on the Left and Right badge spots.
+    $badge_sides  = ! empty( $opts['badge_sides'] );
 
     ob_start();
     ?>
@@ -1933,7 +1975,12 @@ function bespoke_render_admin_generic_card( $product_label, $d, $opts = [] ) {
                 }
                 if ( $text_rows ) echo $section( 'Text', $text_rows );
 
-                $hidden_str = bespoke_format_hidden( $d['hidden_elements'] ?? [] );
+                $hidden_list = (array) ( $d['hidden_elements'] ?? [] );
+                if ( $badge_sides ) {
+                    // An empty badge side shows under "Badge sides" instead.
+                    $hidden_list = array_values( array_diff( $hidden_list, [ 'badgeL', 'badgeR' ] ) );
+                }
+                $hidden_str = bespoke_format_hidden( $hidden_list );
                 if ( $hidden_str !== '' ) {
                     echo $section( 'Removed elements', $row( 'Customer removed', esc_html( $hidden_str ) ) );
                 }
@@ -1966,11 +2013,29 @@ function bespoke_render_admin_generic_card( $product_label, $d, $opts = [] ) {
                 }
                 echo $section( 'Club badge', $badge_html );
 
-                // Second badge spot (armbands club + charity/sponsor
-                // orders). Only shown when it deviates from the default
-                // "same badge in both positions".
+                // Armbands: what's on each badge spot, so production can
+                // see at a glance which badge goes where (club badge left
+                // and a charity logo right, swapped, or one side empty).
                 $b2 = $d['badge2'] ?? null;
-                if ( is_array( $b2 ) && ( $b2['mode'] ?? 'same' ) !== 'same' ) {
+                if ( $badge_sides && $badge_url ) {
+                    $spot = function( $what ) use ( $b2 ) {
+                        if ( $what === 'empty' ) {
+                            return '<span style="color:#aaa;">Empty</span>';
+                        }
+                        if ( $what !== 'second' ) {
+                            return 'Club badge';
+                        }
+                        if ( ! is_array( $b2 ) || empty( $b2['url'] ) ) {
+                            return 'Second badge — <span style="color:#b32d2e;">no file received</span>';
+                        }
+                        $name = ! empty( $b2['filename'] ) ? $b2['filename'] : 'open file';
+                        return 'Second badge — <a href="' . esc_url( $b2['url'] ) . '" target="_blank"><code>' . esc_html( $name ) . '</code></a>';
+                    };
+                    $sides = bespoke_badge_sides( $d );
+                    echo $section( 'Badge sides',
+                        $row( 'Left', $spot( $sides['left'] ) ) . $row( 'Right', $spot( $sides['right'] ) ) );
+                } elseif ( is_array( $b2 ) && ( $b2['mode'] ?? 'same' ) !== 'same' ) {
+                    // Any other card: the old second-badge summary.
                     $b2_html = '';
                     if ( ( $b2['mode'] ?? '' ) === 'none' ) {
                         $b2_html .= $row( 'Status', '<span style="color:#aaa;">Empty — customer removed the second badge</span>' );
