@@ -950,6 +950,20 @@ paste-ready copy: <https://claude.ai/code/artifact/6680476b-51b8-4db5-ab7e-15826
    keeps live's £13–23; launch on a Wednesday or Thursday; Aston Villa mug stays;
    umbrella tiles stay as they are; build the copy tool the week before launch.
 
+   **More decisions, 21 Sep 2026:** security headers added (commit b5a4579, in
+   `customiser-master.php`); pennant options named exactly "With Frill" / "No Frill";
+   referee armbands come in all six lengths (16–36cm) in 5cm and 8cm, so 16cm and 20cm
+   are added to its Length options; the footer's "Design Studio" link goes to /shop/;
+   staging's Astra Pro stays unlicensed (the licence is on live); grip socks' "Inside &
+   Outside" printing is still sold, so the customiser now offers it (commit 6433d97).
+   **Facebook:** both sites run "Meta pixel for WordPress" AND "Facebook for
+   WooCommerce" on one pixel (643897…), double-counting, and staging sends its test
+   traffic to that real pixel. Plan: live keeps Facebook for WooCommerce only
+   (reconnect under Marketing → Facebook with Nick's Meta Business Suite login);
+   staging deactivates both. Nick asked for three customiser features, armbands
+   first: a clearer badge section (upload, "+ Add another badge", "Swap sides"), a
+   Photoshop-style font dropdown, and "Add text box" with no fixed limit.
+
 10. **Meta tracking is failing.** Every page POSTs to Facebook's conversions endpoint and
     gets a 500 back. Unrelated to any of our work and invisible to visitors, but if
     conversion data is expected at launch it currently will not arrive.
