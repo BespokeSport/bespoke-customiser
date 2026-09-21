@@ -593,6 +593,31 @@ add_action( 'wp_ajax_nopriv_bespoke_add_to_cart', 'bespoke_handle_add_to_cart' )
  *   error   + message string on failure
  */
 /**
+ * Turn the customer's removed-elements list ("badgeR,nameL") into the keys
+ * the cart and admin renderers use.
+ *
+ * sanitize_key() lowercases, so its output ("badger") never matched the
+ * camelCase list it was checked against. Until 21 Sep 2026 every removed
+ * element was dropped right here, and no order recorded one. Matching on
+ * the lowercased form and handing back the canonical key fixes that.
+ *
+ * @param  string $csv Comma-separated keys from the customiser.
+ * @return string[]    e.g. [ 'badgeR', 'nameL' ]
+ */
+function bespoke_parse_hidden_elements( $csv ) {
+    $keys  = [ 'badgeL', 'badgeR', 'nameL', 'nameR', 'numL', 'numR' ];
+    $known = array_combine( array_map( 'strtolower', $keys ), $keys );
+    $out   = [];
+    foreach ( explode( ',', (string) $csv ) as $k ) {
+        $k = sanitize_key( $k );
+        if ( isset( $known[ $k ] ) && ! in_array( $known[ $k ], $out, true ) ) {
+            $out[] = $known[ $k ];
+        }
+    }
+    return $out;
+}
+
+/**
  * Parse + sanitise the INSIDE face of a double-sided armband from POST.
  *
  * The customiser sends the outside face as the usual flat bespoke_* fields
@@ -649,15 +674,7 @@ function bespoke_parse_inside_face() {
             $pattern_gradients[] = $grad( $g );
         }
     }
-    $hidden = [];
-    if ( isset( $raw['hidden_elements'] ) ) {
-        foreach ( explode( ',', (string) $raw['hidden_elements'] ) as $k ) {
-            $k = sanitize_key( $k );
-            if ( in_array( $k, [ 'badgeL', 'badgeR', 'nameL', 'nameR', 'numL', 'numR' ], true ) ) {
-                $hidden[] = $k;
-            }
-        }
-    }
+    $hidden = bespoke_parse_hidden_elements( $raw['hidden_elements'] ?? '' );
 
     return [
         // Mirrors the outside face's $d['left'] so shared renderers can read
@@ -929,12 +946,7 @@ function bespoke_handle_add_to_cart() {
             // remove via the in-preview X (e.g. "badgeR,nameR"). Production
             // reads this so e.g. a single-badge armband design knows which
             // side to leave blank.
-            'hidden_elements' => array_values( array_filter( array_map(
-                'sanitize_key',
-                explode( ',', wp_unslash( $_POST['bespoke_hidden_elements'] ?? '' ) )
-            ), function( $k ) {
-                return in_array( $k, [ 'badgeL', 'badgeR', 'nameL', 'nameR', 'numL', 'numR' ], true );
-            } ) ),
+            'hidden_elements' => bespoke_parse_hidden_elements( wp_unslash( $_POST['bespoke_hidden_elements'] ?? '' ) ),
 
             // ── Per-element rotation (Stage 3) ────────────────────────────────
             // Degrees, 1dp. JS only sends a field when the rotation is

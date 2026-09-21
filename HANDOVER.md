@@ -396,6 +396,21 @@ will not shrink below its content, so one over-wide child blows out the whole gr
 Verified against a local reproduction (`World Animation/PP-TEST.html`, same element chain
 as the live page) loading the old and new stylesheet in turn, at 1600px and 375px.
 
+### 6.13 `sanitize_key()` lowercases — never compare its output to camelCase
+
+The add-to-cart handler read the customer's removed elements ("badgeR,nameL") by running
+each through `sanitize_key()` and keeping those `in_array( …, [ 'badgeL', 'badgeR', … ],
+true )`. `sanitize_key()` lowercases, so "badgeR" became "badger" and nothing ever
+matched. From Stage 2 (commit 88131e9) until 21 Sep 2026, **no order recorded a removed
+element** on any product — the cart's "Removed" row and the admin's "Removed elements"
+section could never appear, even when a customer deleted a shin pad name.
+
+Found on 21 Sep when a real staging basket for a one-badge armband read "Club badge on
+both sides". Fixed with `bespoke_parse_hidden_elements()` in customiser-ajax.php, which
+matches on the lowercased key and returns the canonical camelCase one. Orders placed
+before that still have an empty `hidden_elements`; `bespoke_badge_sides()` works out an
+empty armband side from `badge2.mode` so they read correctly anyway.
+
 ## 7. Tooling notes (for you, on the new machine)
 
 - **There is no PHP locally.** `tools/` in the repo has what you need — run `npm install`
@@ -1001,6 +1016,15 @@ paste-ready copy: <https://claude.ai/code/artifact/6680476b-51b8-4db5-ab7e-15826
    customiser-frontend.php swapped EVERY badge image to the club badge's server URL, so an
    order with a second badge had the club badge on both sides of its preview picture; it
    now swaps only the club badge's own images.
+
+   **Verified on staging 21 Sep 2026** (Nick uploaded all four files; real add-to-cart,
+   basket read back through the Store API, then emptied): captains with a second badge →
+   "Club badge left, second badge right"; swapped → "Second badge left, club badge
+   right"; double-sided with the inside swapped → outside "Club badge on both sides",
+   "Inside badges: Second badge left, club badge right"; referee → "Club badge left,
+   second badge right". The one-badge basket read "Club badge on both sides", which
+   exposed the removed-elements bug in §6.13. Fixed the same day; it needs
+   customiser-ajax.php and customiser-woocommerce.php uploading again.
 
 10. **Meta tracking is failing.** Every page POSTs to Facebook's conversions endpoint and
     gets a 500 back. Unrelated to any of our work and invisible to visitors, but if

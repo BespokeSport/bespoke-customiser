@@ -1192,13 +1192,15 @@ function bespoke_format_hidden( $hidden ) {
  * (badge2 mode 'same'), the customer's second upload ('different') or
  * nothing ('none'). badge2.swap puts that other spot on the LEFT; orders
  * from before "Swap sides" existed have no swap, which is what they meant.
- * An empty side is also listed in hidden_elements, which older orders
- * relied on alone.
+ * The mode alone decides an empty side: hidden_elements also lists it, but
+ * orders placed before 21 Sep 2026 lost that list on the way in (see
+ * bespoke_parse_hidden_elements). It still catches a left side emptied
+ * with the old "Badge on the left" toggle.
  */
 function bespoke_badge_sides( $d ) {
     $b2    = ( isset( $d['badge2'] ) && is_array( $d['badge2'] ) ) ? $d['badge2'] : [];
     $mode  = $b2['mode'] ?? 'same';
-    $other = ( $mode === 'different' ) ? 'second' : 'club';
+    $other = [ 'different' => 'second', 'none' => 'empty' ][ $mode ] ?? 'club';
     $sides = ( ! empty( $b2['swap'] ) && $mode !== 'same' )
         ? [ 'left' => $other, 'right' => 'club' ]
         : [ 'left' => 'club', 'right' => $other ];
