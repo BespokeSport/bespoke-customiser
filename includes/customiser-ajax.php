@@ -1056,9 +1056,14 @@ function bespoke_handle_add_to_cart() {
                 'position'       => sanitize_text_field( $_POST['bespoke_player_position']       ?? '' ),
                 'position_label' => sanitize_text_field( $_POST['bespoke_player_position_label'] ?? '' ),
                 'ovr'            => max( 0, min( 99, (int) ( $_POST['bespoke_player_ovr'] ?? 0 ) ) ),
+                // 'label' is what's printed on the card, in the language the
+                // customer ordered in. 'key' is the English stat it stands
+                // for (PAC, DIV …), so production can read a French or German
+                // order without translating it back.
                 'stats'          => array_map( function( $i ) {
                     return [
                         'label' => sanitize_text_field( $_POST[ 'bespoke_player_stat_' . $i . '_label' ] ?? '' ),
+                        'key'   => sanitize_text_field( $_POST[ 'bespoke_player_stat_' . $i . '_key' ]   ?? '' ),
                         'value' => max( 0, min( 99, (int) ( $_POST[ 'bespoke_player_stat_' . $i . '_value' ] ?? 0 ) ) ),
                     ];
                 }, [ 1, 2, 3, 4, 5, 6 ] ),

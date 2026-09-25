@@ -5731,6 +5731,18 @@ var PLAYER_STAT_LABELS = {
   gk:       ['DIV','REF','HAN','SPE','KIC','POS']
 };
 
+/* The six labels as the customer sees them — and as they are PRINTED on the
+   card, so they follow the language the customer is ordering in (a French
+   card reads VIT / TIR / …). The English set above stays the key: it goes to
+   the order beside each translated label so production always knows which
+   stat a number belongs to, whatever language it was bought in. */
+function bespokeStatKeys(){
+  return (S.playerPosition === 'GK') ? PLAYER_STAT_LABELS.gk : PLAYER_STAT_LABELS.outfield;
+}
+function bespokeStatLabels(){
+  return bespokeStatKeys().map(function(s){ return bespokeT(s); });
+}
+
 /* ============================================================
    PLAYER CARD slot coordinates (designer-supplied)
    ============================================================
@@ -5825,9 +5837,7 @@ function applyPlayerCardUI(){
 }
 
 function _applyPlayerStatLabels(){
-  var set = (S.playerPosition === 'GK')
-    ? PLAYER_STAT_LABELS.gk
-    : PLAYER_STAT_LABELS.outfield;
+  var set = bespokeStatLabels();
   for (var i = 0; i < 6; i++){
     var el = document.getElementById('stat-label-' + (i+1));
     if (el) el.textContent = set[i];
@@ -6423,9 +6433,7 @@ function applyPlayerCardOverlay(stepId){
   // 6. Six stats. Labels always render so the customer sees the
   //    PAC/DRI/SHO/… (or DIV/REF/HAN/…) layout even before they've
   //    typed any values. Values only render when > 0.
-  var statLabels = (S.playerPosition === 'GK')
-    ? PLAYER_STAT_LABELS.gk
-    : PLAYER_STAT_LABELS.outfield;
+  var statLabels = bespokeStatLabels();
   for (var si = 0; si < 6; si++){
     var statSlot = PLAYER_CARD_SLOTS.stats[si];
     var statVal  = S.playerStats[si];
@@ -7335,11 +7343,14 @@ function _bespokeCommitAddToCart(cfg, btn, insideFace) {
       // Stat labels follow the active label set (outfield vs GK) so
       // production knows which attribute each number maps to without
       // re-deriving from position server-side.
-      var _statSet = (S.playerPosition === 'GK')
-        ? PLAYER_STAT_LABELS.gk
-        : PLAYER_STAT_LABELS.outfield;
+      // label = what is printed on the card (the customer's language);
+      // key = the English stat it is, so production can read the order
+      // whatever language it was bought in.
+      var _statSet  = bespokeStatLabels();
+      var _statKeys = bespokeStatKeys();
       for (var _si = 0; _si < 6; _si++) {
         formData.append('bespoke_player_stat_' + (_si+1) + '_label', _statSet[_si]);
+        formData.append('bespoke_player_stat_' + (_si+1) + '_key',   _statKeys[_si]);
         formData.append('bespoke_player_stat_' + (_si+1) + '_value', String(S.playerStats[_si] || 0));
       }
       formData.append('bespoke_player_ovr', String(S.playerOVR || 0));

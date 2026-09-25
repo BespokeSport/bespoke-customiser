@@ -132,6 +132,24 @@ function bespoke_customiser_ui_strings() {
 		"Open this tab to set the outfield shirt's colours."
 			=> __( "Open this tab to set the outfield shirt's colours.", 'bespoke-customiser' ),
 
+		// ── Player card stats ─────────────────────────────────────────────
+		// These are PRINTED on the card, so they follow the language the
+		// customer orders in (French cards read VIT / TIR / …). The order
+		// carries the English stat beside each one, so production can always
+		// tell which number is which. Outfield first, then goalkeeper.
+		'PAC'                               => __( 'PAC', 'bespoke-customiser' ),
+		'DRI'                               => __( 'DRI', 'bespoke-customiser' ),
+		'SHO'                               => __( 'SHO', 'bespoke-customiser' ),
+		'DEF'                               => __( 'DEF', 'bespoke-customiser' ),
+		'PAS'                               => __( 'PAS', 'bespoke-customiser' ),
+		'PHY'                               => __( 'PHY', 'bespoke-customiser' ),
+		'DIV'                               => __( 'DIV', 'bespoke-customiser' ),
+		'REF'                               => __( 'REF', 'bespoke-customiser' ),
+		'HAN'                               => __( 'HAN', 'bespoke-customiser' ),
+		'SPE'                               => __( 'SPE', 'bespoke-customiser' ),
+		'KIC'                               => __( 'KIC', 'bespoke-customiser' ),
+		'POS'                               => __( 'POS', 'bespoke-customiser' ),
+
 		// ── Adding to the basket, and when it goes wrong ──────────────────
 		'Adding...'                         => __( 'Adding...', 'bespoke-customiser' ),
 		'Add to cart'                       => __( 'Add to cart', 'bespoke-customiser' ),

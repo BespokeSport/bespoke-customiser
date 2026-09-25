@@ -1838,8 +1838,14 @@ function bespoke_render_admin_player_cards( $d, $item ) {
                     $stat_rows = '';
                     foreach ( $stats as $st ) {
                         $lbl = isset( $st['label'] ) ? $st['label'] : '';
+                        $key = isset( $st['key'] ) ? $st['key'] : '';
                         $val = isset( $st['value'] ) ? (int) $st['value'] : 0;
                         if ( $lbl === '' ) continue;
+                        // A card bought in French prints VIT; say which stat
+                        // that is, so nobody has to translate it back.
+                        if ( $key !== '' && $key !== $lbl ) {
+                            $lbl .= ' (' . $key . ')';
+                        }
                         $stat_rows .= $row( $lbl, '<span style="font-size:14px;font-weight:700;">' . $val . '</span>' );
                     }
                     if ( $stat_rows ) echo $section( 'Stats', $stat_rows );
