@@ -47,6 +47,7 @@ add_action( 'plugins_loaded', function() {
         'customiser-woocommerce.php',
         'customiser-ajax.php',
         'customiser-product-page.php',  // per-product PDP content (eyebrow / sizing / etc.)
+        'customiser-copy.php',          // move product wording + customiser setup staging → live
         'customiser-global-fonts.php',  // force-load Anton (independent of Elementor / theme)
         'customiser-shop.php',          // Shop / category archive styling + "Customise →" button copy
         'customiser-blog.php',          // The Locker Room (blog index + single article) styling
