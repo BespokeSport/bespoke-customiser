@@ -702,6 +702,30 @@ sizes. Regenerate it after editing the PHP — it's a copy, not a link.
 *Reviewed against the live site on 5 Sep 2026. Everything in the plugin is uploaded and
 live — nothing is sitting in git waiting.*
 
+### The copy tool — built 25 Sep 2026 (commit ee5aa26)
+
+`includes/customiser-copy.php`, admin page **Designs → Copy to Live** (capability
+`manage_options`). Staging exports ticked products as JSON; live uploads that file, sees a
+per-field plan, and only writes what's ticked. Each written product keeps its previous values
+in `_bespoke_copy_backup`, and `bespoke_copy_last_import` drives a one-click undo.
+
+It carries the whitelist in `bespoke_copy_fields()` and nothing else: `post_content`,
+`post_excerpt`, `_bespoke_product_type`, `_bespoke_eyebrow`, `_bespoke_subtitle`,
+`_bespoke_price_suffix`, `_bespoke_at_a_glance`, `_bespoke_customiser_sizes`,
+`_bespoke_sizing_headers`, `_bespoke_sizing_chart`, and Rank Math's title, description and
+focus keyword. Price, stock, attributes, variations, images and categories are never touched
+— that's the whole point, so don't "helpfully" add them.
+
+Products match on slug first, then on id **only when the title also matches**; anything else
+is skipped rather than guessed. Adding a field to the BEspoke Page tab means adding it to
+`bespoke_copy_fields()` too, or it won't travel.
+
+Tested in php-wasm against a stand-in WordPress (`scratchpad/copy-tool-test.mjs` pattern):
+identical fields don't appear in the plan, an unmatched product is skipped, applying writes
+only the changed fields, price and stock survive, a second run is a no-op, and undo restores.
+**Not yet run against a real WordPress** — do the dry run first: export from staging, upload
+that same file back into staging, and every product should read "already the same".
+
 ### Translation (TranslatePress) — started 25 Sep 2026
 
 Nick is adding French, then German and Spanish (maybe Italian), for European customers.
