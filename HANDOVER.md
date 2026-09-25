@@ -725,10 +725,14 @@ deliberately NOT translated — WooCommerce matches variations on those strings.
 `tools/customiser-harness.mjs?i18n` marks every known string «like this» so you can see at a
 glance what still writes hard-coded English.
 
-**Second pass, not done:** player-card wording (positions, the six stat labels), the team
-mug (`Squad` / `Keeper` / `Outfield`, "No players listed yet."), design layer names
-(`Layer N`), and the admin-only Save-placement messages (which don't need it). Design names
-and product step labels come from admin data, so they need translating as data, not here.
+**Second pass done (commit 6eaffa7):** the team mug (step tabs, squad count, player-count
+options, both tab hints), design layer names (`Layer N`), and the heading above the band
+thickness / print / frill buttons. Player positions never needed it — they're `<option>`s in
+the page's HTML. Still English on purpose: the six player-card stat labels (PAC / SHO / …,
+DIV / HAN / …), because they're printed on the card, so translating them changes the product
+— Nick's call. Admin-only Save-placement messages don't need it either. Design names, size
+button labels and product step labels come from admin data, so they'd be translated as data,
+not here.
 
 **Fonts:** Athletic and Jersey have no accented characters at all; Borg lacks ç ñ Ç Ñ ß;
 Villain, Bespoke Libero and BEspoke Mezzala lack Æ Œ (and ß where they have lowercase). Nick
