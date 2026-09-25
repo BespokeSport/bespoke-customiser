@@ -728,9 +728,12 @@ glance what still writes hard-coded English.
 **Second pass done (commit 6eaffa7):** the team mug (step tabs, squad count, player-count
 options, both tab hints), design layer names (`Layer N`), and the heading above the band
 thickness / print / frill buttons. Player positions never needed it — they're `<option>`s in
-the page's HTML. Still English on purpose: the six player-card stat labels (PAC / SHO / …,
-DIV / HAN / …), because they're printed on the card, so translating them changes the product
-— Nick's call. Admin-only Save-placement messages don't need it either. Design names, size
+the page's HTML. **Player-card stats too (commit 7df70f4):** Nick asked for the six labels to
+follow the language the card is bought in, so a French card prints VIT / TIR / … Each stat now
+reaches the order as BOTH the printed label and its English key (`bespoke_player_stat_N_key`),
+and the admin card reads "VIT (PAC) 92" when they differ — production never has to translate
+back. Orders placed before the key existed are unaffected. Admin-only Save-placement messages
+don't need translating. Design names, size
 button labels and product step labels come from admin data, so they'd be translated as data,
 not here.
 
