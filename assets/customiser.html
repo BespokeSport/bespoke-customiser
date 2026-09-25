@@ -4157,7 +4157,7 @@ function buildMugPlayerCount(){
     for (var i = MUG_MIN_PLAYERS; i <= MUG_MAX_PLAYERS; i++) {
       var o = document.createElement('option');
       o.value = String(i);
-      o.textContent = i + ' players';
+      o.textContent = bespokeT('%d players', i);
       sel.appendChild(o);
     }
   }
@@ -4313,7 +4313,9 @@ function renderMugColours(part, hostId){
   if (part !== mugActiveSlot()) {
     var note = document.createElement('p');
     note.className = 'hint';
-    note.textContent = 'Open this tab to set the ' + (part === 'keeper' ? 'keeper' : 'outfield') + " shirt's colours.";
+    note.textContent = bespokeT((part === 'keeper')
+      ? "Open this tab to set the keeper shirt's colours."
+      : "Open this tab to set the outfield shirt's colours.");
     host.appendChild(note);
     return;
   }
@@ -4324,7 +4326,7 @@ function renderMugColours(part, hostId){
   if (!d || !d.layers || !d.layers.length) {
     var p = document.createElement('p');
     p.className = 'hint';
-    p.textContent = 'Choose a style above and its colours will appear here.';
+    p.textContent = bespokeT('Choose a style above and its colours will appear here.');
     host.appendChild(p);
     return;
   }
@@ -4346,7 +4348,7 @@ function renderMugColours(part, hostId){
     info.className = 'zone-info';
     var lbl  = document.createElement('div');
     lbl.className = 'zone-lbl';
-    lbl.textContent = layer.label || ('Layer ' + (idx + 1));
+    lbl.textContent = layer.label || bespokeT('Layer %d', idx + 1);
     info.appendChild(lbl);
     var ct = document.createElement('div');
     ct.className = 'ct';
@@ -4387,7 +4389,7 @@ function mugSummaryColours(hostId, slotName){
     row.className = 'sum-row';
     var k = document.createElement('span');
     k.className = 'sum-k';
-    k.textContent = layer.label || ('Layer ' + (idx + 1));
+    k.textContent = layer.label || bespokeT('Layer %d', idx + 1);
     var v = document.createElement('span');
     v.className = 'sum-v';
     var dot = document.createElement('span');
@@ -4427,10 +4429,10 @@ function fillMugSummary(){
     var el = document.getElementById(id);
     if (el) el.textContent = txt;
   };
-  set('sum-mug-count',    (S.playerCount || 11) + ' players');
+  set('sum-mug-count',    bespokeT('%d players', S.playerCount || 11));
   set('sum-mug-keeper',   nameOf(S.mugKeeper   && S.mugKeeper.design));
   set('sum-mug-outfield', nameOf(S.mugOutfield && S.mugOutfield.design));
-  set('sum-mug-squad',    (S.squad && S.squad.trim()) ? S.squad.trim() : 'No players listed');
+  set('sum-mug-squad',    (S.squad && S.squad.trim()) ? S.squad.trim() : bespokeT('No players listed'));
 
   // The real colours, per shirt.
   mugSummaryColours('sum-mug-keeper-colours',   'keeper');
@@ -4488,9 +4490,9 @@ function applyMugUI(){
   if (!on) return;
 
   // Step tabs read as the three things the customer actually does.
-  var t1 = document.getElementById('lbl-1'); if (t1) t1.textContent = 'Squad';
-  var t3 = document.getElementById('lbl-3'); if (t3) t3.textContent = 'Keeper';
-  var t4 = document.getElementById('lbl-4'); if (t4) t4.textContent = 'Outfield';
+  var t1 = document.getElementById('lbl-1'); if (t1) t1.textContent = bespokeT('Squad');
+  var t3 = document.getElementById('lbl-3'); if (t3) t3.textContent = bespokeT('Keeper');
+  var t4 = document.getElementById('lbl-4'); if (t4) t4.textContent = bespokeT('Outfield');
 
   var box = document.getElementById('squad-list');
   if (box && window.S && S.squad && !box.value) box.value = S.squad;
@@ -4537,8 +4539,8 @@ function onSquadList(){
   var out = document.getElementById('squad-count');
   if (out) {
     out.textContent = lines.length === 0
-      ? 'No players listed yet.'
-      : lines.length + (lines.length === 1 ? ' player listed.' : ' players listed.');
+      ? bespokeT('No players listed yet.')
+      : bespokeT(lines.length === 1 ? '%d player listed.' : '%d players listed.', lines.length);
   }
 }
 
@@ -5033,7 +5035,7 @@ function fillSummary(){
       _vRow.style.display = '';
       var _kEl = document.getElementById('sum-variant-k');
       var _vEl = document.getElementById('sum-variant');
-      if (_kEl) _kEl.textContent = _vLabels.section || 'Style';
+      if (_kEl) _kEl.textContent = bespokeT(_vLabels.section || 'Style');
       if (_vEl) _vEl.textContent = S.useBgAlt ? _vLabels.alt : _vLabels.primary;
     } else {
       _vRow.style.display = 'none';

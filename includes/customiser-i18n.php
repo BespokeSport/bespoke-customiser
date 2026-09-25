@@ -106,6 +106,32 @@ function bespoke_customiser_ui_strings() {
 		'Next: choose colours →'            => __( 'Next: choose colours →', 'bespoke-customiser' ),
 		'Next →'                            => __( 'Next →', 'bespoke-customiser' ),
 
+		// ── The heading above the band thickness / print / frill buttons ──
+		// The buttons' own labels are NOT here: WooCommerce matches them.
+		'Style'                             => __( 'Style', 'bespoke-customiser' ),
+		'Band thickness'                    => __( 'Band thickness', 'bespoke-customiser' ),
+		'Print'                             => __( 'Print', 'bespoke-customiser' ),
+		'Pennant style'                     => __( 'Pennant style', 'bespoke-customiser' ),
+
+		// ── Colours step: a design's layers, when it doesn't name them ────
+		'Layer %d'                          => __( 'Layer %d', 'bespoke-customiser' ),
+
+		// ── Team mug ──────────────────────────────────────────────────────
+		'Squad'                             => __( 'Squad', 'bespoke-customiser' ),
+		'Keeper'                            => __( 'Keeper', 'bespoke-customiser' ),
+		'Outfield'                          => __( 'Outfield', 'bespoke-customiser' ),
+		'%d players'                        => __( '%d players', 'bespoke-customiser' ),
+		'No players listed'                 => __( 'No players listed', 'bespoke-customiser' ),
+		'No players listed yet.'            => __( 'No players listed yet.', 'bespoke-customiser' ),
+		'%d player listed.'                 => __( '%d player listed.', 'bespoke-customiser' ),
+		'%d players listed.'                => __( '%d players listed.', 'bespoke-customiser' ),
+		'Choose a style above and its colours will appear here.'
+			=> __( 'Choose a style above and its colours will appear here.', 'bespoke-customiser' ),
+		"Open this tab to set the keeper shirt's colours."
+			=> __( "Open this tab to set the keeper shirt's colours.", 'bespoke-customiser' ),
+		"Open this tab to set the outfield shirt's colours."
+			=> __( "Open this tab to set the outfield shirt's colours.", 'bespoke-customiser' ),
+
 		// ── Adding to the basket, and when it goes wrong ──────────────────
 		'Adding...'                         => __( 'Adding...', 'bespoke-customiser' ),
 		'Add to cart'                       => __( 'Add to cart', 'bespoke-customiser' ),
