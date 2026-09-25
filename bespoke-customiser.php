@@ -42,6 +42,7 @@ add_action( 'plugins_loaded', function() {
         'customiser-designs.php',       // design management
         'customiser-products.php',      // per-product asset uploads (background + pad base)
         'customiser-fonts.php',         // custom font upload
+        'customiser-i18n.php',          // wording the customiser's script writes, for TranslatePress
         'customiser-frontend.php',
         'customiser-woocommerce.php',
         'customiser-ajax.php',

@@ -64,7 +64,20 @@ const FETCH_STUB = `
   };
 })();`;
 
-function page(type) {
+// Pretend translation: every string customiser-i18n.php offers comes back
+// marked, so a page shows at a glance which wording goes through bespokeT()
+// and which is still hard-coded English. Add ?i18n to the page address.
+function pseudoI18n() {
+  const php = fs.readFileSync(path.join(repo, 'includes/customiser-i18n.php'), 'utf8');
+  const map = {};
+  for (const m of php.matchAll(/^\s*'((?:[^'\\]|\\.)*)'\s*=>\s*__\(/gm)) {
+    const english = m[1].replace(/\\'/g, "'");
+    map[english] = '«' + english + '»';
+  }
+  return map;
+}
+
+function page(type, i18n) {
   const raw = fs.readFileSync(path.join(repo, 'assets/customiser.html'), 'utf8');
   const head = (raw.match(/<head[^>]*>([\s\S]*?)<\/head>/i) || [, ''])[1];
   const styles = (head.match(/<style[^>]*>[\s\S]*?<\/style>/gi) || []).join('\n');
@@ -80,6 +93,7 @@ function page(type) {
 <html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Harness: ${type}</title>
 <script>window.BespokeConfig = ${JSON.stringify(config)};</script>
+${i18n ? '<script>window.BESPOKE_I18N = ' + JSON.stringify(pseudoI18n()) + ';</script>' : ''}
 <script>${FETCH_STUB}</script>
 </head><body style="margin:0;background:#0D0D0D;">
 <div id="bespoke-customiser-root" data-product-type="${type}">
@@ -91,8 +105,9 @@ ${body}
 }
 
 http.createServer((req, res) => {
-  const m = decodeURIComponent(req.url.split('?')[0]).match(/^\/([a-z0-9_]+)\.html$/i);
+  const [pathname, query = ''] = req.url.split('?');
+  const m = decodeURIComponent(pathname).match(/^\/([a-z0-9_]+)\.html$/i);
   if (!m) { res.writeHead(404); return res.end('try /armbands.html'); }
   res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
-  res.end(page(m[1]));
+  res.end(page(m[1], /(^|&)i18n(=|$)/.test(query)));
 }).listen(port, () => console.log('customiser harness on http://localhost:' + port + '/armbands.html'));

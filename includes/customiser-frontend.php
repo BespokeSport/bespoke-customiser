@@ -150,6 +150,14 @@ function bespoke_render_customiser( $atts ) {
     </script>
 
     <?php
+    // Wording the customiser's script writes as the customer works, in the
+    // page's language. Must come BEFORE customiser.html, same as the config
+    // above — bespokeT() reads it while the interface is built. Prints
+    // nothing on an English page. See customiser-i18n.php.
+    if ( function_exists( 'bespoke_customiser_print_ui_strings' ) ) {
+        bespoke_customiser_print_ui_strings();
+    }
+
     // Preload the product background image so the preview fills in straight
     // away on a cold first visit, instead of showing a blank frame while the
     // image downloads (and the design overlay injects it asynchronously).
