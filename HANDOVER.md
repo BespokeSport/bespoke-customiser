@@ -702,6 +702,40 @@ sizes. Regenerate it after editing the PHP — it's a copy, not a link.
 *Reviewed against the live site on 5 Sep 2026. Everything in the plugin is uploaded and
 live — nothing is sitting in git waiting.*
 
+### Translation (TranslatePress) — started 25 Sep 2026
+
+Nick is adding French, then German and Spanish (maybe Italian), for European customers.
+TranslatePress + Personal licence is installed **on staging only**, French configured but
+not active; the SEO Pack is on, automatic translation is on, and 50,000 AI words are
+unused. Live has no TranslatePress at all.
+
+**The order of work: launch first, translate after.** Two reasons. Translations are keyed
+to the exact English string, and launch replaces live's English wholesale, so anything
+translated beforehand orphans itself. And TranslatePress keeps its translations in its own
+`wp_trp_*` tables, which the launch never copies — his project notes said "push DB with
+files", which would destroy live's orders and must not happen. Redoing the (small) French
+setup on live is quicker and safer than moving tables.
+
+**Done (commit 856f614):** `includes/customiser-i18n.php` holds every phrase the customiser's
+script writes at runtime as literal `__()` calls — TranslatePress reads gettext, but never
+sees text that JavaScript creates. It prints `window.BESPOKE_I18N` before customiser.html,
+and `bespokeT()` looks phrases up by their English text, falling back to the English in the
+script. Order-critical values (sizes, band thickness, print options, font names) are
+deliberately NOT translated — WooCommerce matches variations on those strings.
+`tools/customiser-harness.mjs?i18n` marks every known string «like this» so you can see at a
+glance what still writes hard-coded English.
+
+**Second pass, not done:** player-card wording (positions, the six stat labels), the team
+mug (`Squad` / `Keeper` / `Outfield`, "No players listed yet."), design layer names
+(`Layer N`), and the admin-only Save-placement messages (which don't need it). Design names
+and product step labels come from admin data, so they need translating as data, not here.
+
+**Fonts:** Athletic and Jersey have no accented characters at all; Borg lacks ç ñ Ç Ñ ß;
+Villain, Bespoke Libero and BEspoke Mezzala lack Æ Œ (and ß where they have lowercase). Nick
+drew the fonts in Illustrator and will add the missing glyphs. Full per-font list on the NAS:
+`BEspoke Customiser/Font accent gaps - 25 Sep 2026.md`. Re-check after any re-upload by
+reading the font's cmap, not by eye.
+
 ### Needs a decision from Nick
 1. ~~Hero `veil` value~~ — **DECIDED 5 Sep 2026: keep it at `1`.** Nick: "lets keep, I
    think it looks stylish." Already the default in both the shortcode and the CSS, so
