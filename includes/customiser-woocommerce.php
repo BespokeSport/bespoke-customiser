@@ -2218,3 +2218,74 @@ add_action( 'admin_head', function () {
 	</style>
 	<?php
 } );
+
+/* =========================================================================
+   "CUSTOMISER" VIEW ON THE PRODUCTS SCREEN
+   Ninety-odd products, seventy of them themed mugs and armbands, means
+   scrolling a long way to reach the dozen that actually run the customiser.
+   This adds a link beside All | Published | Drafts showing only the products
+   with a customiser type set — the same switch the front end reads to decide
+   whether to load the customiser at all, so it can't drift out of step with
+   categories. Bookmarkable: edit.php?post_type=product&bespoke_only=1
+   ========================================================================= */
+
+/**
+ * Every product whose _bespoke_product_type is set to something, in any
+ * status. Worked out once per page load.
+ *
+ * @return int[]
+ */
+function bespoke_customiser_product_ids() {
+	static $ids = null;
+	if ( null !== $ids ) {
+		return $ids;
+	}
+	$ids = get_posts(
+		[
+			'post_type'        => 'product',
+			'post_status'      => [ 'publish', 'draft', 'pending', 'private' ],
+			'numberposts'      => -1,
+			'fields'           => 'ids',
+			'suppress_filters' => false,
+			'meta_query'       => [ // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
+				[
+					'key'     => '_bespoke_product_type',
+					'value'   => '',
+					'compare' => '!=',
+				],
+			],
+		]
+	);
+	return $ids;
+}
+
+add_filter( 'views_edit-product', function ( $views ) {
+	$count = count( bespoke_customiser_product_ids() );
+	if ( ! $count ) {
+		return $views;
+	}
+	$views['bespoke_customiser'] = sprintf(
+		'<a href="%s"%s>Customiser <span class="count">(%s)</span></a>',
+		esc_url( admin_url( 'edit.php?post_type=product&bespoke_only=1' ) ),
+		empty( $_GET['bespoke_only'] ) ? '' : ' class="current" aria-current="page"', // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		number_format_i18n( $count )
+	);
+	return $views;
+} );
+
+add_action( 'pre_get_posts', function ( $query ) {
+	if ( ! is_admin() || ! $query->is_main_query() ) {
+		return;
+	}
+	if ( empty( $_GET['bespoke_only'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		return;
+	}
+	if ( 'product' !== $query->get( 'post_type' ) ) {
+		return;
+	}
+	// post__in rather than a meta query: the products screen already builds
+	// its own meta query for the stock and type filters, and replacing it
+	// would quietly break them. The 0 keeps the result empty if nothing
+	// matches instead of falling back to "everything".
+	$query->set( 'post__in', array_merge( [ 0 ], bespoke_customiser_product_ids() ) );
+} );
