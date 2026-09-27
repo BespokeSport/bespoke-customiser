@@ -486,6 +486,11 @@ Shin Pads · Grip Socks · Shin Pad Sleeves · Captain Armbands · **Double-Side
   size 110, on the yellow `pro-ref` design).
 - Pennant Frill/No-Frill toggle now shows and records on the order.
 - **Scroll-driven "World" hero** — see §9.
+- **Order totals on a phone** (commit 4022c4d, customiser-woocommerce.php, end of file):
+  WordPress hides every column after the first below 782px, so the orders screen showed
+  order/customer/date/status but no value. One rule inside the mobile media query, printed
+  only on the orders screen, un-hides `td.column-order_total`. Verified by rebuilding the
+  screen at 375px from the real wp-admin + WooCommerce stylesheets.
 
 ---
 
