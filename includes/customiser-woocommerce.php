@@ -2183,3 +2183,38 @@ function bespoke_render_admin_generic_card( $product_label, $d, $opts = [] ) {
     <?php
     return ob_get_clean();
 }
+
+/* =========================================================================
+   ORDERS LIST ON A PHONE
+   Below 782px WordPress hides every column except the first, so the orders
+   screen shows the order, the date and the status but never the total. The
+   cell is already on the page — this un-hides it, so each order gains a
+   "Total  £18.00" line. Desktop is untouched; the rule only exists inside
+   the mobile media query, and only on the orders screen.
+   ========================================================================= */
+
+add_action( 'admin_head', function () {
+	if ( ! function_exists( 'get_current_screen' ) ) {
+		return;
+	}
+	$screen = get_current_screen();
+	if ( ! $screen ) {
+		return;
+	}
+	// The HPOS orders screen, and the older post-based one.
+	$is_orders = ( 'woocommerce_page_wc-orders' === $screen->id )
+		|| ( 'shop_order' === $screen->post_type && 'edit' === $screen->base );
+	if ( ! $is_orders ) {
+		return;
+	}
+	?>
+	<style id="bespoke-orders-mobile-total">
+		@media screen and (max-width: 782px) {
+			.wp-list-table tr:not(.is-expanded) td.column-order_total {
+				display: block !important;
+				font-weight: 600;
+			}
+		}
+	</style>
+	<?php
+} );
