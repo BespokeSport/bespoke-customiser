@@ -135,6 +135,11 @@ function bespoke_get_product_types() {
         // no design choice, which is why its step list in customiser.html is
         // colours only — the first product with no badge step.
         'team_mug'           => 'Team Mug',
+        // Boot Stickers — a pair of printed vinyl stickers, posted out
+        // rather than applied here. Two placements, carried by the size
+        // buttons: the rear heel (20mm or 30mm wide, club badge) and the
+        // side under the heel (48mm wide, 10mm high — text, badge or flag).
+        'boot_stickers'      => 'Boot Stickers',
     ];
     // Merge in admin-managed types added via Product Setup → "Add a product
     // type". A custom key never overrides a core one.

@@ -5187,6 +5187,18 @@ var BESPOKE_STEP_CONFIG = {
   // block on screen 1. Nothing is rendered onto the mug from it; the list
   // travels to the order for the workshop to print on the shirt backs.
   team_mug:           ['design', 'name', 'colours'],
+  // Boot Stickers — a pair of printed stickers, posted out. The boot render
+  // is context, not a print position: the customer sticks them on themselves,
+  // so there is no design gallery and nothing is dragged into place. The SIZE
+  // buttons carry the placement AND the width together (rear heel 20mm / 30mm,
+  // side under heel 48mm), which keeps both editable from the BEspoke Page tab
+  // without a line of code — and the copy tool already carries that field.
+  //   badge   → club badge upload
+  //   name    → the text sticker (name, initials or number) + the country
+  //             flag dropdown, reusing the player cards' list and its 62
+  //             bundled flag PNGs
+  //   colours → sticker colour
+  boot_stickers:      ['badge', 'name', 'colours'],
   // Future:
   // shinpad_sleeves: ['badge', 'name', 'number', 'design', 'colours'],
   // etc.
@@ -5213,7 +5225,11 @@ var BESPOKE_ZONES_CONFIG = {
   armbands:           { badge: 2, text: 1 },
   // Never used (no badge or text step) but declared so the zone helpers
   // return a sane answer instead of falling through to the shin-pad pair.
-  team_mug:           1
+  team_mug:           1,
+  // Boot stickers come as a pair, but both boots get the same artwork, so
+  // one of everything. The pair is what is priced and posted, not two
+  // separately designed stickers.
+  boot_stickers:      1
 };
 
 /* ============================================================
@@ -5324,6 +5340,9 @@ var BESPOKE_PRODUCT_LABELS = {
     nameTitle:  'Player name',
     hintNoName: ''
   },
+  // Boot stickers — the one text sticker can be a surname, initials or a
+  // squad number, so the neutral "Text" is exactly right.
+  boot_stickers: { nameTitle: 'Text', hintNoName: '' },
   // Future products the designer flagged — keep generic labels
   // until they specify otherwise.
   match_trophy:          { nameTitle: 'Text',       hintNoName: '' },
