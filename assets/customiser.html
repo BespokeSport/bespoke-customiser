@@ -296,6 +296,18 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
     border-right: 1px solid #2A2A2A;
   }
 
+  /* The boot sticker chooser stands in for a screen while it is open, so it
+     takes the same cell. Without this it auto-flows into the preview column
+     and shoves the whole layout sideways. */
+  #boot-chooser {
+    grid-column: 1;
+    grid-row: 2;
+    padding: 70px 24px 24px;
+    overflow-y: auto;
+    height: calc(100vh - 52px);
+    background: #0D0D0D;
+    border-right: 1px solid #2A2A2A;
+  }
   /* All screens - left column row 2 */
   .screen {
     grid-column: 1;
@@ -898,10 +910,6 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
     <button type="button" id="boot-chooser-next" onclick="bespokeBootChooserNext()" style="margin-top:12px;width:100%;background:#2c2c2c;color:#8a8a85;border:none;border-radius:10px;padding:12px;font-size:14px;font-family:inherit;cursor:not-allowed;">Pick at least one</button>
   </div>
 
-  <!-- Way back to the chooser, boot stickers only. -->
-  <div id="boot-rechoose" style="display:none;padding:0 0 10px;">
-    <button type="button" onclick="bespokeBootChooserShow()" style="background:none;border:none;color:#8a8a85;font-size:12px;font-family:inherit;text-decoration:underline;cursor:pointer;padding:0;">Change what goes on your stickers</button>
-  </div>
 
   <div class="step-bar">
     <div class="step-labels">
@@ -912,6 +920,11 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
       <div class="sl" id="lbl-4" onclick="goTo(4)" style="cursor:pointer;">Colours</div>
     </div>
     <div class="prog-track"><div class="prog-fill" id="prog" style="width:20%"></div></div>
+    <!-- Boot stickers only: back to "what do you want on your boots". Inside
+         the step bar so the desktop grid does not have to find it a cell. -->
+    <div id="boot-rechoose" style="display:none;padding:8px 18px 10px;">
+      <button type="button" onclick="bespokeBootChooserShow()" style="background:none;border:none;color:#8a8a85;font-size:12px;font-family:inherit;text-decoration:underline;cursor:pointer;padding:0;">Change what goes on your stickers</button>
+    </div>
   </div>
 
   <!-- Desktop right preview panel -->
@@ -6852,6 +6865,12 @@ function bespokeBootStickerUI(){
   var note = document.getElementById('visual-only-note');
   if (note) note.style.display = isBoot ? '' : 'none';
   if (!isBoot) return;
+  // The size buttons asked which width before anything had been chosen, which
+  // was the wrong question in the wrong place. The first step now asks what
+  // goes on the boots, and the sticker is sized from the text itself. The rows
+  // can stay on the BEspoke Page tab — nothing reads them for this product.
+  var sizes = document.getElementById('size-selector');
+  if (sizes) sizes.style.display = 'none';
   var floors = { 'name-size-slider': 8, 'num-size-slider': 8, 'badge-size-slider': 20 };
   Object.keys(floors).forEach(function(id){
     var el = document.getElementById(id);
