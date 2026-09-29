@@ -14,9 +14,18 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
    Everything below keys off that one class, so the chooser cannot be undone
    by whatever runs next — applyStepConfig() rewrites the screens on every
    rebuild, and inline styles lost that race. */
-.bcp-choosing .screen, .bcp-choosing .step-bar{display:none !important;}
+/* .screen.active is named here on purpose. customiser-frontend.php injects
+   "#bespoke-customiser-root .screen.active{display:flex !important}" after
+   this file, and a plainer selector ties with it on specificity and loses on
+   source order — the badge step then sits on top of the chooser and the first
+   step appears to be missing. This is the one place that has to out-rank it. */
+#bespoke-customiser-root .bcp-choosing .screen.active,
+.bcp-choosing .screen,
+.bcp-choosing .step-bar{display:none !important;}
 .bcp-choosing #boot-chooser{display:block !important;}
-#boot-chooser{display:none;}
+/* Padding lives here rather than inline, or the desktop gutters below can
+   never override it and the panel runs off the edge of the screen. */
+#boot-chooser{display:none;padding:4px 18px 8px;}
 .frame{width:100%;max-width:440px;background:#0D0D0D;border-radius:20px;border:1px solid #2A2A2A;overflow:hidden;}
 .top-bar{background:#161616;border-bottom:1px solid #2A2A2A;padding:13px 18px;display:flex;align-items:center;justify-content:space-between;}
 .brand{font-size:15px;font-weight:700;color:#F5F5F0;letter-spacing:-0.3px;}
@@ -906,7 +915,7 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
   <!-- Boot stickers only. Shown by bespokeBootChooserInit() and hidden again
        once something is picked; every other product goes straight to its
        first step. -->
-  <div id="boot-chooser" style="padding:4px 0 8px;">
+  <div id="boot-chooser">
     <div style="font-size:11px;letter-spacing:.1em;color:#8a8a85;margin:0 0 10px;">WHAT DO YOU WANT ON YOUR BOOTS?</div>
     <div id="boot-chooser-opts"></div>
     <div style="display:flex;align-items:baseline;gap:8px;border-top:1px solid #2c2c2c;margin-top:12px;padding-top:12px;">

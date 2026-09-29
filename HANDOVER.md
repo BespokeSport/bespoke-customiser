@@ -428,6 +428,31 @@ shows £0.00 instead of a white screen.
 
 ---
 
+### 6.15 The harness does not carry the frontend PHP's CSS overrides
+
+`tools/customiser-harness.mjs` serves customiser.html on its own. The real page
+also gets a block of CSS injected by customiser-frontend.php (~line 1743),
+including:
+
+```css
+#bespoke-customiser-root .screen.active { display: flex !important; }
+```
+
+That is specificity (1,2,0) **with** !important, and it sits after everything in
+customiser.html. Any rule that needs to hide or restyle a screen has to beat
+it — `.bcp-choosing .screen` (0,2,0) loses, and even
+`#bespoke-customiser-root .bcp-choosing .screen` only ties and then loses on
+source order. Name `.screen.active` as well to get to (1,3,0).
+
+Cost 29 Sep 2026: the boot sticker chooser worked perfectly in the harness and
+was invisible on staging, twice.
+
+**Rule:** anything touching `.screen` visibility gets tested on the real page,
+not just the harness. Injecting the candidate CSS into the live page from the
+browser console proves it in seconds without an upload.
+
+---
+
 ## 7. Tooling notes (for you, on the new machine)
 
 - **There is no PHP locally.** `tools/` in the repo has what you need — run `npm install`
