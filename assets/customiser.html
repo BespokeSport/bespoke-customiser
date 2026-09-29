@@ -5233,6 +5233,104 @@ var BESPOKE_ZONES_CONFIG = {
 };
 
 /* ============================================================
+   BOOT STICKERS — THE TWO PLACEMENTS
+   ============================================================
+   The size buttons carry the placement AND the width together:
+   "20mm / Rear heel", "30mm / Rear heel", "48mm / Side, under heel".
+   Everything below is geometry measured off the product render rather
+   than guessed. Two things make it unusual:
+
+   1. The render shows the boot TWICE, from behind and from the side, and
+      the rear view sits closer to the camera. A 30mm sticker is therefore
+      a different number of canvas units in each view, so the scale is per
+      zone and not per product.
+   2. Nothing here decides where the sticker is really applied. The pair is
+      posted out and the customer sticks them on. These positions exist so
+      the preview shows the right size against the right part of the boot.
+
+   Measurements: the side view runs 300mm of boot across 1038 canvas units
+   (3.46 units per mm) and the rear view 75mm of heel across 328 (4.37).
+   ============================================================ */
+var BESPOKE_BOOT_ZONES = {
+  heel: { cx: 563, cy: 349, unitsPerMm: 4.37 },
+  side: { cx: 219, cy: 785, unitsPerMm: 3.46 }
+};
+
+// Vinyl below 6mm will not weed cleanly, and 10mm is as tall as anything
+// gets — both are printing limits, not design choices.
+var BESPOKE_BOOT_MIN_MM = 6;
+var BESPOKE_BOOT_MAX_MM = 10;
+
+// A condensed capital is about 0.55 of its height wide. Used to work out
+// how tall the text can be before it runs past the sticker.
+var BESPOKE_BOOT_CHAR_RATIO = 0.55;
+
+/**
+ * Which zone a size button means, and how wide it is.
+ * Reads the button the customer picked: the label carries the width
+ * ("30mm") and line 1 carries the placement ("Rear heel" / "Side, under
+ * heel"). Falls back to the width if the wording is changed to something
+ * that no longer says "side" — anything 40mm or wider can only be the side.
+ */
+function bespokeBootZone(size) {
+  size = size || {};
+  var widthMm = parseFloat(String(size.label || '').replace(/[^0-9.]/g, '')) || 0;
+  var says = String(size.line1 || '') + ' ' + String(size.line2 || '');
+  var key = /side/i.test(says) ? 'side' : (/heel|rear|back/i.test(says) ? 'heel' : (widthMm >= 40 ? 'side' : 'heel'));
+  var z = BESPOKE_BOOT_ZONES[key];
+  return {
+    key:        key,
+    widthMm:    widthMm || (key === 'side' ? 48 : 30),
+    cx:         z.cx,
+    cy:         z.cy,
+    unitsPerMm: z.unitsPerMm
+  };
+}
+
+/**
+ * What may go in a zone. The rear heel is small and curved, so it takes a
+ * club badge or a single squad number. The side panel is flat and long, so
+ * it takes text, a badge or a country flag.
+ */
+function bespokeBootAllows(zoneKey, element) {
+  var allowed = (zoneKey === 'side')
+    ? { text: true, badge: true, flag: true, number: true }
+    : { badge: true, number: true };
+  return !!allowed[element];
+}
+
+/**
+ * How tall a piece of text can be printed in a zone, and whether it fits.
+ * Text starts at 10mm and shrinks only as far as 6mm; past that there is no
+ * more room, and the customiser stops taking characters rather than
+ * printing something the vinyl cutter will lose.
+ *
+ * @return {{heightMm:number, widthMm:number, fits:boolean, maxChars:number}}
+ */
+function bespokeBootTextFit(text, zone) {
+  var chars = String(text == null ? '' : text).replace(/\s+/g, ' ').trim().length;
+  var room  = zone.widthMm;
+  if (!chars) {
+    return { heightMm: BESPOKE_BOOT_MAX_MM, widthMm: 0, fits: true, maxChars: Math.floor(room / (BESPOKE_BOOT_MIN_MM * BESPOKE_BOOT_CHAR_RATIO)) };
+  }
+  var ideal  = room / (chars * BESPOKE_BOOT_CHAR_RATIO);
+  var height = Math.min(BESPOKE_BOOT_MAX_MM, ideal);
+  var fits   = true;
+  if (height < BESPOKE_BOOT_MIN_MM) { height = BESPOKE_BOOT_MIN_MM; fits = false; }
+  return {
+    heightMm: Math.round(height * 10) / 10,
+    widthMm:  Math.round(chars * height * BESPOKE_BOOT_CHAR_RATIO * 10) / 10,
+    fits:     fits,
+    maxChars: Math.floor(room / (BESPOKE_BOOT_MIN_MM * BESPOKE_BOOT_CHAR_RATIO))
+  };
+}
+
+/** Millimetres to canvas units, in the zone the sticker sits in. */
+function bespokeBootUnits(mm, zone) {
+  return Math.round(mm * zone.unitsPerMm);
+}
+
+/* ============================================================
    PER-PRODUCT LABEL OVERRIDES
    ============================================================
    The customiser HTML now defaults to product-neutral labels
