@@ -920,7 +920,7 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
     <div id="boot-chooser-opts"></div>
     <div style="display:flex;align-items:baseline;gap:8px;border-top:1px solid #2c2c2c;margin-top:12px;padding-top:12px;">
       <span style="font-size:22px;font-weight:500;color:#F5F5F0;" id="boot-chooser-total">&mdash;</span>
-      <span style="font-size:12px;color:#8a8a85;">per pair</span>
+      <span style="font-size:12px;color:#8a8a85;">per set</span>
       <span style="margin-left:auto;font-size:12px;color:#5DCAA5;" id="boot-chooser-save"></span>
     </div>
     <button type="button" id="boot-chooser-next" onclick="bespokeBootChooserNext()" style="margin-top:12px;width:100%;background:#2c2c2c;color:#8a8a85;border:none;border-radius:10px;padding:12px;font-size:14px;font-family:inherit;cursor:not-allowed;">Pick at least one</button>
@@ -5514,7 +5514,9 @@ var BESPOKE_PRODUCT_LABELS = {
   },
   // Boot stickers — the one text sticker can be a surname, initials or a
   // squad number, so the neutral "Text" is exactly right.
-  boot_stickers: { nameTitle: 'Text', hintNoName: '' },
+  // tabNumber renames both the third tab and the Next button that leads to
+  // it: this product borrows the number slot for the flag.
+  boot_stickers: { nameTitle: 'Text', tabName: 'Text', tabNumber: 'Flag', hintNoName: '' },
   // Future products the designer flagged — keep generic labels
   // until they specify otherwise.
   match_trophy:          { nameTitle: 'Text',       hintNoName: '' },
@@ -5760,12 +5762,14 @@ function bespokeClampArmbandBadgeX(x){
  */
 function bespokeBootSteps(){
   var p = (typeof S === 'object' && S && S.bootPick) || null;
-  if (!p) return ['badge', 'name', 'number', 'colours'];
+  if (!p) return ['badge', 'name', 'number'];
   var out = [];
   if (p.badge) out.push('badge');
   if (p.text)  out.push('name');
   if (p.flag)  out.push('number');
-  out.push('colours');
+  // No colours step. Its controls are the design background and pattern,
+  // which this product has none of — the text colour already sits on the
+  // text step, and a badge is printed in the colours it arrives in.
   return out;
 }
 
@@ -6847,6 +6851,7 @@ function bespokeBootChooserNext(){
   if (re) re.style.display = '';
   if (typeof applyStepConfig === 'function') applyStepConfig();
   bespokeBootTabNames();
+  bespokeBootStickerUI();
   // Land on the first step that is actually on.
   for (var i = 0; i < 5; i++) { if (bespokeIsStepActive(i)) { if (typeof goTo === 'function') goTo(i); break; } }
   if (typeof bespokeRefreshPriceDisplay === 'function') bespokeRefreshPriceDisplay();
@@ -6881,11 +6886,46 @@ function bespokeBootStickerUI(){
   // can stay on the BEspoke Page tab — nothing reads them for this product.
   var sizes = document.getElementById('size-selector');
   if (sizes) sizes.style.display = 'none';
-  var floors = { 'name-size-slider': 8, 'num-size-slider': 8, 'badge-size-slider': 20 };
-  Object.keys(floors).forEach(function(id){
+
+  // The boot colour is cosmetic, so it belongs with the first question
+  // rather than buried in the badge step. Moved rather than rebuilt, so it
+  // keeps the wiring it already has.
+  var variantRow = document.getElementById('bg-variant-row');
+  var chooser    = document.getElementById('boot-chooser');
+  if (variantRow && chooser && variantRow.parentElement !== chooser) {
+    chooser.appendChild(variantRow);
+    variantRow.style.marginTop = '18px';
+  }
+
+  // Sliders held to what is actually sold. A badge is 20mm to 30mm across
+  // and text prints 6mm to 10mm tall, so the sliders run between those and
+  // no further — an open-ended slider invites someone to design something
+  // that cannot be made. In canvas units at the measured scales: the rear
+  // view runs 4.37 units per mm, the side 3.46, and a capital is about 0.72
+  // of its font size.
+  var ranges = {
+    'badge-size-slider': [87, 131],
+    'name-size-slider':  [29, 48],
+    'num-size-slider':   [29, 48]
+  };
+  Object.keys(ranges).forEach(function(id){
     var el = document.getElementById(id);
-    if (el) { el.min = floors[id]; }
+    if (!el) return;
+    el.min = ranges[id][0];
+    el.max = ranges[id][1];
+    var v = parseFloat(el.value);
+    if (v < ranges[id][0]) { el.value = ranges[id][0]; }
+    if (v > ranges[id][1]) { el.value = ranges[id][1]; }
   });
+
+  // The step bar grew by the height of the "change what goes on your
+  // stickers" link, and the screens clear it with a fixed padding, so the
+  // Back / Next row was sliding underneath. Measure it rather than guess.
+  var bar = document.querySelector('.step-bar');
+  if (bar && window.innerWidth >= 768) {
+    var clear = bar.offsetHeight + 18;
+    document.querySelectorAll('.screen').forEach(function(s){ s.style.paddingTop = clear + 'px'; });
+  }
 }
 
 function initBgVariantToggle(){
