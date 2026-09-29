@@ -10,6 +10,13 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;justify-content:center;padding:20px;}
+/* While the boot sticker chooser is open the frame carries .bcp-choosing.
+   Everything below keys off that one class, so the chooser cannot be undone
+   by whatever runs next — applyStepConfig() rewrites the screens on every
+   rebuild, and inline styles lost that race. */
+.bcp-choosing .screen, .bcp-choosing .step-bar{display:none !important;}
+.bcp-choosing #boot-chooser{display:block !important;}
+#boot-chooser{display:none;}
 .frame{width:100%;max-width:440px;background:#0D0D0D;border-radius:20px;border:1px solid #2A2A2A;overflow:hidden;}
 .top-bar{background:#161616;border-bottom:1px solid #2A2A2A;padding:13px 18px;display:flex;align-items:center;justify-content:space-between;}
 .brand{font-size:15px;font-weight:700;color:#F5F5F0;letter-spacing:-0.3px;}
@@ -899,7 +906,7 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
   <!-- Boot stickers only. Shown by bespokeBootChooserInit() and hidden again
        once something is picked; every other product goes straight to its
        first step. -->
-  <div id="boot-chooser" style="display:none;padding:4px 0 8px;">
+  <div id="boot-chooser" style="padding:4px 0 8px;">
     <div style="font-size:11px;letter-spacing:.1em;color:#8a8a85;margin:0 0 10px;">WHAT DO YOU WANT ON YOUR BOOTS?</div>
     <div id="boot-chooser-opts"></div>
     <div style="display:flex;align-items:baseline;gap:8px;border-top:1px solid #2c2c2c;margin-top:12px;padding-top:12px;">
@@ -6816,25 +6823,19 @@ function bespokeBootPick(key){
 
 /** Back to the chooser, with the steps left as they were until Next. */
 function bespokeBootChooserShow(){
-  var ch = document.getElementById('boot-chooser');
+  var frame = document.querySelector('.frame');
+  if (frame) frame.classList.add('bcp-choosing');
   var re = document.getElementById('boot-rechoose');
-  var bar = document.querySelector('.step-bar');
-  if (ch) ch.style.display = '';
   if (re) re.style.display = 'none';
-  if (bar) bar.style.display = 'none';
-  document.querySelectorAll('.screen').forEach(function(s){ s.style.display = 'none'; });
   bespokeBootChooserRender();
 }
 
 function bespokeBootChooserNext(){
   if (!bespokeBootTotal()) return;
-  var ch = document.getElementById('boot-chooser');
+  var frame = document.querySelector('.frame');
+  if (frame) frame.classList.remove('bcp-choosing');
   var re = document.getElementById('boot-rechoose');
-  var bar = document.querySelector('.step-bar');
-  if (ch) ch.style.display = 'none';
   if (re) re.style.display = '';
-  if (bar) bar.style.display = '';
-  document.querySelectorAll('.screen').forEach(function(s){ s.style.display = ''; });
   if (typeof applyStepConfig === 'function') applyStepConfig();
   bespokeBootTabNames();
   // Land on the first step that is actually on.
