@@ -5276,27 +5276,43 @@ function bespokeBootZone(size) {
   size = size || {};
   var widthMm = parseFloat(String(size.label || '').replace(/[^0-9.]/g, '')) || 0;
   var says = String(size.line1 || '') + ' ' + String(size.line2 || '');
-  var key = /side/i.test(says) ? 'side' : (/heel|rear|back/i.test(says) ? 'heel' : (widthMm >= 40 ? 'side' : 'heel'));
-  var z = BESPOKE_BOOT_ZONES[key];
+  var side = /side|ankle/i.test(says);
+  var heel = /heel|rear|back/i.test(says);
+  // Nothing recognisable in the wording: fall back to the width. Only the
+  // side panel is long enough for 40mm or more.
+  if (!side && !heel) { side = widthMm >= 40; heel = !side; }
+  var spots = [];
+  if (heel) spots.push(BESPOKE_BOOT_ZONES.heel);
+  if (side) spots.push(BESPOKE_BOOT_ZONES.side);
+  var first = spots[0];
   return {
-    key:        key,
-    widthMm:    widthMm || (key === 'side' ? 48 : 30),
-    cx:         z.cx,
-    cy:         z.cy,
-    unitsPerMm: z.unitsPerMm
+    key:        (side && heel) ? 'both' : (side ? 'side' : 'heel'),
+    widthMm:    widthMm || (side ? 48 : 30),
+    spots:      spots,
+    // The first spot, for callers that only draw one. 'both' leads with the
+    // heel because that is the tighter of the two: if it looks right there
+    // it looks right on the side.
+    cx:         first.cx,
+    cy:         first.cy,
+    unitsPerMm: first.unitsPerMm
   };
 }
 
 /**
- * What may go in a zone. The rear heel is small and curved, so it takes a
- * club badge or a single squad number. The side panel is flat and long, so
- * it takes text, a badge or a country flag.
+ * What may go on a sticker of a given width.
+ *
+ * There is deliberately no placement rule here any more. The size buttons
+ * offer 20mm and 30mm for either the rear heel or the side, so a width no
+ * longer picks a spot for the customer — and it never really could, because
+ * the pair is posted out and stuck on at home. What remains is physical: a
+ * flag or a badge needs enough width to still read, and text has to fit,
+ * which bespokeBootTextFit() decides on its own.
  */
-function bespokeBootAllows(zoneKey, element) {
-  var allowed = (zoneKey === 'side')
-    ? { text: true, badge: true, flag: true, number: true }
-    : { badge: true, number: true };
-  return !!allowed[element];
+function bespokeBootAllows(zone, element) {
+  var mm = (zone && zone.widthMm) || 0;
+  // A flag below 15mm is a coloured smudge rather than a flag.
+  if (element === 'flag') { return mm >= 15; }
+  return element === 'text' || element === 'badge' || element === 'number';
 }
 
 /**
