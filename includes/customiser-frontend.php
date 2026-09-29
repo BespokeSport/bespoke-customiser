@@ -59,7 +59,12 @@ function bespoke_render_customiser( $atts ) {
         return '<p>Product not found.</p>';
     }
 
-    $price    = $product->get_price();
+    // Cast, do not trust. A product with no price yet — a draft being set
+    // up, or one whose variations carry the prices — returns an empty string
+    // from get_price(), and PHP 8 throws a TypeError rather than reading it as
+    // zero the moment it reaches number_format() below. That took the whole
+    // product page down with a critical error instead of showing £0.00.
+    $price    = (float) $product->get_price();
     $ajax_url = admin_url( 'admin-ajax.php' );
     $nonce    = wp_create_nonce( 'bespoke_add_to_cart' );
 

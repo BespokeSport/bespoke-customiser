@@ -411,6 +411,23 @@ matches on the lowercased key and returns the canonical camelCase one. Orders pl
 before that still have an empty `hidden_elements`; `bespoke_badge_sides()` works out an
 empty armband side from `badge2.mode` so they read correctly anyway.
 
+### 6.14 A product with no price takes its own page down
+
+`$product->get_price()` returns an **empty string** when no price is set — a
+draft being built, or a variable product whose prices live on the variations.
+PHP 8 refuses that: `number_format("")` throws
+`TypeError: Argument #1 ($num) must be of type int|float, string given`, and
+the product page dies with "There has been a critical error on this website".
+
+Found 29 Sep 2026 on the new Boot Stickers draft, which had no price yet. The
+page rendered as far as `price: '£` in `window.BespokeConfig` and stopped.
+Fixed by casting at source in customiser-frontend.php, so an unpriced product
+shows £0.00 instead of a white screen.
+
+**Rule:** never hand `get_price()` straight to `number_format()`. Cast it.
+
+---
+
 ## 7. Tooling notes (for you, on the new machine)
 
 - **There is no PHP locally.** `tools/` in the repo has what you need — run `npm install`
