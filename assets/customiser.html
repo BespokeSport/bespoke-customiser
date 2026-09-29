@@ -884,6 +884,25 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
       <span class="bespoke-live-price" id="bespoke-price-header">&mdash;</span>
     </div>
   </div>
+  <!-- Boot stickers only. Shown by bespokeBootChooserInit() and hidden again
+       once something is picked; every other product goes straight to its
+       first step. -->
+  <div id="boot-chooser" style="display:none;padding:4px 0 8px;">
+    <div style="font-size:11px;letter-spacing:.1em;color:#8a8a85;margin:0 0 10px;">WHAT DO YOU WANT ON YOUR BOOTS?</div>
+    <div id="boot-chooser-opts"></div>
+    <div style="display:flex;align-items:baseline;gap:8px;border-top:1px solid #2c2c2c;margin-top:12px;padding-top:12px;">
+      <span style="font-size:22px;font-weight:500;color:#F5F5F0;" id="boot-chooser-total">&mdash;</span>
+      <span style="font-size:12px;color:#8a8a85;">per pair</span>
+      <span style="margin-left:auto;font-size:12px;color:#5DCAA5;" id="boot-chooser-save"></span>
+    </div>
+    <button type="button" id="boot-chooser-next" onclick="bespokeBootChooserNext()" style="margin-top:12px;width:100%;background:#2c2c2c;color:#8a8a85;border:none;border-radius:10px;padding:12px;font-size:14px;font-family:inherit;cursor:not-allowed;">Pick at least one</button>
+  </div>
+
+  <!-- Way back to the chooser, boot stickers only. -->
+  <div id="boot-rechoose" style="display:none;padding:0 0 10px;">
+    <button type="button" onclick="bespokeBootChooserShow()" style="background:none;border:none;color:#8a8a85;font-size:12px;font-family:inherit;text-decoration:underline;cursor:pointer;padding:0;">Change what goes on your stickers</button>
+  </div>
+
   <div class="step-bar">
     <div class="step-labels">
       <div class="sl active" id="lbl-0" onclick="goTo(0)" style="cursor:pointer;">Badge</div>
@@ -5704,7 +5723,25 @@ function bespokeLockBadgeY(key){
 function bespokeClampArmbandBadgeX(x){
   return Math.max(150, Math.min(1050, x));
 }
+/**
+ * Boot stickers decide their own steps from what was picked on the chooser,
+ * rather than from a fixed list. Text, flag and badge are separate stickers
+ * on separate sheets, so walking someone through a step for something they
+ * are not buying is just a screen to skip.
+ */
+function bespokeBootSteps(){
+  var p = (typeof S === 'object' && S && S.bootPick) || null;
+  if (!p) return ['badge', 'name', 'number', 'colours'];
+  var out = [];
+  if (p.badge) out.push('badge');
+  if (p.text)  out.push('name');
+  if (p.flag)  out.push('number');
+  out.push('colours');
+  return out;
+}
+
 function bespokeActiveSteps(){
+  if (bespokeBaseType() === 'boot_stickers') return bespokeBootSteps();
   // RAW type first, then the base type it inherits from. Most child types
   // want their parent's step list (referee armbands are a captain armband
   // with different defaults), but some deliberately differ: pre-designed
@@ -6682,6 +6719,134 @@ var BG_VARIANT_LABELS = {
  *    a 300mm boot, which is already as tall as a sticker ever gets, so the
  *    slider bottomed out before the customer reached a realistic size.
  */
+// What can go on a pair, in the order the chooser lists them. The prices are
+// a fallback only: once the product has its variations, the live ones are
+// read from window.BespokeConfig and these are never seen.
+var BOOT_PICKS = [
+  { key: 'text',  title: 'Name, initials or number', sub: 'One line, up to 48mm wide',                  fallback: 10 },
+  { key: 'flag',  title: 'Country flag',             sub: 'Pick one, or tell us what you need',         fallback: 7  },
+  { key: 'badge', title: 'Your club badge',          sub: 'Upload it, in full colour',                  fallback: 10 },
+  { key: 'all',   title: 'All three',                sub: 'Text, flag and badge together',              fallback: 22 }
+];
+
+function bespokeBootPrice(key){
+  var v = (window.BespokeConfig && BespokeConfig.variations) || [];
+  for (var i = 0; i < v.length; i++) {
+    var name = String(v[i].attributes ? Object.keys(v[i].attributes).map(function(k){ return v[i].attributes[k]; }).join(' ') : '');
+    if (key === 'all' ? /all/i.test(name) : new RegExp(key, 'i').test(name)) return parseFloat(v[i].price) || 0;
+  }
+  for (var j = 0; j < BOOT_PICKS.length; j++) if (BOOT_PICKS[j].key === key) return BOOT_PICKS[j].fallback;
+  return 0;
+}
+
+function bespokeBootPicked(){
+  var p = (window.S && S.bootPick) || { text: false, flag: false, badge: false };
+  return p;
+}
+
+/** True when all three are on, which is what the bundle price is for. */
+function bespokeBootAll(){
+  var p = bespokeBootPicked();
+  return !!(p.text && p.flag && p.badge);
+}
+
+function bespokeBootTotal(){
+  if (bespokeBootAll()) return bespokeBootPrice('all');
+  var p = bespokeBootPicked(), t = 0;
+  if (p.text)  t += bespokeBootPrice('text');
+  if (p.flag)  t += bespokeBootPrice('flag');
+  if (p.badge) t += bespokeBootPrice('badge');
+  return t;
+}
+
+function bespokeBootChooserRender(){
+  var host = document.getElementById('boot-chooser-opts');
+  if (!host) return;
+  var p = bespokeBootPicked(), all = bespokeBootAll();
+  host.innerHTML = BOOT_PICKS.map(function(it){
+    var on = (it.key === 'all') ? all : !!p[it.key];
+    return '<div onclick="bespokeBootPick(\'' + it.key + '\')" style="display:flex;align-items:flex-start;gap:10px;background:#1c1c1c;border:1px solid ' + (on ? '#5DCAA5' : '#2c2c2c') + ';border-radius:10px;padding:12px;margin-bottom:8px;cursor:pointer;">' +
+      '<span style="width:20px;height:20px;border-radius:5px;flex:none;margin-top:1px;border:1.5px solid ' + (on ? '#5DCAA5' : '#4a4a4a') + ';background:' + (on ? '#5DCAA5' : 'transparent') + ';"></span>' +
+      '<span><span style="color:#F5F5F0;font-size:14px;">' + it.title + '</span>' +
+      '<span style="display:block;font-size:12px;color:#8a8a85;margin-top:2px;">' + it.sub + '</span></span>' +
+      '<span style="margin-left:auto;font-size:13px;color:#8a8a85;white-space:nowrap;">£' + bespokeBootPrice(it.key) + '</span></div>';
+  }).join('');
+  var total = bespokeBootTotal();
+  var tEl = document.getElementById('boot-chooser-total');
+  var sEl = document.getElementById('boot-chooser-save');
+  var nEl = document.getElementById('boot-chooser-next');
+  if (tEl) tEl.innerHTML = total ? ('£' + total) : '&mdash;';
+  if (sEl) {
+    var apart = bespokeBootPrice('text') + bespokeBootPrice('flag') + bespokeBootPrice('badge');
+    sEl.textContent = (all && apart > total) ? ('save £' + (apart - total)) : '';
+  }
+  if (nEl) {
+    var ready = total > 0;
+    nEl.textContent = ready ? 'Next' : 'Pick at least one';
+    nEl.style.background = ready ? '#5DCAA5' : '#2c2c2c';
+    nEl.style.color      = ready ? '#08312a' : '#8a8a85';
+    nEl.style.cursor     = ready ? 'pointer' : 'not-allowed';
+  }
+}
+
+function bespokeBootPick(key){
+  if (!window.S) return;
+  if (!S.bootPick) S.bootPick = { text: false, flag: false, badge: false };
+  if (key === 'all') {
+    var turnOn = !bespokeBootAll();
+    S.bootPick.text = S.bootPick.flag = S.bootPick.badge = turnOn;
+  } else {
+    S.bootPick[key] = !S.bootPick[key];
+  }
+  bespokeBootChooserRender();
+}
+
+/** Back to the chooser, with the steps left as they were until Next. */
+function bespokeBootChooserShow(){
+  var ch = document.getElementById('boot-chooser');
+  var re = document.getElementById('boot-rechoose');
+  var bar = document.querySelector('.step-bar');
+  if (ch) ch.style.display = '';
+  if (re) re.style.display = 'none';
+  if (bar) bar.style.display = 'none';
+  document.querySelectorAll('.screen').forEach(function(s){ s.style.display = 'none'; });
+  bespokeBootChooserRender();
+}
+
+function bespokeBootChooserNext(){
+  if (!bespokeBootTotal()) return;
+  var ch = document.getElementById('boot-chooser');
+  var re = document.getElementById('boot-rechoose');
+  var bar = document.querySelector('.step-bar');
+  if (ch) ch.style.display = 'none';
+  if (re) re.style.display = '';
+  if (bar) bar.style.display = '';
+  document.querySelectorAll('.screen').forEach(function(s){ s.style.display = ''; });
+  if (typeof applyStepConfig === 'function') applyStepConfig();
+  bespokeBootTabNames();
+  // Land on the first step that is actually on.
+  for (var i = 0; i < 5; i++) { if (bespokeIsStepActive(i)) { if (typeof goTo === 'function') goTo(i); break; } }
+  if (typeof bespokeRefreshPriceDisplay === 'function') bespokeRefreshPriceDisplay();
+}
+
+/**
+ * The step tabs are shared markup and applyStepConfig() rewrites them, so the
+ * two slots this product borrows have to be renamed again every time the
+ * steps are rebuilt — not just once at start-up.
+ */
+function bespokeBootTabNames(){
+  if (bespokeBaseType() !== 'boot_stickers') return;
+  var t1 = document.getElementById('lbl-1'); if (t1) t1.textContent = 'Text';
+  var t2 = document.getElementById('lbl-2'); if (t2) t2.textContent = 'Flag';
+}
+
+function bespokeBootChooserInit(){
+  if (bespokeBaseType() !== 'boot_stickers') return;
+  if (window.S && !S.bootPick) S.bootPick = { text: true, flag: false, badge: false };
+  bespokeBootTabNames();
+  bespokeBootChooserShow();
+}
+
 function bespokeBootStickerUI(){
   var isBoot = (typeof bespokeBaseType === 'function') && bespokeBaseType() === 'boot_stickers';
   var note = document.getElementById('visual-only-note');
@@ -7607,6 +7772,7 @@ _bsInit('sizes',        function(){ renderSizes(); });
 _bsInit('plateLabels',  function(){ relabelNumberStepForPlate(); });
 _bsInit('bgVariant',    function(){ initBgVariantToggle(); });
 _bsInit('bootSticker',  function(){ bespokeBootStickerUI(); });
+_bsInit('bootChooser',  function(){ bespokeBootChooserInit(); });
 _bsInit('addBack',      function(){ renderAddBackPanel(); });
 
 </script>
