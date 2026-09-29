@@ -960,6 +960,16 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
          and the section header are filled in by initBgVariantToggle()
          based on product_type (Pennant → "With Frill / No Frill";
          Armband → "5cm band / 8cm band"). -->
+    <!-- Boot stickers only. Every other product's preview is an instruction:
+         it shows the workshop where to print. This one is not — the stickers
+         arrive on a sheet and the customer puts them where they like. Saying
+         so in the customiser is the difference between a happy customer and
+         one who expects their boots to arrive looking like the screen. Shown
+         by bespokeBootStickerUI(). -->
+    <div id="visual-only-note" style="display:none;background:#1c1c1c;border-left:3px solid #5DCAA5;border-radius:0 8px 8px 0;padding:12px 14px;margin-bottom:16px;font-size:13px;line-height:1.5;color:#c8c8c2;">
+      <strong style="color:#F5F5F0;display:block;margin-bottom:4px;">This is only to show you how it will look.</strong>
+      Your stickers come on a sheet and you put them on yourself, wherever you want them. The boot here is a backdrop — moving things around on it changes the picture, not what we print.
+    </div>
     <div class="bg-variant-row" id="bg-variant-row" style="display:none;">
       <div class="sec-label" id="bg-variant-label">Style</div>
       <div class="bg-variant-buttons">
@@ -6651,8 +6661,39 @@ var BG_VARIANT_LABELS = {
   // same and only the choice (and the price) changes. The primary label is
   // the variation's own name, so it matches exactly; the alt shares more
   // words with the inside-and-outside variation than with the other one.
-  gripsocks: { section: 'Print', primary: 'Outside Facing', alt: 'Inside & Outside', requireAlt: false }
+  gripsocks: { section: 'Print', primary: 'Outside Facing', alt: 'Inside & Outside', requireAlt: false },
+  // Boot stickers — unlike every other entry here, this one is not part of
+  // the order. A white sticker disappears on a white boot and a black one on
+  // a black boot, so the customer switches the backdrop to see their own
+  // design. It is recorded on the order only so the workshop knows which
+  // picture the customer was looking at. requireAlt stays false for the
+  // ordering reason described at the top of this list.
+  boot_stickers: { section: 'Show me on a', primary: 'Black boot', alt: 'White boot', requireAlt: false }
 };
+/**
+ * The two things boot stickers need that no other product does.
+ *
+ * 1. The notice above the preview. Every other product's preview tells the
+ *    workshop where to print; this one tells the customer nothing except how
+ *    it will look, and that has to be said out loud.
+ * 2. Sliders that reach a sticker's size. The shared floors were set for a
+ *    shin pad, where the smallest sensible name is still large on the canvas.
+ *    A boot sticker is a fraction of that — 40 units of text is about 11mm on
+ *    a 300mm boot, which is already as tall as a sticker ever gets, so the
+ *    slider bottomed out before the customer reached a realistic size.
+ */
+function bespokeBootStickerUI(){
+  var isBoot = (typeof bespokeBaseType === 'function') && bespokeBaseType() === 'boot_stickers';
+  var note = document.getElementById('visual-only-note');
+  if (note) note.style.display = isBoot ? '' : 'none';
+  if (!isBoot) return;
+  var floors = { 'name-size-slider': 8, 'num-size-slider': 8, 'badge-size-slider': 20 };
+  Object.keys(floors).forEach(function(id){
+    var el = document.getElementById(id);
+    if (el) { el.min = floors[id]; }
+  });
+}
+
 function initBgVariantToggle(){
   var row = document.getElementById('bg-variant-row');
   if (!row) return;
@@ -7565,6 +7606,7 @@ _bsInit('zoneConfig',   function(){ applyZoneConfig(); });
 _bsInit('sizes',        function(){ renderSizes(); });
 _bsInit('plateLabels',  function(){ relabelNumberStepForPlate(); });
 _bsInit('bgVariant',    function(){ initBgVariantToggle(); });
+_bsInit('bootSticker',  function(){ bespokeBootStickerUI(); });
 _bsInit('addBack',      function(){ renderAddBackPanel(); });
 
 </script>
