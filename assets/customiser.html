@@ -26,6 +26,11 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
 /* Padding lives here rather than inline, or the desktop gutters below can
    never override it and the panel runs off the edge of the screen. */
 #boot-chooser{display:none;padding:4px 18px 8px;}
+/* The flag step borrows the squad-number screen, so everything on it that is
+   not the preview, the nav row or the flag picker is put away. A rule with
+   !important rather than an inline style, because the step gets redrawn and
+   inline styles lose that race — see HANDOVER 6.15. */
+.bcp-boot #s2 > *:not(.preview-box):not(.nav-row):not(#boot-flag-block){display:none !important;}
 .frame{width:100%;max-width:440px;background:#0D0D0D;border-radius:20px;border:1px solid #2A2A2A;overflow:hidden;}
 .top-bar{background:#161616;border-bottom:1px solid #2A2A2A;padding:13px 18px;display:flex;align-items:center;justify-content:space-between;}
 .brand{font-size:15px;font-weight:700;color:#F5F5F0;letter-spacing:-0.3px;}
@@ -1311,6 +1316,23 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
 
   <div class="screen" id="s2">
     <div class="preview-box"><div id="pb2"></div></div>
+    <!-- Boot stickers only: the flag picker stands in for the squad-number
+         controls on this screen. Shown by bespokeBootFlagInit(). -->
+    <div id="boot-flag-block" style="display:none;">
+      <div class="sec-label">Shape</div>
+      <div style="display:flex;gap:8px;margin-bottom:6px;">
+        <button type="button" class="boot-flag-shape" data-shape="round" onclick="bespokeBootFlagShape('round')" style="flex:1;background:#1F1F1F;border:1.5px solid #2A2A2A;color:#F5F5F0;border-radius:12px;padding:12px 8px;font-family:inherit;font-size:14px;cursor:pointer;">Round</button>
+        <button type="button" class="boot-flag-shape" data-shape="rect" onclick="bespokeBootFlagShape('rect')" style="flex:1;background:#1F1F1F;border:1.5px solid #2A2A2A;color:#F5F5F0;border-radius:12px;padding:12px 8px;font-family:inherit;font-size:14px;cursor:pointer;">Rectangle</button>
+      </div>
+      <p class="hint" id="boot-flag-shape-note" style="margin:0 0 16px;"></p>
+      <div class="sec-label">Country</div>
+      <select id="boot-flag-country" class="player-select" onchange="bespokeBootFlagCountry(this.value)">
+        <option value="">Select country…</option>
+      </select>
+      <div class="sec-label" style="margin-top:18px;">Not listed?</div>
+      <p class="hint" style="margin:0 0 8px;">Tell us what you need — another country, or an awareness ribbon. Same price, and we will email you a picture of it before anything is printed.</p>
+      <textarea id="boot-flag-request" rows="2" maxlength="200" oninput="bespokeBootFlagRequest(this.value)" placeholder="For example: Ukraine, or a yellow and black autism awareness ribbon" style="width:100%;background:#1F1F1F;border:1.5px solid #2A2A2A;color:#F5F5F0;border-radius:12px;padding:12px;font-family:inherit;font-size:14px;box-sizing:border-box;"></textarea>
+    </div>
     <div class="drag-hint" data-pc-hide><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="#888" stroke-width="1.5"><path d="M5 9l-3 1 3 1M15 9l3 1-3 1M9 5l1-3 1 3M9 15l1 3 1-3"/></svg> <span id="drag-hint-num-text">Drag number to reposition</span></div>
     <!-- Standard "Squad number" controls (toggle, input(s), size slider,
          font picker, colour picker, hint, add-back panel) — hidden on
@@ -3219,6 +3241,7 @@ function updatePreview(stepId) {
   // top of the design layer. Runs last so it sits above the badge and
   // text layers. No-op on every other product type.
   if (typeof applyPlayerCardOverlay === 'function') {
+    try { applyBootStickerOverlay(stepId); } catch(e) {}
     try { applyPlayerCardOverlay(stepId); } catch(e) {
       if (window.console && console.error) console.error('[player-card overlay]', e);
     }
@@ -6875,8 +6898,267 @@ function bespokeBootChooserInit(){
   bespokeBootChooserShow();
 }
 
+/* ============================================================
+   BOOT STICKER FLAGS
+   ============================================================
+   Two exports, two folders, and they do not cover the same countries:
+   assets/flags holds the rectangles, assets/flags/Round Flags the rounds.
+   This list is generated from what is actually on disk — r for rectangle,
+   o for round, ro for both — so the picker can grey out a shape that does
+   not exist rather than offering it and printing the wrong thing. Regenerate
+   it whenever flags are added; nothing reads the folders at run time.
+   ============================================================ */
+var BOOT_FLAGS = {
+  'Albania': 'ro',
+  'Alderney': 'r',
+  'Algeria': 'o',
+  'Andorra': 'ro',
+  'Argentina': 'o',
+  'Armenia': 'r',
+  'Australia': 'o',
+  'Austria': 'ro',
+  'Azerbaijan': 'r',
+  'Belarus': 'ro',
+  'Belgium': 'ro',
+  'Bosnia and Herzegovina': 'ro',
+  'Brazil': 'o',
+  'Bulgaria': 'ro',
+  'Canada': 'o',
+  'Catalonia': 'o',
+  'China': 'o',
+  'Croatia': 'ro',
+  'Cuba': 'o',
+  'Cyprus': 'ro',
+  'Czech Republic': 'ro',
+  'Denmark': 'ro',
+  'Egypt': 'o',
+  'England': 'ro',
+  'Estonia': 'ro',
+  'Faroe Islands': 'ro',
+  'Finland': 'ro',
+  'France': 'ro',
+  'Georgia': 'r',
+  'Germany': 'ro',
+  'Gibraltar': 'r',
+  'Greece': 'ro',
+  'Greenland': 'ro',
+  'Guernsey': 'ro',
+  'Hong Kong': 'o',
+  'Hungary': 'ro',
+  'Iceland': 'ro',
+  'India': 'o',
+  'Ireland': 'ro',
+  'Isle of Man': 'ro',
+  'Italy': 'ro',
+  'Jamaica': 'o',
+  'Japan': 'o',
+  'Jersey': 'r',
+  'Kosovo': 'r',
+  'Latvia': 'ro',
+  'Liechtenstein': 'r',
+  'Lithuania': 'r',
+  'Luxembourg': 'ro',
+  'Macedonia': 'r',
+  'Malta': 'ro',
+  'Mexico': 'o',
+  'Moldova': 'r',
+  'Monaco': 'r',
+  'Montenegro': 'r',
+  'Netherlands': 'ro',
+  'New Zealand': 'o',
+  'Nigeria': 'o',
+  'Northern Cyprus': 'r',
+  'Northern Ireland': 'r',
+  'Norway': 'ro',
+  'Pakistan': 'o',
+  'Philippines': 'o',
+  'Poland': 'ro',
+  'Portugal': 'ro',
+  'Qatar': 'o',
+  'Romania': 'ro',
+  'Russia': 'o',
+  'San Marino': 'r',
+  'Sark': 'r',
+  'Saudi Arabia': 'o',
+  'Scotland': 'ro',
+  'Senegal': 'o',
+  'Serbia': 'ro',
+  'Slovakia': 'ro',
+  'Slovenia': 'ro',
+  'South Africa': 'o',
+  'South Korea': 'o',
+  'Spain': 'ro',
+  'Sweden': 'ro',
+  'Switzerland': 'ro',
+  'Turkey': 'ro',
+  'USA': 'o',
+  'Ukraine': 'ro',
+  'United Kingdom': 'ro',
+  'Vatican City': 'r',
+  'Wales': 'ro'
+};
+
+function bespokeBootFlagState(){
+  if (!window.S) return { country: '', shape: 'round', request: '' };
+  if (!S.bootFlag) S.bootFlag = { country: '', shape: 'round', request: '' };
+  return S.bootFlag;
+}
+
+/** Where a flag image lives. Round ones sit in their own folder. */
+function bespokeBootFlagUrl(country, shape){
+  if (!country || !BOOT_FLAGS[country]) return '';
+  var has = BOOT_FLAGS[country];
+  if (shape === 'round' && has.indexOf('o') === -1) return '';
+  if (shape === 'rect'  && has.indexOf('r') === -1) return '';
+  var base = (window.BespokeConfig && BespokeConfig.pluginAssetsUrl) || '';
+  // The folder name has a space in it, so encode that too rather than
+  // trusting every server to be forgiving about it.
+  return base + 'flags/' + (shape === 'round' ? 'Round%20Flags/' : '') + encodeURIComponent(country) + '.png';
+}
+
+function bespokeBootFlagShape(shape){
+  var st = bespokeBootFlagState();
+  st.shape = shape;
+  bespokeBootFlagSync();
+  if (typeof syncAll === 'function') syncAll();
+}
+
+function bespokeBootFlagCountry(country){
+  var st = bespokeBootFlagState();
+  st.country = country;
+  // A country the other shape does not have: move to the one it does, so the
+  // preview never sits empty with a country selected.
+  var has = BOOT_FLAGS[country] || '';
+  if (st.shape === 'round' && has.indexOf('o') === -1 && has.indexOf('r') !== -1) st.shape = 'rect';
+  if (st.shape === 'rect'  && has.indexOf('r') === -1 && has.indexOf('o') !== -1) st.shape = 'round';
+  bespokeBootFlagSync();
+  if (typeof syncAll === 'function') syncAll();
+}
+
+function bespokeBootFlagRequest(text){
+  bespokeBootFlagState().request = String(text || '').slice(0, 200);
+}
+
+/** Paint the buttons and the note to match the state. */
+function bespokeBootFlagSync(){
+  var st = bespokeBootFlagState();
+  var has = BOOT_FLAGS[st.country] || '';
+  document.querySelectorAll('.boot-flag-shape').forEach(function(btn){
+    var shape = btn.getAttribute('data-shape');
+    var missing = st.country && has.indexOf(shape === 'round' ? 'o' : 'r') === -1;
+    btn.disabled = !!missing;
+    btn.style.opacity = missing ? '0.4' : '1';
+    btn.style.cursor = missing ? 'not-allowed' : 'pointer';
+    var on = (st.shape === shape) && !missing;
+    btn.style.borderColor = on ? '#5DCAA5' : '#2A2A2A';
+    btn.style.background  = on ? '#0A2A20' : '#1F1F1F';
+    btn.style.color       = on ? '#5DCAA5' : '#F5F5F0';
+  });
+  var note = document.getElementById('boot-flag-shape-note');
+  if (note) {
+    if (!st.country) { note.textContent = 'Pick a country and we will show you both shapes we have for it.'; }
+    else if (has === 'ro') { note.textContent = ''; }
+    else { note.textContent = 'We only have ' + (has === 'o' ? 'the round' : 'the rectangle') + ' version of this one. Ask below if you need the other.'; }
+  }
+  var sel = document.getElementById('boot-flag-country');
+  if (sel && sel.value !== st.country) sel.value = st.country;
+}
+
+/**
+ * Build the country list once, from the same markup the player cards use, so
+ * there is one list to maintain. Countries we hold no artwork for at all are
+ * dropped rather than shown and then found wanting.
+ */
+function bespokeBootFlagInit(){
+  var block = document.getElementById('boot-flag-block');
+  if (!block) return;
+  var isBoot = bespokeBaseType() === 'boot_stickers';
+  block.style.display = isBoot ? '' : 'none';
+  if (!isBoot) return;
+
+  var sel = document.getElementById('boot-flag-country');
+  if (sel && sel.options.length <= 1) {
+    var source = document.getElementById('player-flag');
+    if (source) {
+      Array.prototype.forEach.call(source.children, function(node){
+        if (node.tagName === 'OPTGROUP') {
+          var kept = Array.prototype.filter.call(node.children, function(o){ return BOOT_FLAGS[o.value]; });
+          if (!kept.length) return;
+          var g = document.createElement('optgroup');
+          g.label = node.label;
+          kept.forEach(function(o){ g.appendChild(o.cloneNode(true)); });
+          sel.appendChild(g);
+        }
+      });
+    }
+    // Anything on disk the player-card list never had — the rest of the world.
+    var listed = {};
+    Array.prototype.forEach.call(sel.querySelectorAll('option'), function(o){ listed[o.value] = 1; });
+    var extra = Object.keys(BOOT_FLAGS).filter(function(c){ return !listed[c]; }).sort();
+    if (extra.length) {
+      var g2 = document.createElement('optgroup');
+      g2.label = 'Rest of the world';
+      extra.forEach(function(c){
+        var o = document.createElement('option');
+        o.value = c; o.textContent = c;
+        g2.appendChild(o);
+      });
+      sel.appendChild(g2);
+    }
+  }
+
+  // What else is on this screen is put away by CSS — see the .bcp-boot rule
+  // at the top of the file.
+  bespokeBootFlagSync();
+}
+
+/**
+ * Draw the chosen flag onto the preview, in its own layer so it can be wiped
+ * and rebuilt without disturbing the badge, the text or the boot behind them.
+ * It sits on the rear heel — where a flag reads best — unless the badge is
+ * there too, in which case it drops below it.
+ */
+function applyBootStickerOverlay(stepId){
+  if (bespokeBaseType() !== 'boot_stickers') return;
+  var svg = (typeof previews === 'object' && previews) ? previews[stepId] : null;
+  if (!svg) return;
+  var ns = 'http://www.w3.org/2000/svg';
+  var layerId = 'boot-flag-layer-' + stepId;
+  var layer = document.getElementById(layerId);
+  if (!layer) {
+    layer = document.createElementNS(ns, 'g');
+    layer.setAttribute('id', layerId);
+    layer.setAttribute('pointer-events', 'none');
+    svg.appendChild(layer);
+  }
+  while (layer.firstChild) layer.removeChild(layer.firstChild);
+
+  var st = bespokeBootFlagState();
+  var url = bespokeBootFlagUrl(st.country, st.shape);
+  if (!url) return;
+
+  // 30mm across, in the rear view's units.
+  var w = Math.round(30 * BESPOKE_BOOT_ZONES.heel.unitsPerMm);
+  var h = (st.shape === 'round') ? w : Math.round(w * 0.62);
+  var pos = (window.S && S.pos && S.pos.badgeL) ? S.pos.badgeL : { x: 550, y: 216 };
+  var picked = (window.S && S.bootPick) || {};
+  var cy = pos.y + (picked.badge ? 150 : 0);
+
+  var img = document.createElementNS(ns, 'image');
+  img.setAttributeNS('http://www.w3.org/1999/xlink', 'href', url);
+  img.setAttribute('href', url);
+  img.setAttribute('x', Math.round(pos.x - w / 2));
+  img.setAttribute('y', Math.round(cy - h / 2));
+  img.setAttribute('width', w);
+  img.setAttribute('height', h);
+  img.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+  layer.appendChild(img);
+}
+
 function bespokeBootStickerUI(){
   var isBoot = (typeof bespokeBaseType === 'function') && bespokeBaseType() === 'boot_stickers';
+  var frameEl = document.querySelector('.frame');
+  if (frameEl) frameEl.classList.toggle('bcp-boot', isBoot);
   var note = document.getElementById('visual-only-note');
   if (note) note.style.display = isBoot ? '' : 'none';
   if (!isBoot) return;
@@ -7167,6 +7449,12 @@ function setupDesktop() {
 function updateDTLabels() {
   var label = document.getElementById('dt-label');
   var hint  = document.getElementById('dt-hint');
+  // Boot stickers borrow the number screen for the flag, so the preview
+  // heading has to follow the tab rather than the slot.
+  if (typeof bespokeBaseType === 'function' && bespokeBaseType() === 'boot_stickers') {
+    if (S.step === 1) { if (label) label.textContent = 'Text'; if (hint) hint.textContent = DT_HINTS[S.step] || ''; return; }
+    if (S.step === 2) { if (label) label.textContent = 'Flag'; if (hint) hint.textContent = ''; return; }
+  }
   if(label) label.textContent = DT_LABELS[S.step] || '';
   if(hint)  hint.textContent  = DT_HINTS[S.step]  || '';
 }
@@ -7842,6 +8130,7 @@ _bsInit('plateLabels',  function(){ relabelNumberStepForPlate(); });
 _bsInit('bgVariant',    function(){ initBgVariantToggle(); });
 _bsInit('bootSticker',  function(){ bespokeBootStickerUI(); });
 _bsInit('bootChooser',  function(){ bespokeBootChooserInit(); });
+_bsInit('bootFlag',     function(){ bespokeBootFlagInit(); });
 _bsInit('addBack',      function(){ renderAddBackPanel(); });
 
 </script>
