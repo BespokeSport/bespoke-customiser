@@ -7004,12 +7004,27 @@ function bespokeBootFlagState(){
   return S.bootFlag;
 }
 
-/** Where a flag image lives. Round ones sit in their own folder. */
+/** Do we hold this country in this shape, or is it one to order in? */
+function bespokeBootFlagStocked(country, shape){
+  var has = BOOT_FLAGS[country] || '';
+  return has.indexOf(shape === 'round' ? 'o' : 'r') !== -1;
+}
+
+/**
+ * Where a flag image lives. Round ones sit in their own folder.
+ *
+ * Any country can be made in either shape — if it is not on the shelf it is
+ * ordered in, and that takes a couple of days. So when the shape asked for is
+ * not held, this falls back to the one that is, purely so the preview has
+ * something honest to show. The screen says which it is showing, and the
+ * order carries the shape the customer actually chose.
+ */
 function bespokeBootFlagUrl(country, shape){
   if (!country || !BOOT_FLAGS[country]) return '';
   var has = BOOT_FLAGS[country];
-  if (shape === 'round' && has.indexOf('o') === -1) return '';
-  if (shape === 'rect'  && has.indexOf('r') === -1) return '';
+  if (!bespokeBootFlagStocked(country, shape)) {
+    shape = (has.indexOf('o') !== -1) ? 'round' : 'rect';
+  }
   var base = (window.BespokeConfig && BespokeConfig.pluginAssetsUrl) || '';
   // The folder name has a space in it, so encode that too rather than
   // trusting every server to be forgiving about it.
@@ -7026,11 +7041,7 @@ function bespokeBootFlagShape(shape){
 function bespokeBootFlagCountry(country){
   var st = bespokeBootFlagState();
   st.country = country;
-  // A country the other shape does not have: move to the one it does, so the
-  // preview never sits empty with a country selected.
-  var has = BOOT_FLAGS[country] || '';
-  if (st.shape === 'round' && has.indexOf('o') === -1 && has.indexOf('r') !== -1) st.shape = 'rect';
-  if (st.shape === 'rect'  && has.indexOf('r') === -1 && has.indexOf('o') !== -1) st.shape = 'round';
+  // The shape the customer chose is kept, whether or not it is on the shelf.
   bespokeBootFlagSync();
   if (typeof syncAll === 'function') syncAll();
 }
@@ -7042,23 +7053,29 @@ function bespokeBootFlagRequest(text){
 /** Paint the buttons and the note to match the state. */
 function bespokeBootFlagSync(){
   var st = bespokeBootFlagState();
-  var has = BOOT_FLAGS[st.country] || '';
   document.querySelectorAll('.boot-flag-shape').forEach(function(btn){
     var shape = btn.getAttribute('data-shape');
-    var missing = st.country && has.indexOf(shape === 'round' ? 'o' : 'r') === -1;
-    btn.disabled = !!missing;
-    btn.style.opacity = missing ? '0.4' : '1';
-    btn.style.cursor = missing ? 'not-allowed' : 'pointer';
-    var on = (st.shape === shape) && !missing;
+    var on = (st.shape === shape);
+    btn.disabled = false;
+    btn.style.opacity = '1';
+    btn.style.cursor = 'pointer';
     btn.style.borderColor = on ? '#5DCAA5' : '#2A2A2A';
     btn.style.background  = on ? '#0A2A20' : '#1F1F1F';
     btn.style.color       = on ? '#5DCAA5' : '#F5F5F0';
   });
   var note = document.getElementById('boot-flag-shape-note');
   if (note) {
-    if (!st.country) { note.textContent = 'Pick a country and we will show you both shapes we have for it.'; }
-    else if (has === 'ro') { note.textContent = ''; }
-    else { note.textContent = 'We only have ' + (has === 'o' ? 'the round' : 'the rectangle') + ' version of this one. Ask below if you need the other.'; }
+    if (!st.country) {
+      note.textContent = 'Every flag can be made in either shape.';
+    } else if (bespokeBootFlagStocked(st.country, st.shape)) {
+      note.textContent = '';
+    } else {
+      // Orderable, just not on the shelf. Say what the picture is showing so
+      // nobody thinks the shape silently changed on them.
+      note.textContent = 'We make this one to order, so allow a couple of extra days. The picture shows the '
+        + (st.shape === 'round' ? 'rectangle' : 'round') + ' version — yours will be '
+        + (st.shape === 'round' ? 'round' : 'rectangular') + '.';
+    }
   }
   var sel = document.getElementById('boot-flag-country');
   if (sel && sel.value !== st.country) sel.value = st.country;
