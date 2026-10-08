@@ -873,6 +873,32 @@ body.single-product .bs-sizing-chart__scroll {
   overflow-x: auto !important;
   max-width: 640px !important;
 }
+/* PHONES: let the long age labels wrap.
+
+   The nowrap above keeps "Age 5-8" on one line, which is right on a desktop
+   and ruinous on a phone: "Young Adult / Smaller Build Adult" held one 248px
+   line, a table cannot be narrower than its content, and every wrapper above
+   it sizes to fit — so one cell made the whole page 467px wide on a 375px
+   screen. The body clips that overflow, which took the product heading and
+   the price off the top of the page with it.
+
+   The size column still never wraps; 28cm has no business breaking. */
+@media (max-width: 600px) {
+  body.single-product .bs-sizing-chart__table th,
+  body.single-product .bs-sizing-chart__table td {
+    white-space: normal !important;
+  }
+  body.single-product .bs-sizing-chart__table th:first-child,
+  body.single-product .bs-sizing-chart__table td:first-child {
+    white-space: nowrap !important;
+  }
+  /* And a heading sized for a phone rather than a desktop. */
+  body.single-product .bs-hero h1.product_title {
+    font-size: 28px !important;
+    line-height: 1.1 !important;
+  }
+}
+
 body.single-product .bs-sizing-chart__table {
   width: 100% !important;
   margin: 0 !important;
