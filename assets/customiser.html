@@ -7026,9 +7026,8 @@ function bespokeBootFlagUrl(country, shape){
     shape = (has.indexOf('o') !== -1) ? 'round' : 'rect';
   }
   var base = (window.BespokeConfig && BespokeConfig.pluginAssetsUrl) || '';
-  // The folder name has a space in it, so encode that too rather than
-  // trusting every server to be forgiving about it.
-  return base + 'flags/' + (shape === 'round' ? 'Round%20Flags/' : '') + encodeURIComponent(country) + '.png';
+  // Both shapes live in one folder: England.png and Round_England.png.
+  return base + 'flags/' + encodeURIComponent((shape === 'round' ? 'Round_' : '') + country) + '.png';
 }
 
 function bespokeBootFlagShape(shape){
@@ -7095,33 +7094,25 @@ function bespokeBootFlagInit(){
 
   var sel = document.getElementById('boot-flag-country');
   if (sel && sel.options.length <= 1) {
-    var source = document.getElementById('player-flag');
-    if (source) {
-      Array.prototype.forEach.call(source.children, function(node){
-        if (node.tagName === 'OPTGROUP') {
-          var kept = Array.prototype.filter.call(node.children, function(o){ return BOOT_FLAGS[o.value]; });
-          if (!kept.length) return;
-          var g = document.createElement('optgroup');
-          g.label = node.label;
-          kept.forEach(function(o){ g.appendChild(o.cloneNode(true)); });
-          sel.appendChild(g);
-        }
-      });
-    }
-    // Anything on disk the player-card list never had — the rest of the world.
-    var listed = {};
-    Array.prototype.forEach.call(sel.querySelectorAll('option'), function(o){ listed[o.value] = 1; });
-    var extra = Object.keys(BOOT_FLAGS).filter(function(c){ return !listed[c]; }).sort();
-    if (extra.length) {
-      var g2 = document.createElement('optgroup');
-      g2.label = 'Rest of the world';
-      extra.forEach(function(c){
-        var o = document.createElement('option');
-        o.value = c; o.textContent = c;
-        g2.appendChild(o);
-      });
-      sel.appendChild(g2);
-    }
+    // Home nations first, because that is who is buying, then everything
+    // else in one alphabetical run. The player cards' A-C / D-G grouping
+    // made sense for a list of 62; it only gets in the way here.
+    var home = ['England', 'Scotland', 'Wales', 'Northern Ireland', 'Ireland', 'United Kingdom'];
+    var add = function(parent, name){
+      var o = document.createElement('option');
+      o.value = name; o.textContent = name;
+      parent.appendChild(o);
+    };
+    var g1 = document.createElement('optgroup');
+    g1.label = 'Home nations';
+    home.forEach(function(c){ if (BOOT_FLAGS[c]) add(g1, c); });
+    if (g1.children.length) sel.appendChild(g1);
+    var g2 = document.createElement('optgroup');
+    g2.label = 'Everywhere else';
+    Object.keys(BOOT_FLAGS).sort().forEach(function(c){
+      if (home.indexOf(c) === -1) add(g2, c);
+    });
+    sel.appendChild(g2);
   }
 
   // What else is on this screen is put away by CSS — see the .bcp-boot rule
