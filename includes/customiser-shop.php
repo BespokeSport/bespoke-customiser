@@ -202,6 +202,14 @@ function bespoke_shop_cart_button_text( $text, $product ) {
 	// non-customiser products with their stock "Add to cart" label.
 	$type = get_post_meta( $product->get_id(), '_bespoke_product_type', true );
 	if ( ! $type ) {
+		// One exception. A product that cannot be bought directly gets
+		// WooCommerce's "Read more", which is true but says nothing about
+		// what a click does. On this shop those are the umbrella tiles —
+		// pre-designed armbands and the club mugs — and a click opens a
+		// page of designs. Say that instead.
+		if ( is_callable( [ $product, 'is_purchasable' ] ) && ! $product->is_purchasable() ) {
+			return __( 'See the range →', 'bespoke-customiser' );
+		}
 		return $text;
 	}
 	return __( 'Customise →', 'bespoke-customiser' );
