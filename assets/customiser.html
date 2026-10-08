@@ -52,6 +52,18 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
 .prog-track{height:3px;background:#2A2A2A;border-radius:2px;overflow:hidden;}
 .prog-fill{height:100%;background:#5DCAA5;border-radius:2px;transition:width .35s ease;}
 .screen{display:none;padding:18px;}
+/* Add to basket, on every step. It sits in the nav row so it inherits the
+   sticky-to-the-bottom behaviour that row already has, and takes a line of
+   its own above Back / Next rather than fighting them for width. */
+.nav-row{flex-wrap:wrap;}
+.bcp-buy{flex:1 0 100%;display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.bcp-buy .bcp-buy-price{font-size:18px;font-weight:700;color:#5DCAA5;}
+.bcp-buy-btn{margin-left:auto;background:#5DCAA5;color:#08312A;border:none;border-radius:12px;padding:12px 20px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;}
+.bcp-buy-btn:hover{filter:brightness(1.06);}
+/* Step numbers. Driven by a data attribute rather than the tab text, which
+   other code rewrites on every rebuild. */
+.sl[data-step-no]::before{content:"Step " attr(data-step-no);display:block;font-size:9px;letter-spacing:.08em;color:#6A6A66;margin-bottom:3px;font-weight:600;}
+.sl.active[data-step-no]::before{color:#5DCAA5;}
 .screen.active{display:block;}
 .preview-box{background:#1a1a1a;border-radius:14px;padding:10px;margin-bottom:8px;}
 .preview-box svg.preview{display:block;width:100%;height:auto;border-radius:6px;max-width:950px;max-height:950px;margin:0 auto;}
@@ -3670,6 +3682,56 @@ function bespokeFindVariation(){
  * so the top-bar mirror and the review-step price stay in sync without
  * having to know how many display slots exist.
  */
+/**
+ * Put the price and an Add to basket button into every step's nav row.
+ *
+ * Runs once. The review screen is left alone — it has its own Add to cart
+ * and does not need two. The price span carries .bespoke-live-price so the
+ * existing refresher keeps it in step with the chosen variation; nothing new
+ * has to be kept in sync.
+ */
+function bespokeBuyBarInit(){
+  for (var i = 0; i < 5; i++) {
+    var screen = document.getElementById('s' + i);
+    if (!screen) continue;
+    var nav = screen.querySelector('.nav-row');
+    if (!nav || nav.querySelector('.bcp-buy')) continue;
+    var bar = document.createElement('div');
+    bar.className = 'bcp-buy';
+    var price = document.createElement('span');
+    price.className = 'bcp-buy-price bespoke-live-price';
+    price.textContent = '—';
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'bcp-buy-btn';
+    btn.textContent = bespokeT('Add to basket');
+    btn.onclick = function(){ if (typeof bespokeAddToCart === 'function') bespokeAddToCart(); };
+    bar.appendChild(price);
+    bar.appendChild(btn);
+    nav.insertBefore(bar, nav.firstChild);
+  }
+  if (typeof bespokeRefreshPriceDisplay === 'function') bespokeRefreshPriceDisplay();
+}
+
+/**
+ * Number the tabs the customer can actually see. A product showing badge,
+ * text and flag reads Step 1, 2, 3 — not 1, 2 and 5 — so the numbering has
+ * to be worked out after the step config decides what is on.
+ */
+function bespokeStepNumbers(){
+  var n = 0;
+  for (var i = 0; i < 5; i++) {
+    var tab = document.getElementById('lbl-' + i);
+    if (!tab) continue;
+    if (typeof bespokeIsStepActive === 'function' && bespokeIsStepActive(i)) {
+      n++;
+      tab.setAttribute('data-step-no', n);
+    } else {
+      tab.removeAttribute('data-step-no');
+    }
+  }
+}
+
 function bespokeRefreshPriceDisplay(){
   var els = document.querySelectorAll('.bespoke-live-price');
   if (!els.length) return;
@@ -7467,6 +7529,18 @@ function updateDTLabels() {
   if(hint)  hint.textContent  = DT_HINTS[S.step]  || '';
 }
 
+// Renumber the tabs every time the step config is applied, rather than
+// hunting for the end of applyStepConfig and hoping nothing else calls it.
+(function(){
+  if (typeof applyStepConfig !== 'function') return;
+  var _applyStepConfig = applyStepConfig;
+  applyStepConfig = function(){
+    var r = _applyStepConfig.apply(this, arguments);
+    try { bespokeStepNumbers(); } catch (e) {}
+    return r;
+  };
+})();
+
 // Patch syncAll
 var _syncAll = syncAll;
 syncAll = function() {
@@ -8136,6 +8210,7 @@ _bsInit('zoneConfig',   function(){ applyZoneConfig(); });
 _bsInit('sizes',        function(){ renderSizes(); });
 _bsInit('plateLabels',  function(){ relabelNumberStepForPlate(); });
 _bsInit('bgVariant',    function(){ initBgVariantToggle(); });
+_bsInit('buyBar',       function(){ bespokeBuyBarInit(); bespokeStepNumbers(); });
 _bsInit('bootSticker',  function(){ bespokeBootStickerUI(); });
 _bsInit('bootChooser',  function(){ bespokeBootChooserInit(); });
 _bsInit('bootFlag',     function(){ bespokeBootFlagInit(); });

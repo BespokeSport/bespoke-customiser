@@ -453,6 +453,23 @@ browser console proves it in seconds without an upload.
 
 ---
 
+### 6.16 Nobody could find the basket
+
+Found 30 Sep 2026, the hard way: Nick asked someone to order from the site as
+a test and they could not work out how to add to the basket. Add to cart only
+existed on the review screen, and nothing told a customer the tabs were a
+sequence with an end to reach.
+
+Fixed 8 Oct 2026 for every product: the price and an **Add to basket** button
+now sit in every step's nav row, and the tabs carry **Step 1 / Step 2** above
+their names, numbering only the steps that product shows.
+
+**Rule:** never let the only route to the basket be the last screen of a
+multi-step flow. A customer who is happy after step one should be able to buy
+from step one.
+
+---
+
 ## 7. Tooling notes (for you, on the new machine)
 
 - **There is no PHP locally.** `tools/` in the repo has what you need — run `npm install`
