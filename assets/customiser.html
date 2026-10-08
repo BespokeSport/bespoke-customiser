@@ -3710,7 +3710,11 @@ function bespokeBuyBarInit(){
     var bar = document.createElement('div');
     bar.className = 'bcp-buy';
     var price = document.createElement('span');
-    price.className = 'bcp-buy-price bespoke-live-price';
+    // Deliberately NOT .bespoke-live-price: that class marks an element whose
+    // innerHTML gets replaced with WooCommerce's price markup, and the theme
+    // restyles whatever it is dropped into. This one is updated as plain text
+    // by bespokeBuyBarPrice() instead, so it always looks the same.
+    price.className = 'bcp-buy-price';
     price.textContent = '—';
     var btn = document.createElement('button');
     btn.type = 'button';
@@ -3721,7 +3725,29 @@ function bespokeBuyBarInit(){
     bar.appendChild(btn);
     nav.insertBefore(bar, nav.firstChild);
   }
-  if (typeof bespokeRefreshPriceDisplay === 'function') bespokeRefreshPriceDisplay();
+  bespokeBuyBarPrice();
+}
+
+/**
+ * The buy bar's price, as plain text in our own style.
+ *
+ * Takes the chosen variation's price when there is one, and the product's
+ * own price otherwise. Formatted here rather than borrowed from WooCommerce
+ * because what comes back from WooCommerce is markup, and markup picks up
+ * the theme.
+ */
+function bespokeBuyBarPrice(){
+  var els = document.querySelectorAll('.bcp-buy-price');
+  if (!els.length) return;
+  var text = (window.BespokeConfig && BespokeConfig.price) ? BespokeConfig.price : '';
+  try {
+    var v = (typeof bespokeFindVariation === 'function') ? bespokeFindVariation() : null;
+    if (v && v.price != null && v.price !== '') {
+      var n = parseFloat(v.price);
+      if (!isNaN(n)) text = '£' + n.toFixed(2);
+    }
+  } catch (e) {}
+  for (var i = 0; i < els.length; i++) els[i].textContent = text || '—';
 }
 
 /**
@@ -3744,6 +3770,7 @@ function bespokeStepNumbers(){
 }
 
 function bespokeRefreshPriceDisplay(){
+  bespokeBuyBarPrice();
   var els = document.querySelectorAll('.bespoke-live-price');
   if (!els.length) return;
   var v    = bespokeFindVariation();
@@ -5924,7 +5951,11 @@ function applyStepConfig(){
   //    squad number →' if it wanted to, etc.
   var _L = (typeof bespokeLabels === 'function') ? bespokeLabels() : {};
   function nextLabel(target){
-    if (target === 5) return bespokeT('Review my design →');
+    // There is no review step any more. With Add to basket on every step it
+    // was a gate nobody needed, and what it showed — hex codes, font names —
+    // is for the workshop, not the customer. The order still carries all of
+    // it. So the last step's Next buys, rather than leading somewhere else.
+    if (target === 5) return bespokeT('Add to basket');
     if (target === 1) return bespokeT('Next: add %s →', String(_L.tabName   || 'text').toLowerCase());
     if (target === 2) return bespokeT('Next: add %s →', String(_L.tabNumber || 'number').toLowerCase());
     if (target === 3) return bespokeT('Next: choose design →');
@@ -5937,7 +5968,9 @@ function applyStepConfig(){
     var nextBtn = screen.querySelector('.btn-next');
     if (nextBtn) {
       var t = findNextActive(i + 1);
-      nextBtn.onclick = (function(target){ return function(){ goTo(target); }; })(t);
+      nextBtn.onclick = (t === 5)
+        ? function(){ if (typeof bespokeAddToCart === 'function') bespokeAddToCart(); }
+        : (function(target){ return function(){ goTo(target); }; })(t);
       // Only overwrite text on the configurable Next buttons (Review
       // screen's "Add to cart" / Success screen don't have one we care about).
       nextBtn.textContent = nextLabel(t);
