@@ -57,7 +57,18 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
    its own above Back / Next rather than fighting them for width. */
 .nav-row{flex-wrap:wrap;}
 .bcp-buy{flex:1 0 100%;display:flex;align-items:center;gap:10px;margin-bottom:10px;}
-.bcp-buy .bcp-buy-price{font-size:18px;font-weight:700;color:#5DCAA5;}
+/* When the variation changes, bespokeRefreshPriceDisplay() swaps in
+   WooCommerce price HTML, which arrives wrapped in the theme's own markup
+   and brings the theme's size and colour with it — the price jumped to large
+   white text the moment a band thickness was picked. The header price has the
+   same guard; this is its twin. */
+.bcp-buy .bcp-buy-price,
+.bcp-buy .bcp-buy-price *{font-size:18px;font-weight:700;color:#5DCAA5;line-height:1.2;}
+.bcp-buy .bcp-buy-price del{opacity:.55;font-weight:500;font-size:13px;margin-right:4px;}
+.bcp-buy .bcp-buy-price ins{text-decoration:none;}
+/* Named directly, to reach as far as the theme does — the header price has
+   carried the same rule since it was built. */
+.bcp-buy .bcp-buy-price .woocommerce-Price-amount{font-size:18px;color:#5DCAA5;}
 .bcp-buy-btn{margin-left:auto;background:#5DCAA5;color:#08312A;border:none;border-radius:12px;padding:12px 20px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;}
 .bcp-buy-btn:hover{filter:brightness(1.06);}
 /* Step numbers. Driven by a data attribute rather than the tab text, which
