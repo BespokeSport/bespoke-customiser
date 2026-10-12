@@ -7507,10 +7507,15 @@ function applyTagPlates(stepId){
     clip.appendChild(r);
   });
 
-  // Hold the artwork inside the two plates.
+  // Hold the artwork inside the two plates, and cut it with the stencil so a
+  // lace hole reads as a hole rather than something to write over. The two
+  // work together: the clip says which tag you are designing, the mask says
+  // what is tag and what is fresh air.
   ['badge-layer-', 'text-layer-'].forEach(function(prefix){
     var el = document.getElementById(prefix + stepId);
-    if (el) el.setAttribute('clip-path', 'url(#' + clipId + ')');
+    if (!el) return;
+    el.setAttribute('clip-path', 'url(#' + clipId + ')');
+    el.setAttribute('mask', 'url(#' + maskId + ')');
   });
 }
 
