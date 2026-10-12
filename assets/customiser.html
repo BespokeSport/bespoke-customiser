@@ -5485,13 +5485,13 @@ var BESPOKE_TAG_PLATES = {
   // image's filled shape is about 10px inside it, and using that left the
   // colour short all the way round with the dark edge showing through — which
   // read as a black outline somebody had drawn on.
-  right: { x: 383, y: 117, w: 734, h: 201 },
-  left:  { x: 383, y: 359, w: 734, h: 201 },
+  right: { x: 392, y: 122, w: 715, h: 190 },
+  left:  { x: 392, y: 364, w: 715, h: 190 },
   // The same two designs on the shoes. Corners run clockwise from top left.
   // Left shoe carries the left tag, right shoe the right.
   onShoe: {
-    left:  { tl: [76, 1117],   tr: [445, 1097],  br: [447, 1170],  bl: [78, 1188] },
-    right: { tl: [1062, 1097], tr: [1432, 1116], br: [1428, 1189], bl: [1059, 1168] }
+    left:  { tl: [133, 1118],  tr: [389, 1105],  br: [392, 1175],  bl: [134, 1187] },
+    right: { tl: [1117, 1106], tr: [1375, 1118], br: [1372, 1187], bl: [1115, 1174] }
   },
   // The real tag, for turning millimetres into units and back.
   mm: { w: 45, h: 12 },
@@ -5517,18 +5517,19 @@ function bespokeTagPlate(side){
 
 /* How much to narrow each piece of the design on its way down to the shoe.
 
-   The tag is seen at an angle, so its height foreshortens while its length
-   barely does — the quad is about 369 across by 71 down where the large plate
-   is 734 by 201. Mapped straight across, letters come out noticeably wider
-   than they are on the tag above.
+   1 — none. It is not needed any more.
 
-   Narrowing the whole tag about its centre fixed the look and broke the
-   point: everything slid inward, so text beside a lace hole was no longer
-   beside it. Each piece is narrowed about its own centre instead, which
-   leaves every one of them exactly where it was.
+   It used to be, because the small tags were a different shape from the large
+   ones: about 5.2 to 1 against 3.76, so carrying a design across stretched it.
+   Narrowing it fixed the look and moved everything inward, which lost the one
+   thing the small tags are for — showing where a design really falls.
 
-   1 is no narrowing. */
-var BESPOKE_TAG_SHOE_SQUEEZE = 0.65;
+   The template was re-rendered instead. The small tags now measure 3.71 and
+   3.80 against the large plates' 3.76, so a design carried straight across
+   arrives the right shape on its own. Both things are true at once, and they
+   are true because the artwork is right rather than because the maths is
+   bending. Below 1 narrows it again, at the cost of the positions. */
+var BESPOKE_TAG_SHOE_SQUEEZE = 1;
 
 /** Canvas units per millimetre on the large plates. */
 function bespokeTagScale(){
