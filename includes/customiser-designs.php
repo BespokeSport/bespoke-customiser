@@ -140,6 +140,11 @@ function bespoke_get_product_types() {
         // buttons: the rear heel (20mm or 30mm wide, club badge) and the
         // side under the heel (48mm wide, 10mm high — text, badge or flag).
         'boot_stickers'      => 'Boot Stickers',
+        // Running Tags — a pair of full-colour sublimated aluminium tags,
+        // 45 x 12mm, threaded onto trainer laces. Holes are baked into the
+        // product image rather than drawn, and BEspoke make the print file
+        // from the order, so nothing here generates artwork.
+        'running_tags'       => 'Running Tags',
     ];
     // Merge in admin-managed types added via Product Setup → "Add a product
     // type". A custom key never overrides a core one.

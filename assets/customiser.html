@@ -5390,6 +5390,15 @@ var BESPOKE_STEP_CONFIG = {
   //             bundled flag PNGs
   //   colours → sticker colour
   boot_stickers:      ['badge', 'name', 'colours'],
+  // Running Tags — a pair of printed aluminium tags threaded onto laces.
+  // Nick's instruction was to reuse the armband layout system rather than
+  // build a new one, so the step list is the armband's: upload, text, a
+  // layout to sit them in, then the colours.
+  //   badge   → club badge, logo or photo
+  //   name    → the text, which scales to fill its box
+  //   design  → the tag layout
+  //   colours → background and text colours
+  running_tags:       ['badge', 'name', 'design', 'colours'],
   // Future:
   // shinpad_sleeves: ['badge', 'name', 'number', 'design', 'colours'],
   // etc.
@@ -5420,7 +5429,10 @@ var BESPOKE_ZONES_CONFIG = {
   // Boot stickers come as a pair, but both boots get the same artwork, so
   // one of everything. The pair is what is priced and posted, not two
   // separately designed stickers.
-  boot_stickers:      1
+  boot_stickers:      1,
+  // Two tags, and unlike the boot stickers they can differ: design the left,
+  // then copy it across if you want them matching. A pair, like shin pads.
+  running_tags:       2
 };
 
 /* ============================================================
@@ -5650,6 +5662,13 @@ var BESPOKE_PRODUCT_LABELS = {
   // tabNumber renames both the third tab and the Next button that leads to
   // it: this product borrows the number slot for the flag.
   boot_stickers: { nameTitle: 'Text', tabName: 'Text', tabNumber: 'Flag', hintNoName: '' },
+  // The two zones are the left and right tag rather than left and right of a
+  // pair of pads, so the "same on both" wording is about the tags.
+  running_tags: {
+    nameTitle: 'Text',
+    sameName:  'Same text on both tags',
+    hintNoName: ''
+  },
   // Future products the designer flagged — keep generic labels
   // until they specify otherwise.
   match_trophy:          { nameTitle: 'Text',       hintNoName: '' },
