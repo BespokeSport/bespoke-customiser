@@ -992,7 +992,7 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
            6. Badge size slider
            7. "For cleanest result…" note -->
     <!-- 1. Club badge upload zone — the step's lead action. -->
-    <div class="sec-label">Upload your club badge</div>
+    <div class="sec-label" id="label-badge-upload">Upload your club badge</div>
     <label class="upload-zone" id="upload-zone"><input type="file" accept="image/*" id="badge-file" onchange="handleBadge(event)"/>
       <div class="upload-icon"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#5DCAA5" stroke-width="2" stroke-linecap="round"><path d="M10 3v10M6 7l4-4 4 4"/><path d="M4 15h12"/></svg></div>
       <div class="upload-title">Tap to upload badge</div><div class="upload-sub">PNG with transparent background works best</div>
@@ -3291,6 +3291,7 @@ function updatePreview(stepId) {
   // text layers. No-op on every other product type.
   if (typeof applyPlayerCardOverlay === 'function') {
     try { applyBootStickerOverlay(stepId); } catch(e) {}
+    try { applyTagPlates(stepId); } catch(e) {}
     try { applyTagShoeOverlay(stepId); } catch(e) {}
     try { applyPlayerCardOverlay(stepId); } catch(e) {
       if (window.console && console.error) console.error('[player-card overlay]', e);
@@ -5505,6 +5506,14 @@ function bespokeTagPlate(side){
   return { x: bespokeTagPx(p.x), y: bespokeTagPx(p.y), w: bespokeTagPx(p.w), h: bespokeTagPx(p.h) };
 }
 
+/* How much to narrow the design on its way down to the shoe.
+
+   The small plates are about 5.1 to 1 where the large ones are 3.74, so a
+   straight mapping pulls everything wide — Nick's "a little too stretched".
+   Squeezing horizontally about the plate's centre fixes the look while
+   keeping it in place. 1 is no squeeze; lower is narrower. */
+var BESPOKE_TAG_SHOE_SQUEEZE = 0.86;
+
 /** Canvas units per millimetre on the large plates. */
 function bespokeTagScale(){
   return bespokeTagPx(BESPOKE_TAG_PLATES.right.w) / BESPOKE_TAG_PLATES.mm.w;
@@ -5537,7 +5546,14 @@ function bespokeTagOnShoeTransform(side){
   var e = q.tl[0] - (ax * plate.x + bx * plate.y);
   var f = q.tl[1] - (ay * plate.x + by * plate.y);
   var r = function(n){ return Math.round(n * 10000) / 10000; };
-  return 'matrix(' + [r(ax), r(ay), r(bx), r(by), r(e), r(f)].join(' ') + ')';
+  var m = 'matrix(' + [r(ax), r(ay), r(bx), r(by), r(e), r(f)].join(' ') + ')';
+  // Narrow it about the plate's own centre, so it stays put while it slims.
+  var s = BESPOKE_TAG_SHOE_SQUEEZE;
+  if (s !== 1) {
+    var cx = plate.x + plate.w / 2;
+    m += ' translate(' + r(cx) + ' 0) scale(' + r(s) + ' 1) translate(' + r(-cx) + ' 0)';
+  }
+  return m;
 }
 
 /* ============================================================
@@ -7378,6 +7394,74 @@ function bespokeBootFlagInit(){
  * the design above it. Ids are stripped from the clones — two elements with
  * the same id in one document is a bug waiting for somebody.
  */
+/**
+ * The tags themselves: a fill in the chosen background colour, and a clip so
+ * nothing the customer adds can hang off the edge.
+ *
+ * Both were missing because this product is unusual — the "product" is part
+ * of a photograph rather than a shape the customiser draws, so there was
+ * nothing painting the plate and nothing holding the artwork inside it. An
+ * uploaded photo simply ran across the picture.
+ */
+function applyTagPlates(stepId){
+  if (typeof bespokeBaseType !== 'function' || bespokeBaseType() !== 'running_tags') return;
+  // People put a photograph on these as often as a club badge.
+  var uploadLabel = document.getElementById('label-badge-upload');
+  if (uploadLabel) uploadLabel.textContent = bespokeT('Upload badge or photo');
+  var svg = (typeof previews === 'object' && previews) ? previews[stepId] : null;
+  if (!svg) return;
+  var ns = 'http://www.w3.org/2000/svg';
+
+  // The fill sits above the background and below everything else.
+  var fillId = 'tag-plate-fill-' + stepId;
+  var fill = document.getElementById(fillId);
+  if (!fill) {
+    fill = document.createElementNS(ns, 'g');
+    fill.setAttribute('id', fillId);
+    fill.setAttribute('pointer-events', 'none');
+    var badgeLayer = document.getElementById('badge-layer-' + stepId);
+    if (badgeLayer && badgeLayer.parentNode) badgeLayer.parentNode.insertBefore(fill, badgeLayer);
+    else svg.appendChild(fill);
+  }
+  while (fill.firstChild) fill.removeChild(fill.firstChild);
+
+  var colour = (window.S && S.bgColor) ? S.bgColor : '#FFFFFF';
+  // The template draws the tag with rounded ends; match them so the fill
+  // does not square off the corners.
+  var radius = bespokeTagPx(24);
+
+  var clipId = 'tag-plates-clip-' + stepId;
+  var clip = document.getElementById(clipId);
+  if (!clip) {
+    clip = document.createElementNS(ns, 'clipPath');
+    clip.setAttribute('id', clipId);
+    svg.appendChild(clip);
+  }
+  while (clip.firstChild) clip.removeChild(clip.firstChild);
+
+  ['left', 'right'].forEach(function(side){
+    var p = bespokeTagPlate(side);
+    if (!p) return;
+    var mk = function(){
+      var r = document.createElementNS(ns, 'rect');
+      r.setAttribute('x', p.x); r.setAttribute('y', p.y);
+      r.setAttribute('width', p.w); r.setAttribute('height', p.h);
+      r.setAttribute('rx', radius); r.setAttribute('ry', radius);
+      return r;
+    };
+    var painted = mk();
+    painted.setAttribute('fill', colour);
+    fill.appendChild(painted);
+    clip.appendChild(mk());
+  });
+
+  // Hold the artwork inside the two plates.
+  ['badge-layer-', 'text-layer-'].forEach(function(prefix){
+    var el = document.getElementById(prefix + stepId);
+    if (el) el.setAttribute('clip-path', 'url(#' + clipId + ')');
+  });
+}
+
 function applyTagShoeOverlay(stepId){
   if (typeof bespokeBaseType !== 'function' || bespokeBaseType() !== 'running_tags') return;
   var svg = (typeof previews === 'object' && previews) ? previews[stepId] : null;
