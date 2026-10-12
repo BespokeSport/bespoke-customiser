@@ -7555,7 +7555,15 @@ function applyTagShoeOverlay(stepId){
     var g = document.createElementNS(ns, 'g');
     g.setAttribute('transform', matrix);
     g.setAttribute('clip-path', 'url(#' + clipId + ')');
-    sources.forEach(function(src){ if (src) g.appendChild(strip(src.cloneNode(true))); });
+    sources.forEach(function(src){
+      if (!src) return;
+      var copy = strip(src.cloneNode(true));
+      // The hole mask belongs to the large plates only. The small tags on the
+      // shoe already have their lace notches drawn into the artwork, so
+      // punching holes through them as well puts two sets in one place.
+      if (copy.removeAttribute) copy.removeAttribute('mask');
+      g.appendChild(copy);
+    });
     layer.appendChild(g);
   });
 }
