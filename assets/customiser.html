@@ -5436,6 +5436,70 @@ var BESPOKE_ZONES_CONFIG = {
 };
 
 /* ============================================================
+   RUNNING TAGS — THE FOUR PLATES
+   ============================================================
+   Two large plates to design in, and the same two designs again, small, on
+   the photograph of the shoes below them. All four measured off the template
+   (Shoe Tag Body.png, 1500 x 1500) by finding each solid region and its
+   corners, not by eye.
+
+   The large plates are square to the page and come out at 714 x 191, which
+   is 3.74 to 1 against the real tag's 45 x 12mm — so what is on screen is
+   honestly scaled, and 15.9 units to the millimetre.
+
+   The two on the shoes are tilted a few degrees and taper slightly, so each
+   is held as four corners rather than a box. An affine transform fits them
+   to within 2px, which is close enough that nobody will ever see the
+   difference, and SVG can apply one directly where it cannot do perspective.
+
+   Holes and the tag outline are baked into the artwork — Nick's call, and
+   the right one: they never move, and keeping them out of the code keeps
+   them crisp.
+   ============================================================ */
+var BESPOKE_TAG_PLATES = {
+  // The design surfaces, large. right sits above left, as on the template.
+  right: { x: 393, y: 121, w: 714, h: 191 },
+  left:  { x: 393, y: 363, w: 714, h: 191 },
+  // The same two designs on the shoes. Corners run clockwise from top left.
+  // Left shoe carries the left tag, right shoe the right.
+  onShoe: {
+    left:  { tl: [76, 1117],   tr: [445, 1097],  br: [447, 1170],  bl: [78, 1188] },
+    right: { tl: [1062, 1097], tr: [1432, 1116], br: [1428, 1189], bl: [1059, 1168] }
+  },
+  // The real tag, for turning millimetres into units and back.
+  mm: { w: 45, h: 12 }
+};
+
+/** Units per millimetre on the large plates. */
+function bespokeTagScale(){
+  return BESPOKE_TAG_PLATES.right.w / BESPOKE_TAG_PLATES.mm.w;
+}
+
+/**
+ * The SVG transform that lays a large plate's design onto its small twin on
+ * the shoe. Built from the quad's own corners: across the top for one axis,
+ * down the left for the other, which is what an affine matrix is.
+ *
+ * @param  {string} side  left or right
+ * @return {string}       a matrix(...) ready for a transform attribute
+ */
+function bespokeTagOnShoeTransform(side){
+  var q = BESPOKE_TAG_PLATES.onShoe[side];
+  var plate = BESPOKE_TAG_PLATES[side];
+  if (!q || !plate) return '';
+  var ax = (q.tr[0] - q.tl[0]) / plate.w;
+  var ay = (q.tr[1] - q.tl[1]) / plate.w;
+  var bx = (q.bl[0] - q.tl[0]) / plate.h;
+  var by = (q.bl[1] - q.tl[1]) / plate.h;
+  // The design is drawn at the large plate's own position, so undo that
+  // before laying it down at the small one.
+  var e = q.tl[0] - (ax * plate.x + bx * plate.y);
+  var f = q.tl[1] - (ay * plate.x + by * plate.y);
+  var r = function(n){ return Math.round(n * 10000) / 10000; };
+  return 'matrix(' + [r(ax), r(ay), r(bx), r(by), r(e), r(f)].join(' ') + ')';
+}
+
+/* ============================================================
    BOOT STICKERS — THE TWO PLACEMENTS
    ============================================================
    The size buttons carry the placement AND the width together:
