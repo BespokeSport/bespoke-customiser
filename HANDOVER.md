@@ -470,6 +470,24 @@ from step one.
 
 ---
 
+### 6.17 A media query carries no extra weight
+
+bespoke-product-page.css sets `white-space: nowrap !important` on the sizing
+chart cells. A phone override written **above** that rule, inside
+`@media (max-width: 600px)`, loses: the two selectors are identical, a media
+query adds nothing to specificity, and the later rule wins.
+
+Cost 12 Oct 2026: the fix was written, committed, uploaded and still did
+nothing. The file contained the rule and the browser ignored it.
+
+**Rule:** a phone override goes **below** the rule it overrides, or into the
+`@media (max-width: 600px)` block that already exists near the end of that
+file. And check `getComputedStyle` on the real page rather than trusting that
+the rule is in the file — the third time this project has lost to source order
+(see 6.15).
+
+---
+
 ## 7. Tooling notes (for you, on the new machine)
 
 - **There is no PHP locally.** `tools/` in the repo has what you need — run `npm install`
