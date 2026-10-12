@@ -3297,6 +3297,12 @@ function updatePreview(stepId) {
   if (typeof applyPlayerCardOverlay === 'function') {
     try { applyBootStickerOverlay(stepId); } catch(e) {}
     try { applyTagPlates(stepId); } catch(e) {}
+    try {
+      if (bespokeTagFitText() && typeof syncAll === 'function') {
+        // The size changed, so everything wants drawing again — once.
+        setTimeout(function(){ try { syncAll(); } catch (e) {} }, 0);
+      }
+    } catch(e) {}
     try { applyTagShoeOverlay(stepId); } catch(e) {}
     try { applyPlayerCardOverlay(stepId); } catch(e) {
       if (window.console && console.error) console.error('[player-card overlay]', e);
@@ -5495,6 +5501,11 @@ var BESPOKE_TAG_PLATES = {
   },
   // The real tag, for turning millimetres into units and back.
   mm: { w: 45, h: 12 },
+  // What can be printed, between the lace holes. Measured on the mask: the
+  // holes run 416 to 479 and 1020 to 1082, so the clear gap is 541px, or 34mm.
+  // Two millimetres off each side leaves the 30 x 9mm the brief asks for, and
+  // nothing then sits over a hole by accident.
+  textBox: { w: 30, h: 9 },
   // Everything above is in the template's own pixels. The preview draws on a
   // 1200 canvas with the background scaled to fill it, so each figure is
   // multiplied by 1200/1500 on the way out. Re-export the template at another
@@ -7414,6 +7425,80 @@ function bespokeBootFlagInit(){
  * nothing painting the plate and nothing holding the artwork inside it. An
  * uploaded photo simply ran across the picture.
  */
+/** The printable area of a tag, in canvas units. */
+function bespokeTagTextBox(){
+  var s = bespokeTagScale();
+  return { w: BESPOKE_TAG_PLATES.textBox.w * s, h: BESPOKE_TAG_PLATES.textBox.h * s };
+}
+
+/**
+ * Bring the text down until it fits between the holes.
+ *
+ * Measured rather than estimated: how wide a letter is depends on the font,
+ * and this product offers several. The text is drawn, measured, and the size
+ * reduced by whatever it is over — one pass, then it settles. The customer can
+ * still take it smaller by hand; this is a ceiling, not a setting.
+ *
+ * @return {boolean} true when the size changed and the preview wants redrawing
+ */
+var _bespokeTagFitting = false;
+function bespokeTagFitText(){
+  if (_bespokeTagFitting) return false;
+  if (typeof bespokeBaseType !== 'function' || bespokeBaseType() !== 'running_tags') return false;
+  if (!window.S || !S.nameSize) return false;
+  var layer = document.getElementById('text-layer-0');
+  if (!layer) return false;
+
+  var box = bespokeTagTextBox();
+  var widest = 0, tallest = 0;
+  // Only the text. The layer also holds the drag handles and the remove
+  // buttons, and those are a fixed size — measured along with the letters they
+  // never get smaller, so the fit never succeeds and the size falls to the
+  // floor whatever is typed.
+  var texts = layer.querySelectorAll('text');
+  Array.prototype.forEach.call(texts, function(el){
+    var b;
+    try { b = el.getBBox(); } catch (e) { return; }
+    if (!b || !b.width) return;
+    if (b.width > widest) widest = b.width;
+    if (b.height > tallest) tallest = b.height;
+  });
+  if (!widest || !tallest) return false;
+
+  var over = Math.min(box.w / widest, box.h / tallest);
+  // A whisker of slack, so a line that already fits is left alone rather than
+  // nudged smaller for ever.
+  if (over >= 0.98) return false;
+
+  var next = Math.max(8, Math.floor(S.nameSize * over));
+  if (next >= S.nameSize) return false;
+  _bespokeTagFitting = true;
+  S.nameSize = next;
+  var slider = document.getElementById('name-size-slider');
+  if (slider) slider.value = next;
+  _bespokeTagFitting = false;
+  return true;
+}
+
+/**
+ * Sliders that suit a tag.
+ *
+ * Unlike the boot stickers there is no printed ceiling to hold them to — the
+ * ceiling is worked out from the text itself, as it is typed. The slider only
+ * has to reach far enough down for somebody who wants their name smaller than
+ * it strictly has to be.
+ */
+function bespokeTagSliderRanges(){
+  if (typeof bespokeBaseType !== 'function' || bespokeBaseType() !== 'running_tags') return;
+  var ranges = { 'name-size-slider': [8, 200], 'num-size-slider': [8, 200], 'badge-size-slider': [20, 200] };
+  Object.keys(ranges).forEach(function(id){
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.min = ranges[id][0];
+    el.max = ranges[id][1];
+  });
+}
+
 function applyTagPlates(stepId){
   if (typeof bespokeBaseType !== 'function' || bespokeBaseType() !== 'running_tags') return;
   // People put a photograph on these as often as a club badge.
@@ -8628,6 +8713,7 @@ _bsInit('bgVariant',    function(){ initBgVariantToggle(); });
 _bsInit('buyBar',       function(){ bespokeBuyBarInit(); bespokeStepNumbers(); });
 _bsInit('bootSticker',  function(){ bespokeBootStickerUI(); });
 _bsInit('bootChooser',  function(){ bespokeBootChooserInit(); });
+_bsInit('tagSliders',   function(){ bespokeTagSliderRanges(); });
 _bsInit('bootFlag',     function(){ bespokeBootFlagInit(); });
 _bsInit('addBack',      function(){ renderAddBackPanel(); });
 
