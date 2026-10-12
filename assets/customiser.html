@@ -1650,6 +1650,22 @@ var DEFDESIGN = 'vanguard';
     // the shin-pad default of 90.
     DEFSZ.nameSize = 240;
   }
+  if (pt === 'running_tags') {
+    // R is the upper plate, L the lower — the order they sit on the
+    // template. A badge at the left end, text filling the rest, which is how
+    // a lace tag reads. Figures from bespokeTagPlate(): each plate is 571 x
+    // 153 at 12.7 units to the millimetre, so these sit comfortably inside
+    // the 30 x 9mm the artwork allows between the holes.
+    DEF.badgeR = { x: 420, y: 173 };
+    DEF.nameR  = { x: 680, y: 173 };
+    DEF.badgeL = { x: 420, y: 367 };
+    DEF.nameL  = { x: 680, y: 367 };
+    // The shin-pad defaults are built for something the size of a shin pad.
+    // A tag is 12mm tall, so everything starts far smaller.
+    DEFSZ.badgeSize = 95;
+    DEFSZ.nameSize  = 60;
+    DEFSZ.numSize   = 60;
+  }
 })();
 
 // ── Per-product placement geometry (admin "Save placement" editor) ──
@@ -3275,6 +3291,7 @@ function updatePreview(stepId) {
   // text layers. No-op on every other product type.
   if (typeof applyPlayerCardOverlay === 'function') {
     try { applyBootStickerOverlay(stepId); } catch(e) {}
+    try { applyTagShoeOverlay(stepId); } catch(e) {}
     try { applyPlayerCardOverlay(stepId); } catch(e) {
       if (window.console && console.error) console.error('[player-card overlay]', e);
     }
@@ -7349,6 +7366,71 @@ function bespokeBootFlagInit(){
  * It sits on the rear heel — where a flag reads best — unless the badge is
  * there too, in which case it drops below it.
  */
+/**
+ * Copy each tag's design down onto its small twin on the shoe.
+ *
+ * A copy, not a second render: whatever the badge and text layers hold is
+ * cloned, clipped to the plate it belongs to, and laid onto the small tag
+ * with the matrix worked out from that quad's own corners. Everything the
+ * customer does to the big tag follows along without being told to.
+ *
+ * Its own layer, wiped and rebuilt each time, so nothing it does can disturb
+ * the design above it. Ids are stripped from the clones — two elements with
+ * the same id in one document is a bug waiting for somebody.
+ */
+function applyTagShoeOverlay(stepId){
+  if (typeof bespokeBaseType !== 'function' || bespokeBaseType() !== 'running_tags') return;
+  var svg = (typeof previews === 'object' && previews) ? previews[stepId] : null;
+  if (!svg) return;
+  var ns = 'http://www.w3.org/2000/svg';
+
+  var layerId = 'tag-shoe-layer-' + stepId;
+  var layer = document.getElementById(layerId);
+  if (!layer) {
+    layer = document.createElementNS(ns, 'g');
+    layer.setAttribute('id', layerId);
+    layer.setAttribute('pointer-events', 'none');
+    svg.appendChild(layer);
+  }
+  while (layer.firstChild) layer.removeChild(layer.firstChild);
+
+  var sources = [
+    document.getElementById('badge-layer-' + stepId),
+    document.getElementById('text-layer-' + stepId)
+  ];
+  var strip = function(node){
+    if (node.removeAttribute) node.removeAttribute('id');
+    var kids = node.children || [];
+    for (var i = 0; i < kids.length; i++) strip(kids[i]);
+    return node;
+  };
+
+  ['left', 'right'].forEach(function(side){
+    var plate = bespokeTagPlate(side);
+    var matrix = bespokeTagOnShoeTransform(side);
+    if (!plate || !matrix) return;
+
+    // Clip in the plate's own coordinates, before the transform, so the clip
+    // travels with it.
+    var clipId = 'tag-clip-' + side + '-' + stepId;
+    var clip = document.createElementNS(ns, 'clipPath');
+    clip.setAttribute('id', clipId);
+    var r = document.createElementNS(ns, 'rect');
+    r.setAttribute('x', plate.x);
+    r.setAttribute('y', plate.y);
+    r.setAttribute('width', plate.w);
+    r.setAttribute('height', plate.h);
+    clip.appendChild(r);
+    layer.appendChild(clip);
+
+    var g = document.createElementNS(ns, 'g');
+    g.setAttribute('transform', matrix);
+    g.setAttribute('clip-path', 'url(#' + clipId + ')');
+    sources.forEach(function(src){ if (src) g.appendChild(strip(src.cloneNode(true))); });
+    layer.appendChild(g);
+  });
+}
+
 function applyBootStickerOverlay(stepId){
   if (bespokeBaseType() !== 'boot_stickers') return;
   var svg = (typeof previews === 'object' && previews) ? previews[stepId] : null;
