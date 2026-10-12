@@ -3235,6 +3235,11 @@ function updatePreview(stepId) {
       var _PA      = window.BESPOKE_PRODUCT_ASSETS || {};
       var _useAlt  = !!(window.S && window.S.useBgAlt && _PA.mask_alt_url);
       var _maskUrl = _useAlt ? _PA.mask_alt_url : _PA.mask_url;
+      // Running tags use the same file the other way about. Theirs is opaque
+      // WHERE the tag is rather than everywhere it is not, and it is used as
+      // a stencil underneath — see applyTagPlates(). Painted on top it would
+      // cover the whole design in solid red.
+      if (typeof bespokeBaseType === 'function' && bespokeBaseType() === 'running_tags') _maskUrl = '';
       if (_maskUrl) {
         var _mImg = document.createElementNS(ns, 'image');
         _mImg.setAttribute('href', _maskUrl);
@@ -5482,11 +5487,6 @@ var BESPOKE_TAG_PLATES = {
   // read as a black outline somebody had drawn on.
   right: { x: 383, y: 117, w: 734, h: 201 },
   left:  { x: 383, y: 359, w: 734, h: 201 },
-  // Where the lace goes. Measured from the overlay: 66px across, which at
-  // 15.9px to the millimetre is the 4mm the spec calls for, and 55px in from
-  // each end. Punched through the colour rather than relied on from the
-  // artwork, where they are hairlines and vanish at preview size.
-  holes: { d: 66, inset: 65, cy: { right: 217, left: 459 } },
   // The same two designs on the shoes. Corners run clockwise from top left.
   // Left shoe carries the left tag, right shoe the right.
   onShoe: {
@@ -7441,10 +7441,46 @@ function applyTagPlates(stepId){
   while (fill.firstChild) fill.removeChild(fill.firstChild);
 
   var colour = (window.S && S.bgColor) ? S.bgColor : '#FFFFFF';
-  // The template draws the tag with rounded ends; match them so the fill
-  // does not square off the corners.
-  var radius = bespokeTagPx(24);
 
+  // The stencil. Nick's Body image is opaque where a tag is and transparent
+  // through the lace holes and everywhere else, so used as an alpha mask it
+  // hands over the rounded ends, the holes, the notches and the tilt of the
+  // small tags without a single coordinate being written down.
+  var assets = window.BESPOKE_PRODUCT_ASSETS || {};
+  var stencil = assets.mask_url || '';
+  if (!stencil) return;
+
+  var maskId = 'tag-body-mask-' + stepId;
+  var mask = document.getElementById(maskId);
+  if (!mask) {
+    mask = document.createElementNS(ns, 'mask');
+    mask.setAttribute('id', maskId);
+    mask.setAttribute('maskUnits', 'userSpaceOnUse');
+    mask.setAttribute('x', 0); mask.setAttribute('y', 0);
+    mask.setAttribute('width', 1200); mask.setAttribute('height', 1200);
+    // Alpha, not brightness: the artwork is red on nothing, and by brightness
+    // red would read as a half-strength grey.
+    mask.style.maskType = 'alpha';
+    mask.setAttribute('mask-type', 'alpha');
+    var img = document.createElementNS(ns, 'image');
+    img.setAttributeNS('http://www.w3.org/1999/xlink', 'href', stencil);
+    img.setAttribute('href', stencil);
+    img.setAttribute('x', 0); img.setAttribute('y', 0);
+    img.setAttribute('width', 1200); img.setAttribute('height', 1200);
+    mask.appendChild(img);
+    svg.appendChild(mask);
+  }
+
+  // One rectangle of colour, cut to the tags by the stencil.
+  var painted = document.createElementNS(ns, 'rect');
+  painted.setAttribute('x', 0); painted.setAttribute('y', 0);
+  painted.setAttribute('width', 1200); painted.setAttribute('height', 1200);
+  painted.setAttribute('fill', colour);
+  fill.appendChild(painted);
+  fill.setAttribute('mask', 'url(#' + maskId + ')');
+
+  // The artwork is held to the two large plates — the stencil says what is a
+  // tag, not which of them someone is designing.
   var clipId = 'tag-plates-clip-' + stepId;
   var clip = document.getElementById(clipId);
   if (!clip) {
@@ -7453,49 +7489,14 @@ function applyTagPlates(stepId){
     svg.appendChild(clip);
   }
   while (clip.firstChild) clip.removeChild(clip.firstChild);
-
-  // One mask for the pair: white where the colour shows, black where the
-  // holes are. A hole has to be a hole — paint over it and nobody can see
-  // where not to put their photograph.
-  var maskId = 'tag-plate-mask-' + stepId;
-  var mask = document.getElementById(maskId);
-  if (!mask) {
-    mask = document.createElementNS(ns, 'mask');
-    mask.setAttribute('id', maskId);
-    svg.appendChild(mask);
-  }
-  while (mask.firstChild) mask.removeChild(mask.firstChild);
-
-  var H = BESPOKE_TAG_PLATES.holes;
   ['left', 'right'].forEach(function(side){
     var p = bespokeTagPlate(side);
     if (!p) return;
-    var mk = function(){
-      var r = document.createElementNS(ns, 'rect');
-      r.setAttribute('x', p.x); r.setAttribute('y', p.y);
-      r.setAttribute('width', p.w); r.setAttribute('height', p.h);
-      r.setAttribute('rx', radius); r.setAttribute('ry', radius);
-      return r;
-    };
-    var painted = mk();
-    painted.setAttribute('fill', colour);
-    fill.appendChild(painted);
-    clip.appendChild(mk());
-
-    var open = mk();
-    open.setAttribute('fill', '#fff');
-    mask.appendChild(open);
-    var r = bespokeTagPx(H.d) / 2;
-    [bespokeTagPx(H.inset), p.w - bespokeTagPx(H.inset)].forEach(function(dx){
-      var hole = document.createElementNS(ns, 'circle');
-      hole.setAttribute('cx', p.x + dx);
-      hole.setAttribute('cy', p.y + p.h / 2);
-      hole.setAttribute('r', r);
-      hole.setAttribute('fill', '#000');
-      mask.appendChild(hole);
-    });
+    var r = document.createElementNS(ns, 'rect');
+    r.setAttribute('x', p.x); r.setAttribute('y', p.y);
+    r.setAttribute('width', p.w); r.setAttribute('height', p.h);
+    clip.appendChild(r);
   });
-  fill.setAttribute('mask', 'url(#' + maskId + ')');
 
   // Hold the artwork inside the two plates.
   ['badge-layer-', 'text-layer-'].forEach(function(prefix){
