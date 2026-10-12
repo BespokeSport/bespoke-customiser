@@ -2323,7 +2323,12 @@ var TEXT_BOX_MAX = 10;
 var TEXT_BOX_STEP = [0, 150, -150, 75, -75, 225, -225, 0, 150, -150];
 
 function bespokeUseTextBoxes(){
-  return typeof bespokeBaseType === 'function' && bespokeBaseType() === 'armbands';
+  // Pennants want these too — Nick, 30 Sep. Everything downstream is already
+  // product-neutral: the boxes travel in the same payload field, and the cart
+  // and admin order screens read them for any product that sends them.
+  if (typeof bespokeBaseType !== 'function') return false;
+  var t = bespokeBaseType();
+  return t === 'armbands' || t === 'pennant';
 }
 function bespokeTextBox(id){
   var list = (window.S && S.textBoxes) || [];
