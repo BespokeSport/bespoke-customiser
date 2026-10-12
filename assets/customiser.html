@@ -5512,7 +5512,7 @@ function bespokeTagPlate(side){
    straight mapping pulls everything wide — Nick's "a little too stretched".
    Squeezing horizontally about the plate's centre fixes the look while
    keeping it in place. 1 is no squeeze; lower is narrower. */
-var BESPOKE_TAG_SHOE_SQUEEZE = 0.86;
+var BESPOKE_TAG_SHOE_SQUEEZE = 0.74;
 
 /** Canvas units per millimetre on the large plates. */
 function bespokeTagScale(){
@@ -7419,8 +7419,14 @@ function applyTagPlates(stepId){
     fill = document.createElementNS(ns, 'g');
     fill.setAttribute('id', fillId);
     fill.setAttribute('pointer-events', 'none');
-    var badgeLayer = document.getElementById('badge-layer-' + stepId);
-    if (badgeLayer && badgeLayer.parentNode) badgeLayer.parentNode.insertBefore(fill, badgeLayer);
+    // Above the background, BELOW the overlay. The overlay is the tag outline
+    // and its two holes, and it has to stay on top: it is what tells someone
+    // where the holes are before they drop a photograph over one. Painted the
+    // other way round the holes disappear and all that shows of the overlay is
+    // a thick black line round the outside.
+    var below = document.getElementById('overlay-layer-' + stepId)
+            || document.getElementById('badge-layer-' + stepId);
+    if (below && below.parentNode) below.parentNode.insertBefore(fill, below);
     else svg.appendChild(fill);
   }
   while (fill.firstChild) fill.removeChild(fill.firstChild);
@@ -7478,7 +7484,10 @@ function applyTagShoeOverlay(stepId){
   }
   while (layer.firstChild) layer.removeChild(layer.firstChild);
 
+  // The fill first, or the small tags stay the colour of the photograph
+  // underneath while the big ones change — which is what happened.
   var sources = [
+    document.getElementById('tag-plate-fill-' + stepId),
     document.getElementById('badge-layer-' + stepId),
     document.getElementById('text-layer-' + stepId)
   ];
