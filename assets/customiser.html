@@ -5476,8 +5476,17 @@ var BESPOKE_ZONES_CONFIG = {
    ============================================================ */
 var BESPOKE_TAG_PLATES = {
   // The design surfaces, large. right sits above left, as on the template.
-  right: { x: 393, y: 121, w: 714, h: 191 },
-  left:  { x: 393, y: 363, w: 714, h: 191 },
+  // Taken from the overlay's outline, which is the tag's real edge. The body
+  // image's filled shape is about 10px inside it, and using that left the
+  // colour short all the way round with the dark edge showing through — which
+  // read as a black outline somebody had drawn on.
+  right: { x: 383, y: 117, w: 734, h: 201 },
+  left:  { x: 383, y: 359, w: 734, h: 201 },
+  // Where the lace goes. Measured from the overlay: 66px across, which at
+  // 15.9px to the millimetre is the 4mm the spec calls for, and 55px in from
+  // each end. Punched through the colour rather than relied on from the
+  // artwork, where they are hairlines and vanish at preview size.
+  holes: { d: 66, inset: 65, cy: { right: 217, left: 459 } },
   // The same two designs on the shoes. Corners run clockwise from top left.
   // Left shoe carries the left tag, right shoe the right.
   onShoe: {
@@ -5512,7 +5521,7 @@ function bespokeTagPlate(side){
    straight mapping pulls everything wide — Nick's "a little too stretched".
    Squeezing horizontally about the plate's centre fixes the look while
    keeping it in place. 1 is no squeeze; lower is narrower. */
-var BESPOKE_TAG_SHOE_SQUEEZE = 0.74;
+var BESPOKE_TAG_SHOE_SQUEEZE = 0.65;
 
 /** Canvas units per millimetre on the large plates. */
 function bespokeTagScale(){
@@ -7445,6 +7454,19 @@ function applyTagPlates(stepId){
   }
   while (clip.firstChild) clip.removeChild(clip.firstChild);
 
+  // One mask for the pair: white where the colour shows, black where the
+  // holes are. A hole has to be a hole — paint over it and nobody can see
+  // where not to put their photograph.
+  var maskId = 'tag-plate-mask-' + stepId;
+  var mask = document.getElementById(maskId);
+  if (!mask) {
+    mask = document.createElementNS(ns, 'mask');
+    mask.setAttribute('id', maskId);
+    svg.appendChild(mask);
+  }
+  while (mask.firstChild) mask.removeChild(mask.firstChild);
+
+  var H = BESPOKE_TAG_PLATES.holes;
   ['left', 'right'].forEach(function(side){
     var p = bespokeTagPlate(side);
     if (!p) return;
@@ -7459,7 +7481,21 @@ function applyTagPlates(stepId){
     painted.setAttribute('fill', colour);
     fill.appendChild(painted);
     clip.appendChild(mk());
+
+    var open = mk();
+    open.setAttribute('fill', '#fff');
+    mask.appendChild(open);
+    var r = bespokeTagPx(H.d) / 2;
+    [bespokeTagPx(H.inset), p.w - bespokeTagPx(H.inset)].forEach(function(dx){
+      var hole = document.createElementNS(ns, 'circle');
+      hole.setAttribute('cx', p.x + dx);
+      hole.setAttribute('cy', p.y + p.h / 2);
+      hole.setAttribute('r', r);
+      hole.setAttribute('fill', '#000');
+      mask.appendChild(hole);
+    });
   });
+  fill.setAttribute('mask', 'url(#' + maskId + ')');
 
   // Hold the artwork inside the two plates.
   ['badge-layer-', 'text-layer-'].forEach(function(prefix){
