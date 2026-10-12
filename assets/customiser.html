@@ -5517,11 +5517,20 @@ function bespokeTagPlate(side){
 
 /* How much to narrow the design on its way down to the shoe.
 
-   The small plates are about 5.1 to 1 where the large ones are 3.74, so a
-   straight mapping pulls everything wide — Nick's "a little too stretched".
-   Squeezing horizontally about the plate's centre fixes the look while
-   keeping it in place. 1 is no squeeze; lower is narrower. */
-var BESPOKE_TAG_SHOE_SQUEEZE = 0.65;
+   Set to 1 — no narrowing — on purpose. Narrowing it did look better, but it
+   broke the only job the small tags have: text sitting over a lace hole on
+   the large tag has to sit over it on the small one too, or the preview is
+   telling the customer something that is not true.
+
+   The design does read wider down there, and that is honest. The tag is seen
+   at an angle, so its height foreshortens while its length barely does: the
+   quad measures about 369 across by 71 down where the large plate is 734 by
+   201. Anything on it genuinely looks wider. The way to change that is to
+   redraw the small tags in the artwork at the proportions of the large ones,
+   not to lie about it here.
+
+   Lower than 1 narrows it again, at the cost of the positions drifting. */
+var BESPOKE_TAG_SHOE_SQUEEZE = 1;
 
 /** Canvas units per millimetre on the large plates. */
 function bespokeTagScale(){
