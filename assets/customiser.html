@@ -7530,10 +7530,17 @@ function applyTagShoeOverlay(stepId){
   }
   while (layer.firstChild) layer.removeChild(layer.firstChild);
 
-  // The fill first, or the small tags stay the colour of the photograph
-  // underneath while the big ones change — which is what happened.
+  // Masked in canvas coordinates, outside the transforms, so the stencil
+  // holds every copy inside the real tag shape — the notches where the lace
+  // crosses, and the holes.
+  var stencilMask = document.getElementById('tag-body-mask-' + stepId);
+  if (stencilMask) layer.setAttribute('mask', 'url(#tag-body-mask-' + stepId + ')');
+
+  // The design only. The colour does not come down here: the stencil covers
+  // all four tag shapes, so the one rectangle of colour already paints the
+  // small ones. Copying it as well laid a plain quad over a shaped one and
+  // buried the lace notches.
   var sources = [
-    document.getElementById('tag-plate-fill-' + stepId),
     document.getElementById('badge-layer-' + stepId),
     document.getElementById('text-layer-' + stepId)
   ];
@@ -7566,13 +7573,7 @@ function applyTagShoeOverlay(stepId){
     g.setAttribute('transform', matrix);
     g.setAttribute('clip-path', 'url(#' + clipId + ')');
     sources.forEach(function(src){
-      if (!src) return;
-      var copy = strip(src.cloneNode(true));
-      // The hole mask belongs to the large plates only. The small tags on the
-      // shoe already have their lace notches drawn into the artwork, so
-      // punching holes through them as well puts two sets in one place.
-      if (copy.removeAttribute) copy.removeAttribute('mask');
-      g.appendChild(copy);
+      if (src) g.appendChild(strip(src.cloneNode(true)));
     });
     layer.appendChild(g);
   });
