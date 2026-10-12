@@ -5467,12 +5467,30 @@ var BESPOKE_TAG_PLATES = {
     right: { tl: [1062, 1097], tr: [1432, 1116], br: [1428, 1189], bl: [1059, 1168] }
   },
   // The real tag, for turning millimetres into units and back.
-  mm: { w: 45, h: 12 }
+  mm: { w: 45, h: 12 },
+  // Everything above is in the template's own pixels. The preview draws on a
+  // 1200 canvas with the background scaled to fill it, so each figure is
+  // multiplied by 1200/1500 on the way out. Re-export the template at another
+  // size and this is the only line that changes.
+  templatePx: 1500,
+  canvasPx:   1200
 };
 
-/** Units per millimetre on the large plates. */
+/** Template pixels to canvas units. */
+function bespokeTagPx(n){
+  return n * BESPOKE_TAG_PLATES.canvasPx / BESPOKE_TAG_PLATES.templatePx;
+}
+
+/** A large plate, in canvas units. */
+function bespokeTagPlate(side){
+  var p = BESPOKE_TAG_PLATES[side];
+  if (!p) return null;
+  return { x: bespokeTagPx(p.x), y: bespokeTagPx(p.y), w: bespokeTagPx(p.w), h: bespokeTagPx(p.h) };
+}
+
+/** Canvas units per millimetre on the large plates. */
 function bespokeTagScale(){
-  return BESPOKE_TAG_PLATES.right.w / BESPOKE_TAG_PLATES.mm.w;
+  return bespokeTagPx(BESPOKE_TAG_PLATES.right.w) / BESPOKE_TAG_PLATES.mm.w;
 }
 
 /**
@@ -5484,9 +5502,15 @@ function bespokeTagScale(){
  * @return {string}       a matrix(...) ready for a transform attribute
  */
 function bespokeTagOnShoeTransform(side){
-  var q = BESPOKE_TAG_PLATES.onShoe[side];
-  var plate = BESPOKE_TAG_PLATES[side];
-  if (!q || !plate) return '';
+  var raw = BESPOKE_TAG_PLATES.onShoe[side];
+  var plate = bespokeTagPlate(side);
+  if (!raw || !plate) return '';
+  // The quad, in canvas units like everything else here.
+  var q = {
+    tl: [bespokeTagPx(raw.tl[0]), bespokeTagPx(raw.tl[1])],
+    tr: [bespokeTagPx(raw.tr[0]), bespokeTagPx(raw.tr[1])],
+    bl: [bespokeTagPx(raw.bl[0]), bespokeTagPx(raw.bl[1])]
+  };
   var ax = (q.tr[0] - q.tl[0]) / plate.w;
   var ay = (q.tr[1] - q.tl[1]) / plate.w;
   var bx = (q.bl[0] - q.tl[0]) / plate.h;
