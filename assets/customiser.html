@@ -5428,6 +5428,12 @@ var BESPOKE_STEP_CONFIG = {
   //   design  → the tag layout
   //   colours → background and text colours
   running_tags:       ['badge', 'name', 'design', 'colours'],
+  // Themed tags — the artwork is ours, the words are theirs. No badge upload
+  // and no colour picker: recolouring an awareness design defeats the point of
+  // it, exactly as it does on a poppy armband.
+  running_tags_themed: ['name', 'design'],
+  // Emergency ID — all words, no artwork to choose. One step and done.
+  running_tags_id:     ['name'],
   // Future:
   // shinpad_sleeves: ['badge', 'name', 'number', 'design', 'colours'],
   // etc.
@@ -5461,7 +5467,9 @@ var BESPOKE_ZONES_CONFIG = {
   boot_stickers:      1,
   // Two tags, and unlike the boot stickers they can differ: design the left,
   // then copy it across if you want them matching. A pair, like shin pads.
-  running_tags:       2
+  running_tags:       2,
+  running_tags_themed: 2,
+  running_tags_id:     2
 };
 
 /* ============================================================
@@ -5807,6 +5815,10 @@ var BESPOKE_PRODUCT_LABELS = {
   boot_stickers: { nameTitle: 'Text', tabName: 'Text', tabNumber: 'Flag', hintNoName: '' },
   // The two zones are the left and right tag rather than left and right of a
   // pair of pads, so the "same on both" wording is about the tags.
+  // Themed tags carry a cause or a country; what the customer adds is a name.
+  running_tags_themed: { nameTitle: 'Your text', tabName: 'Text', sameName: 'Same text on both tags', hintNoName: '' },
+  // The ID tag's text is the whole product, so say what it is for.
+  running_tags_id: { nameTitle: 'Name and emergency number', tabName: 'Details', sameName: 'Same details on both tags', hintNoName: '' },
   running_tags: {
     nameTitle: 'Text',
     sameName:  'Same text on both tags',

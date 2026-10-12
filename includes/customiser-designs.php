@@ -145,6 +145,16 @@ function bespoke_get_product_types() {
         // product image rather than drawn, and BEspoke make the print file
         // from the order, so nothing here generates artwork.
         'running_tags'       => 'Running Tags',
+        // Themed tags — awareness causes, countries, milestones. The same
+        // tag with artwork we supply and the text still theirs. Separate
+        // products on the shop so each theme has its own page to be found by,
+        // the way the themed armbands already work.
+        'running_tags_themed' => 'Running Tags — Themed',
+        // Emergency ID — a name, a number to ring, a condition. The reason
+        // most people put a tag on a lace, and a different buyer from the
+        // awareness ones, so it gets its own product rather than being a
+        // theme among them.
+        'running_tags_id'     => 'Running Tags — Emergency ID',
     ];
     // Merge in admin-managed types added via Product Setup → "Add a product
     // type". A custom key never overrides a core one.

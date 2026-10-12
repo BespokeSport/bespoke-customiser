@@ -202,6 +202,9 @@ function bespoke_type_has_exclusive_designs( $product_type ) {
     $exclusive = apply_filters( 'bespoke_exclusive_design_types', [
         'armbands_predesign',
         'remembrance_armbands',
+        // Themed tags keep their design list to themselves, so a poppy does
+        // not appear in the picker beside a country flag.
+        'running_tags_themed',
     ] );
     return in_array( $product_type, (array) $exclusive, true );
 }
@@ -221,6 +224,12 @@ function bespoke_inherit_product_type( $product_type ) {
         // the raw type — see BESPOKE_STEP_CONFIG in customiser.html.
         'armbands_predesign'    => 'armbands',
         'remembrance_armbands'  => 'armbands',
+        // Both tag variants are physically the same tag, so they take the
+        // whole flow: the plates, the stencil that shapes them, the copy onto
+        // the shoe and the text that fits itself between the holes. What
+        // differs is the step list and the design set.
+        'running_tags_themed'   => 'running_tags',
+        'running_tags_id'       => 'running_tags',
     ];
     // Admin-created ("self-serve") types carry their own inherited base type.
     if ( function_exists( 'bespoke_get_custom_product_types' ) ) {
