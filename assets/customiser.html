@@ -5515,22 +5515,20 @@ function bespokeTagPlate(side){
   return { x: bespokeTagPx(p.x), y: bespokeTagPx(p.y), w: bespokeTagPx(p.w), h: bespokeTagPx(p.h) };
 }
 
-/* How much to narrow the design on its way down to the shoe.
+/* How much to narrow each piece of the design on its way down to the shoe.
 
-   Set to 1 — no narrowing — on purpose. Narrowing it did look better, but it
-   broke the only job the small tags have: text sitting over a lace hole on
-   the large tag has to sit over it on the small one too, or the preview is
-   telling the customer something that is not true.
+   The tag is seen at an angle, so its height foreshortens while its length
+   barely does — the quad is about 369 across by 71 down where the large plate
+   is 734 by 201. Mapped straight across, letters come out noticeably wider
+   than they are on the tag above.
 
-   The design does read wider down there, and that is honest. The tag is seen
-   at an angle, so its height foreshortens while its length barely does: the
-   quad measures about 369 across by 71 down where the large plate is 734 by
-   201. Anything on it genuinely looks wider. The way to change that is to
-   redraw the small tags in the artwork at the proportions of the large ones,
-   not to lie about it here.
+   Narrowing the whole tag about its centre fixed the look and broke the
+   point: everything slid inward, so text beside a lace hole was no longer
+   beside it. Each piece is narrowed about its own centre instead, which
+   leaves every one of them exactly where it was.
 
-   Lower than 1 narrows it again, at the cost of the positions drifting. */
-var BESPOKE_TAG_SHOE_SQUEEZE = 1;
+   1 is no narrowing. */
+var BESPOKE_TAG_SHOE_SQUEEZE = 0.65;
 
 /** Canvas units per millimetre on the large plates. */
 function bespokeTagScale(){
@@ -5564,14 +5562,8 @@ function bespokeTagOnShoeTransform(side){
   var e = q.tl[0] - (ax * plate.x + bx * plate.y);
   var f = q.tl[1] - (ay * plate.x + by * plate.y);
   var r = function(n){ return Math.round(n * 10000) / 10000; };
-  var m = 'matrix(' + [r(ax), r(ay), r(bx), r(by), r(e), r(f)].join(' ') + ')';
-  // Narrow it about the plate's own centre, so it stays put while it slims.
-  var s = BESPOKE_TAG_SHOE_SQUEEZE;
-  if (s !== 1) {
-    var cx = plate.x + plate.w / 2;
-    m += ' translate(' + r(cx) + ' 0) scale(' + r(s) + ' 1) translate(' + r(-cx) + ' 0)';
-  }
-  return m;
+  // The narrowing is applied per item, not here — see applyTagShoeOverlay().
+  return 'matrix(' + [r(ax), r(ay), r(bx), r(by), r(e), r(f)].join(' ') + ')';
 }
 
 /* ============================================================
@@ -7577,8 +7569,34 @@ function applyTagShoeOverlay(stepId){
     var g = document.createElementNS(ns, 'g');
     g.setAttribute('transform', matrix);
     g.setAttribute('clip-path', 'url(#' + clipId + ')');
+    // Each piece of the design is copied inside its own wrapper, narrowed
+    // about its own middle. Done to the layer as a whole it would drag
+    // everything towards the centre of the tag and lose the positions.
+    var squeeze = BESPOKE_TAG_SHOE_SQUEEZE;
     sources.forEach(function(src){
-      if (src) g.appendChild(strip(src.cloneNode(true)));
+      if (!src) return;
+      Array.prototype.forEach.call(src.children, function(item){
+        var copy = strip(item.cloneNode(true));
+        if (squeeze === 1) { g.appendChild(copy); return; }
+        var box;
+        try { box = item.getBBox(); } catch (e) { box = null; }
+        if (!box || !box.width) { g.appendChild(copy); return; }
+        // getBBox() answers in the item's own coordinates, and these items
+        // carry their own transforms. The wrapper sits outside them, so the
+        // centre has to be carried out through that transform first or the
+        // squeeze happens about the wrong point and slides everything left.
+        var cx = box.x + box.width / 2;
+        var cy = box.y + box.height / 2;
+        try {
+          var own = item.transform && item.transform.baseVal.consolidate();
+          if (own) { var mx = own.matrix; cx = mx.a * cx + mx.c * cy + mx.e; }
+        } catch (e) {}
+        var wrap = document.createElementNS(ns, 'g');
+        wrap.setAttribute('transform',
+          'translate(' + cx + ' 0) scale(' + squeeze + ' 1) translate(' + (-cx) + ' 0)');
+        wrap.appendChild(copy);
+        g.appendChild(wrap);
+      });
     });
     layer.appendChild(g);
   });
