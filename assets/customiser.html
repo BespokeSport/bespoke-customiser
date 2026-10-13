@@ -7605,8 +7605,31 @@ function applyTagPlates(stepId){
   // included, because the stencil covers those too.
   var bg = document.getElementById('bg-layer-' + stepId);
   var art = bg ? bg.querySelector('[data-bespoke-design-overlay]') : null;
-  var hasDesign = !!(art && art.children && art.children.length);
+  // Ask the overlay what it is. It always contains a wrapper, chosen design or
+  // not, and marks the empty case by naming itself _none — so counting its
+  // children answers yes every time and the colour never gets painted.
+  var chosen = art ? art.getAttribute('data-bespoke-design-overlay') : '';
+  var hasDesign = !!chosen && chosen !== '_none';
   if (art) art.setAttribute('mask', 'url(#' + maskId + ')');
+
+  // The renderer nudges its layer images by a centring offset. That exists for
+  // armbands, where a narrower band is drawn smaller and has to be pushed back
+  // to the middle; a tag is never scaled, so the nudge is pure displacement —
+  // and it lands on the photograph of the shoes, which the renderer keeps
+  // among its layers. Put it back, every time.
+  if (bg) {
+    var photo = (window.BESPOKE_PRODUCT_ASSETS || {}).background_url || '';
+    var name = photo.split('/').pop().split('?')[0];
+    Array.prototype.forEach.call(bg.querySelectorAll('image'), function(im){
+      var href = im.getAttribute('href') || im.getAttributeNS('http://www.w3.org/1999/xlink', 'href') || '';
+      if (!name || href.indexOf(name) === -1) return;
+      im.setAttribute('x', 0);
+      im.setAttribute('y', 0);
+      im.setAttribute('width', 1200);
+      im.setAttribute('height', 1200);
+      im.removeAttribute('transform');
+    });
+  }
 
   // One rectangle of colour, cut to the tags by the stencil — but only when
   // no design is doing that job. Painted over a design it would hide it.
