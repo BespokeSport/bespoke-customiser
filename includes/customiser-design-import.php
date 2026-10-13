@@ -9,12 +9,16 @@
  *
  *   Autism.png                     → a design called "Autism", one layer
  *   Autism--Background.png         → "Autism", layer "Background"
- *   Autism--Pattern.png            → …and its second layer, in that order
+ *   Autism--Pattern.png            → …and its second layer
  *   Autism--thumb.png              → the picker thumbnail for "Autism"
  *
  * Everything before the double dash names the design, so the parts of one
- * design arrive together whatever order they are picked in. Underscores and
- * hyphens in the name become spaces, so `baby-loss.png` reads "Baby Loss".
+ * design arrive together whatever order they are picked in. Within a design
+ * the layers go in filename order, because the customiser reads the FIRST
+ * layer as the shape that takes the body colour and every later one as a
+ * pattern — so the body's name has to sort first ("Background" or "Body"
+ * before "Pattern"). Underscores and hyphens in the name become spaces, so
+ * `baby-loss.png` reads "Baby Loss".
  *
  * Nothing is guessed about colour: a layer's default is black unless the
  * filename ends in a hex code, as in `Autism--Pattern-#1F6FEB.png`. Designs
@@ -243,6 +247,14 @@ function bespoke_import_run( $files, $products, $active, $start_order, $suffix =
 	}
 
 	$order = max( 0, (int) $start_order );
+	// Layers in filename order, so the body — which has to be first — is
+	// first whatever order the file dialog handed them over in.
+	foreach ( array_keys( $grouped ) as $k ) {
+		usort( $grouped[ $k ], function ( $a, $b ) {
+			return strnatcasecmp( $a['filename'], $b['filename'] );
+		} );
+	}
+
 	foreach ( $grouped as $name => $parts ) {
 		// A suffix keeps a tag-shaped Apex apart from the armband one in the
 		// design list, where two identical titles would be a guessing game.
@@ -439,8 +451,8 @@ function bespoke_import_render_page() {
 			<tbody>
 				<tr><td><code>Autism.png</code></td><td>A design called “Autism”, one layer</td></tr>
 				<tr><td><code>baby-loss.png</code></td><td>“Baby Loss” — dashes and underscores become spaces</td></tr>
-				<tr><td><code>Autism--Background.png</code></td><td>“Autism”, layer “Background”</td></tr>
-				<tr><td><code>Autism--Pattern.png</code></td><td>…and its next layer, in the order listed here</td></tr>
+				<tr><td><code>Autism--Background.png</code></td><td>“Autism”, layer “Background” — the first layer is the shape that takes the body colour</td></tr>
+				<tr><td><code>Autism--Pattern.png</code></td><td>…and its next layer, a pattern. Layers go in filename order, so name the body so it sorts first</td></tr>
 				<tr><td><code>Autism--Pattern-#1F6FEB.png</code></td><td>Same, with that as the layer’s starting colour</td></tr>
 				<tr><td><code>Autism--thumb.png</code></td><td>The picker thumbnail for “Autism”</td></tr>
 			</tbody>
