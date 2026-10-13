@@ -488,6 +488,54 @@ the rule is in the file — the third time this project has lost to source order
 
 ---
 
+### 6.18 The design renderer is private — watch for its work, don't wrap it
+
+`applyRegisteredDesignSVG()` lives inside the script customiser-frontend.php
+injects. It is **not** on `window`; the PHP calls it by its own local name,
+on an animation frame, after `updateDesignLayers()` and `makeSVG()`. So a
+wrapper around `window.applyRegisteredDesignSVG` never fires on the real
+page — and `tools/customiser-harness.mjs` stubs that name as a global, which
+made the wrapper look as if it worked.
+
+Cost 13 Oct 2026: three commits that "reapplied the tags after a design
+rebuild" reapplied nothing. The running-tag preview with a design chosen was
+a black slab over the shoes the whole time.
+
+**Rule:** to run something after the renderer has rebuilt an overlay, watch
+the DOM for a `[data-bespoke-design-overlay]` node being added
+(`bespokeTagWatchDesigns()` is the pattern — a MutationObserver on
+`#bespoke-customiser-root`, once per batch). And prove any hook on the
+staging page, in the console, before trusting the harness.
+
+### 6.19 A tag design is a crop, and the first layer is the body
+
+Every product's design goes through the same renderer: **layer 0 is the
+shape that takes the body colour** (`S.bgColor`, the "Pad background" row),
+**layers 1+ are patterns** tinted with their own colour, and every layer PNG
+is drawn stretched over the whole 1200 canvas. That is the finished picture
+for an armband. A running-tag design is exported as one tag, cropped —
+**734 × 201**, the tag's extent in the Body stencil — so `applyTagPlates()`
+draws each layer again into the two large plates, removes the stretched
+original, and holds the layer to the stencil; `applyTagShoeOverlay()` carries
+the plate copies down to the shoes with the badge and text.
+
+What follows from the "first layer is the body" rule: a one-file design is
+its own body, tinted the body colour — so the pattern vanishes into the tag.
+Each tag design needs **two files**: the body crop (same file every time)
+and the pattern, in that order. With the bulk importer that is
+`Name--Body-#000000.png` + `Name--Pattern-#HEX.png` (+ `Name--thumb.png`);
+"Body" sorts before "Pattern", which is the order the import reads them in.
+
+The plates themselves (`BESPOKE_TAG_PLATES`) are the stencil's bounding
+boxes, measured from the file's alpha: 734 × 201 at (383,117) and (383,359)
+in the 1500px template. Earlier figures taken from an inner shape sat 9px
+inside the edge and left a ring of body colour round every design.
+
+Related: the bulk importer now files a `--thumb` as a Media Library
+attachment and stores `_bespoke_thumb_id`, because that is the only key the
+admin list, the edit screen and the picker read. Its first version stored a
+URL under `_bespoke_thumb_url`, which nothing reads — 16 of the 17 imported
+tag designs had no thumbnail.
 ## 7. Tooling notes (for you, on the new machine)
 
 - **There is no PHP locally.** `tools/` in the repo has what you need — run `npm install`

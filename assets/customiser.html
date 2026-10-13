@@ -5480,9 +5480,11 @@ var BESPOKE_ZONES_CONFIG = {
    (Shoe Tag Body.png, 1500 x 1500) by finding each solid region and its
    corners, not by eye.
 
-   The large plates are square to the page and come out at 714 x 191, which
-   is 3.74 to 1 against the real tag's 45 x 12mm — so what is on screen is
-   honestly scaled, and 15.9 units to the millimetre.
+   The large plates are square to the page and come out at 734 x 201: the
+   full extent of each tag in the Body stencil, which is also exactly the
+   size Nick crops a design to, so a design lands on a plate edge to edge.
+   That is 3.65 to 1 against the real tag's 45 x 12mm — the outline carries
+   a little edge the print does not — and 16.3 units to the millimetre.
 
    The two on the shoes are tilted a few degrees and taper slightly, so each
    is held as four corners rather than a box. An affine transform fits them
@@ -5495,12 +5497,12 @@ var BESPOKE_ZONES_CONFIG = {
    ============================================================ */
 var BESPOKE_TAG_PLATES = {
   // The design surfaces, large. right sits above left, as on the template.
-  // Taken from the overlay's outline, which is the tag's real edge. The body
-  // image's filled shape is about 10px inside it, and using that left the
-  // colour short all the way round with the dark edge showing through — which
-  // read as a black outline somebody had drawn on.
-  right: { x: 392, y: 122, w: 715, h: 190 },
-  left:  { x: 392, y: 364, w: 715, h: 190 },
+  // Each is the bounding box of its tag in the Body stencil, measured from
+  // the file's alpha rather than by eye. The earlier figures came from an
+  // inner shape and sat 9px inside the edge, which left a ring of body
+  // colour showing round every design.
+  right: { x: 383, y: 117, w: 734, h: 201 },
+  left:  { x: 383, y: 359, w: 734, h: 201 },
   // The same two designs on the shoes. Corners run clockwise from top left.
   // Left shoe carries the left tag, right shoe the right.
   onShoe: {
@@ -7512,29 +7514,44 @@ function bespokeTagSliderRanges(){
 }
 
 /**
- * Catch the design renderer the first time it exists.
+ * Notice when the design renderer has rebuilt an overlay.
  *
- * applyRegisteredDesignSVG() is defined in the script customiser-frontend.php
- * injects after this file, and it rebuilds the design overlay long after the
- * tags have been drawn. Wrapping it means every rebuild is followed by the
- * tag treatment, so a design that arrives late is still held to the tags
- * rather than painted across the shoes.
+ * applyRegisteredDesignSVG() lives in the script customiser-frontend.php
+ * injects after this file. It is private to that script — nothing of it is
+ * on window — and it rebuilds the design overlay on an animation frame, long
+ * after the tags have been drawn. So rather than wrapping it, watch for its
+ * work: each time an overlay is added to a preview, the tag treatment runs
+ * again over every preview, the desktop one included.
  */
-var _bespokeTagWrapped = false;
+var _bespokeTagObserver = null;
 function bespokeTagWatchDesigns(){
-  if (_bespokeTagWrapped) return;
-  if (typeof window.applyRegisteredDesignSVG !== 'function') return;
-  _bespokeTagWrapped = true;
-  var _original = window.applyRegisteredDesignSVG;
-  window.applyRegisteredDesignSVG = function(){
-    var out = _original.apply(this, arguments);
-    try {
-      if (typeof bespokeBaseType === 'function' && bespokeBaseType() === 'running_tags') {
-        for (var i = 0; i < 6; i++) { try { applyTagPlates(i); } catch (e) {} }
+  if (_bespokeTagObserver || typeof MutationObserver !== 'function') return;
+  var root = document.getElementById('bespoke-customiser-root') || document.body;
+  var pending = false;
+  _bespokeTagObserver = new MutationObserver(function(records){
+    if (pending) return;
+    var hit = false;
+    for (var i = 0; i < records.length && !hit; i++) {
+      var added = records[i].addedNodes;
+      for (var j = 0; j < added.length; j++) {
+        var n = added[j];
+        if (n.nodeType === 1 && n.hasAttribute && n.hasAttribute('data-bespoke-design-overlay')) { hit = true; break; }
       }
-    } catch (e) {}
-    return out;
-  };
+    }
+    if (!hit) return;
+    // Once per batch: the renderer appends an overlay to every preview in
+    // one go, so let it finish before going round them.
+    pending = true;
+    setTimeout(function(){
+      pending = false;
+      if (typeof bespokeBaseType !== 'function' || bespokeBaseType() !== 'running_tags') return;
+      Object.keys(previews || {}).forEach(function(id){
+        try { applyTagPlates(id); } catch (e) {}
+        try { applyTagShoeOverlay(id); } catch (e) {}
+      });
+    }, 0);
+  });
+  _bespokeTagObserver.observe(root, { childList: true, subtree: true });
 }
 
 function applyTagPlates(stepId){
@@ -7554,11 +7571,9 @@ function applyTagPlates(stepId){
     fill = document.createElementNS(ns, 'g');
     fill.setAttribute('id', fillId);
     fill.setAttribute('pointer-events', 'none');
-    // Above the background, BELOW the overlay. The overlay is the tag outline
-    // and its two holes, and it has to stay on top: it is what tells someone
-    // where the holes are before they drop a photograph over one. Painted the
-    // other way round the holes disappear and all that shows of the overlay is
-    // a thick black line round the outside.
+    // Below the overlay layer to begin with. Once the shared renderer has
+    // built the design overlay it is moved inside that, under the design —
+    // see below. Rebuilt along with the overlay, it starts here again.
     var below = document.getElementById('overlay-layer-' + stepId)
             || document.getElementById('badge-layer-' + stepId);
     if (below && below.parentNode) below.parentNode.insertBefore(fill, below);
@@ -7597,49 +7612,64 @@ function applyTagPlates(stepId){
     svg.appendChild(mask);
   }
 
-  // A chosen design is drawn into the background layer by the shared
-  // renderer, which fills the canvas because on every other product the design
-  // IS the product. Here the product is four small parts of a photograph, so
-  // left alone it buries the shoes. Hold it to the stencil instead: the shoes
-  // come back, and the artwork lands on all four tags, the two on the shoe
-  // included, because the stencil covers those too.
+  // One rectangle of colour, cut to the tags by the stencil: the tag colour,
+  // on all four tags at once. A design paints on top of it.
+  var painted = document.createElementNS(ns, 'rect');
+  painted.setAttribute('x', 0); painted.setAttribute('y', 0);
+  painted.setAttribute('width', 1200); painted.setAttribute('height', 1200);
+  painted.setAttribute('fill', colour);
+  fill.appendChild(painted);
+  fill.setAttribute('mask', 'url(#' + maskId + ')');
+
+  // A chosen design arrives from the shared renderer the way it does on every
+  // product: one PNG per layer, each stretched over the whole canvas, the
+  // first tinted with the body colour and the rest with their own. On an
+  // armband that is the finished picture — the band is drawn at canvas size,
+  // in place. A tag design is exported as the one tag, cropped. So each layer
+  // is drawn again into the two large plates, the stretched original is taken
+  // away, and the layer is held to the stencil so the lace holes cut through
+  // it. The photograph of the shoes is the renderer's own background layer
+  // and stays where it was put, at the bottom.
   var bg = document.getElementById('bg-layer-' + stepId);
   var art = bg ? bg.querySelector('[data-bespoke-design-overlay]') : null;
-  // Ask the overlay what it is. It always contains a wrapper, chosen design or
-  // not, and marks the empty case by naming itself _none — so counting its
-  // children answers yes every time and the colour never gets painted.
-  var chosen = art ? art.getAttribute('data-bespoke-design-overlay') : '';
-  var hasDesign = !!chosen && chosen !== '_none';
-  if (art) art.setAttribute('mask', 'url(#' + maskId + ')');
-
-  // The renderer nudges its layer images by a centring offset. That exists for
-  // armbands, where a narrower band is drawn smaller and has to be pushed back
-  // to the middle; a tag is never scaled, so the nudge is pure displacement —
-  // and it lands on the photograph of the shoes, which the renderer keeps
-  // among its layers. Put it back, every time.
-  if (bg) {
-    var photo = (window.BESPOKE_PRODUCT_ASSETS || {}).background_url || '';
-    var name = photo.split('/').pop().split('?')[0];
-    Array.prototype.forEach.call(bg.querySelectorAll('image'), function(im){
-      var href = im.getAttribute('href') || im.getAttributeNS('http://www.w3.org/1999/xlink', 'href') || '';
-      if (!name || href.indexOf(name) === -1) return;
-      im.setAttribute('x', 0);
-      im.setAttribute('y', 0);
-      im.setAttribute('width', 1200);
-      im.setAttribute('height', 1200);
-      im.removeAttribute('transform');
+  if (art) {
+    var layers = Array.prototype.slice.call(art.querySelectorAll('[data-layer]'));
+    var above = null;
+    layers.forEach(function(grp){
+      if (!above && grp.getAttribute('data-layer') !== 'background') above = grp;
     });
-  }
-
-  // One rectangle of colour, cut to the tags by the stencil — but only when
-  // no design is doing that job. Painted over a design it would hide it.
-  if (!hasDesign) {
-    var painted = document.createElementNS(ns, 'rect');
-    painted.setAttribute('x', 0); painted.setAttribute('y', 0);
-    painted.setAttribute('width', 1200); painted.setAttribute('height', 1200);
-    painted.setAttribute('fill', colour);
-    fill.appendChild(painted);
-    fill.setAttribute('mask', 'url(#' + maskId + ')');
+    // The colour goes under the design and over the shoes.
+    art.insertBefore(fill, above);
+    layers.forEach(function(grp){
+      var label = grp.getAttribute('data-layer') || '';
+      if (label !== 'pad-base' && label.indexOf('pattern-') !== 0) return;
+      grp.setAttribute('mask', 'url(#' + maskId + ')');
+      Array.prototype.slice.call(grp.children).forEach(function(im){
+        if (im.tagName !== 'image') return;
+        if (im.hasAttribute('data-tag-side')) {
+          // Placed on an earlier pass; keep it to the plate.
+          var q = bespokeTagPlate(im.getAttribute('data-tag-side'));
+          if (q) {
+            im.setAttribute('x', q.x); im.setAttribute('y', q.y);
+            im.setAttribute('width', q.w); im.setAttribute('height', q.h);
+          }
+          return;
+        }
+        ['right', 'left'].forEach(function(side){
+          var p = bespokeTagPlate(side);
+          if (!p) return;
+          var copy = im.cloneNode(true);
+          copy.setAttribute('x', p.x); copy.setAttribute('y', p.y);
+          copy.setAttribute('width', p.w); copy.setAttribute('height', p.h);
+          // The crop is the tag's own outline, so it fills the plate edge to
+          // edge rather than being fitted inside it.
+          copy.setAttribute('preserveAspectRatio', 'none');
+          copy.setAttribute('data-tag-side', side);
+          grp.appendChild(copy);
+        });
+        grp.removeChild(im);
+      });
+    });
   }
 
   // The artwork is held to the two large plates — the stencil says what is a
@@ -7695,10 +7725,12 @@ function applyTagShoeOverlay(stepId){
   var stencilMask = document.getElementById('tag-body-mask-' + stepId);
   if (stencilMask) layer.setAttribute('mask', 'url(#tag-body-mask-' + stepId + ')');
 
-  // The design only. The colour does not come down here: the stencil covers
-  // all four tag shapes, so the one rectangle of colour already paints the
-  // small ones. Copying it as well laid a plain quad over a shaped one and
-  // buried the lace notches.
+  // What is on the plates, not the colour: the stencil covers all four tag
+  // shapes, so the one rectangle of colour already paints the small ones.
+  // Copying it as well laid a plain quad over a shaped one and buried the
+  // lace notches. A chosen design comes down as the copies applyTagPlates()
+  // drew into each plate, underneath the badge and the text.
+  var art = document.querySelector('#bg-layer-' + stepId + ' [data-bespoke-design-overlay]');
   var sources = [
     document.getElementById('badge-layer-' + stepId),
     document.getElementById('text-layer-' + stepId)
@@ -7735,6 +7767,11 @@ function applyTagShoeOverlay(stepId){
     // about its own middle. Done to the layer as a whole it would drag
     // everything towards the centre of the tag and lose the positions.
     var squeeze = BESPOKE_TAG_SHOE_SQUEEZE;
+    if (art) {
+      Array.prototype.forEach.call(art.querySelectorAll('image[data-tag-side="' + side + '"]'), function(im){
+        g.appendChild(strip(im.cloneNode(true)));
+      });
+    }
     sources.forEach(function(src){
       if (!src) return;
       Array.prototype.forEach.call(src.children, function(item){

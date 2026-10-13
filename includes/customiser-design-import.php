@@ -162,6 +162,49 @@ function bespoke_import_store( $tmp_name, $original ) {
 }
 
 /**
+ * File a thumbnail in the Media Library and hand back its attachment id.
+ *
+ * A design's thumbnail is read everywhere — the admin list, the edit screen,
+ * the customiser's picker — by attachment id, which is what the media button
+ * on the edit screen stores. So the import files its thumbnail the same way
+ * rather than keeping a URL that nothing reads.
+ *
+ * @return int Attachment id, or 0 if it could not be filed.
+ */
+function bespoke_import_attach_thumb( $post_id, $url, $name ) {
+	if ( ! function_exists( 'wp_insert_attachment' ) ) {
+		return 0;
+	}
+	$path = str_replace(
+		trailingslashit( BESPOKE_DESIGNS_URL ),
+		trailingslashit( BESPOKE_DESIGNS_DIR ),
+		rawurldecode( $url )
+	);
+	if ( ! file_exists( $path ) ) {
+		return 0;
+	}
+	$type = function_exists( 'wp_check_filetype' ) ? wp_check_filetype( $path ) : [];
+	$att  = wp_insert_attachment( [
+		'guid'           => $url,
+		'post_mime_type' => ! empty( $type['type'] ) ? $type['type'] : 'image/png',
+		'post_title'     => $name . ' thumbnail',
+		'post_status'    => 'inherit',
+	], $path, $post_id );
+	if ( ! $att || is_wp_error( $att ) ) {
+		return 0;
+	}
+	// The sizes the admin list and the picker ask for. The generator lives in
+	// an admin include that is not always loaded.
+	if ( ! function_exists( 'wp_generate_attachment_metadata' ) && defined( 'ABSPATH' ) ) {
+		@include_once ABSPATH . 'wp-admin/includes/image.php'; // phpcs:ignore WordPress.PHP.NoSilencedErrors
+	}
+	if ( function_exists( 'wp_generate_attachment_metadata' ) ) {
+		wp_update_attachment_metadata( $att, wp_generate_attachment_metadata( $att, $path ) );
+	}
+	return (int) $att;
+}
+
+/**
  * Group the uploaded files into designs, create one post each, and say what
  * happened.
  *
@@ -171,6 +214,7 @@ function bespoke_import_run( $files, $products, $active, $start_order, $suffix =
 	$made = [];
 	$skipped = [];
 	$errors = [];
+	$thumbs = [];
 
 	// Gather by design name first, so the layers of one design stay together
 	// however the browser ordered them.
@@ -243,7 +287,11 @@ function bespoke_import_run( $files, $products, $active, $start_order, $suffix =
 		$layers = [];
 		foreach ( $parts as $p ) {
 			if ( bespoke_import_is_thumb( $p['read']['part'] ) ) {
-				update_post_meta( $post_id, '_bespoke_thumb_url', $p['url'] );
+				$thumb_id = bespoke_import_attach_thumb( $post_id, $p['url'], $name );
+				if ( $thumb_id ) {
+					update_post_meta( $post_id, '_bespoke_thumb_id', $thumb_id );
+					$thumbs[] = $thumb_id;
+				}
 				continue;
 			}
 			$layers[] = [
@@ -265,8 +313,9 @@ function bespoke_import_run( $files, $products, $active, $start_order, $suffix =
 
 	if ( $made ) {
 		update_option( BESPOKE_IMPORT_LAST, [
-			'when' => current_time( 'mysql' ),
-			'ids'  => wp_list_pluck( $made, 'id' ),
+			'when'   => current_time( 'mysql' ),
+			'ids'    => wp_list_pluck( $made, 'id' ),
+			'thumbs' => $thumbs,
 		], false );
 	}
 
@@ -287,6 +336,13 @@ function bespoke_import_undo() {
 	foreach ( $ids as $id ) {
 		if ( get_post_type( $id ) === 'bespoke_design' && wp_trash_post( $id ) ) {
 			$gone++;
+		}
+	}
+	// The thumbnails it filed in the Media Library go with it.
+	$thumbs = isset( $last['thumbs'] ) ? (array) $last['thumbs'] : [];
+	foreach ( $thumbs as $att ) {
+		if ( function_exists( 'wp_delete_attachment' ) && get_post_type( $att ) === 'attachment' ) {
+			wp_delete_attachment( $att, true );
 		}
 	}
 	delete_option( BESPOKE_IMPORT_LAST );
