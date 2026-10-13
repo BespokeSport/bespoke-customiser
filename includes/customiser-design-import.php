@@ -99,6 +99,31 @@ if ( ! function_exists( 'bespoke_import_move' ) ) {
 }
 
 /**
+ * What PHP means by an upload error, in words.
+ *
+ * The one that catches people is the limit on how many files one form may
+ * carry: PHP stops at 20 by default and says nothing about the rest, so a
+ * batch quietly arrives short.
+ */
+function bespoke_import_upload_problem( $code ) {
+	switch ( $code ) {
+		case UPLOAD_ERR_INI_SIZE:
+		case UPLOAD_ERR_FORM_SIZE:
+			return 'too large for this server to accept';
+		case UPLOAD_ERR_PARTIAL:
+			return 'only partly arrived — try again';
+		case UPLOAD_ERR_NO_FILE:
+			return 'did not arrive at all, which usually means the server stopped after a certain number of files';
+		case UPLOAD_ERR_NO_TMP_DIR:
+		case UPLOAD_ERR_CANT_WRITE:
+			return 'the server could not write it to disk';
+		case UPLOAD_ERR_EXTENSION:
+			return 'blocked by the server';
+	}
+	return 'did not arrive (error ' . intval( $code ) . ')';
+}
+
+/**
  * Save one uploaded file into the designs folder.
  *
  * @return string|WP_Error The URL it can be read from.
@@ -153,6 +178,7 @@ function bespoke_import_run( $files, $products, $active, $start_order ) {
 	$count = isset( $files['name'] ) ? count( (array) $files['name'] ) : 0;
 	for ( $i = 0; $i < $count; $i++ ) {
 		if ( (int) $files['error'][ $i ] !== UPLOAD_ERR_OK ) {
+			$errors[] = $files['name'][ $i ] . ': ' . bespoke_import_upload_problem( (int) $files['error'][ $i ] );
 			continue;
 		}
 		if ( (int) $files['size'][ $i ] > BESPOKE_IMPORT_MAX_FILE * MB_IN_BYTES ) {
@@ -228,7 +254,13 @@ function bespoke_import_run( $files, $products, $active, $start_order ) {
 		], false );
 	}
 
-	return [ 'made' => $made, 'skipped' => $skipped, 'errors' => $errors ];
+	return [
+		'made'    => $made,
+		'skipped' => $skipped,
+		'errors'  => $errors,
+		'offered' => $count,
+		'read'    => array_sum( array_map( 'count', $grouped ) ),
+	];
 }
 
 /** Put the last import back. */
@@ -297,6 +329,10 @@ function bespoke_import_render_page() {
 		<?php endif; ?>
 
 		<?php if ( $result ) : ?>
+			<?php if ( isset( $result['offered'] ) ) : ?>
+				<p><strong><?php echo intval( $result['offered'] ); ?></strong> file(s) picked,
+				<strong><?php echo intval( $result['read'] ); ?></strong> read.</p>
+			<?php endif; ?>
 			<?php if ( $result['errors'] ) : ?>
 				<div class="notice notice-error"><p><strong>Problems:</strong></p><ul style="margin-left:18px;list-style:disc;">
 					<?php foreach ( $result['errors'] as $e ) : ?><li><?php echo esc_html( $e ); ?></li><?php endforeach; ?>
