@@ -167,7 +167,7 @@ function bespoke_import_store( $tmp_name, $original ) {
  *
  * @return array{made:array,skipped:array,errors:array}
  */
-function bespoke_import_run( $files, $products, $active, $start_order ) {
+function bespoke_import_run( $files, $products, $active, $start_order, $suffix = '' ) {
 	$made = [];
 	$skipped = [];
 	$errors = [];
@@ -200,16 +200,32 @@ function bespoke_import_run( $files, $products, $active, $start_order ) {
 
 	$order = max( 0, (int) $start_order );
 	foreach ( $grouped as $name => $parts ) {
-		// An existing design of the same name is left alone rather than
-		// quietly rewritten — a re-run should not undo hand edits.
+		// A suffix keeps a tag-shaped Apex apart from the armband one in the
+		// design list, where two identical titles would be a guessing game.
+		if ( $suffix !== '' ) {
+			$name = trim( $name . ' ' . $suffix );
+		}
+		// A design of this name may already exist for a different product —
+		// Apex and Vanguard are armband styles long before they are tag ones. That
+		// is not a clash. Only a name already registered for one of the products
+		// being imported is, and that one is left alone rather than rewritten so
+		// a re-run cannot undo a hand edit.
 		$existing = get_posts( [
 			'post_type'   => 'bespoke_design',
 			'post_status' => [ 'publish', 'draft' ],
 			'title'       => $name,
-			'numberposts' => 1,
+			'numberposts' => -1,
 			'fields'      => 'ids',
 		] );
-		if ( $existing ) {
+		$clash = false;
+		foreach ( $existing as $other ) {
+			$theirs = (array) get_post_meta( $other, '_bespoke_products', true );
+			if ( array_intersect( $theirs, (array) $products ) ) {
+				$clash = true;
+				break;
+			}
+		}
+		if ( $clash ) {
 			$skipped[] = $name;
 			continue;
 		}
@@ -313,7 +329,8 @@ function bespoke_import_render_page() {
 				$_FILES['designs'],
 				$products,
 				! empty( $_POST['active'] ),
-				isset( $_POST['start_order'] ) ? (int) $_POST['start_order'] : 0
+				isset( $_POST['start_order'] ) ? (int) $_POST['start_order'] : 0,
+				isset( $_POST['suffix'] ) ? sanitize_text_field( wp_unslash( $_POST['suffix'] ) ) : ''
 			);
 		}
 	}
@@ -396,6 +413,10 @@ function bespoke_import_render_page() {
 			<h2>3. Then</h2>
 			<p>
 				<label><input type="checkbox" name="active" value="1" checked /> Show these in the customiser straight away</label><br/>
+				<label>Add to the end of every name
+					<input type="text" name="suffix" value="" placeholder="e.g. Tag" style="width:140px;" />
+					<span class="description">&mdash; only needed when a name is already used by another product, so Apex arrives as “Apex Tag”.</span>
+				</label><br/>
 				<label>Start the display order at
 					<input type="number" name="start_order" value="0" style="width:80px;" />
 					<span class="description">— each design gets the next ten. Leave at 0 unless you want them after existing ones.</span>
