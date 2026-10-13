@@ -7570,13 +7570,27 @@ function applyTagPlates(stepId){
     svg.appendChild(mask);
   }
 
-  // One rectangle of colour, cut to the tags by the stencil.
-  var painted = document.createElementNS(ns, 'rect');
-  painted.setAttribute('x', 0); painted.setAttribute('y', 0);
-  painted.setAttribute('width', 1200); painted.setAttribute('height', 1200);
-  painted.setAttribute('fill', colour);
-  fill.appendChild(painted);
-  fill.setAttribute('mask', 'url(#' + maskId + ')');
+  // A chosen design is drawn into the background layer by the shared
+  // renderer, which fills the canvas because on every other product the design
+  // IS the product. Here the product is four small parts of a photograph, so
+  // left alone it buries the shoes. Hold it to the stencil instead: the shoes
+  // come back, and the artwork lands on all four tags, the two on the shoe
+  // included, because the stencil covers those too.
+  var bg = document.getElementById('bg-layer-' + stepId);
+  var art = bg ? bg.querySelector('[data-bespoke-design-overlay]') : null;
+  var hasDesign = !!(art && art.children && art.children.length);
+  if (art) art.setAttribute('mask', 'url(#' + maskId + ')');
+
+  // One rectangle of colour, cut to the tags by the stencil — but only when
+  // no design is doing that job. Painted over a design it would hide it.
+  if (!hasDesign) {
+    var painted = document.createElementNS(ns, 'rect');
+    painted.setAttribute('x', 0); painted.setAttribute('y', 0);
+    painted.setAttribute('width', 1200); painted.setAttribute('height', 1200);
+    painted.setAttribute('fill', colour);
+    fill.appendChild(painted);
+    fill.setAttribute('mask', 'url(#' + maskId + ')');
+  }
 
   // The artwork is held to the two large plates — the stencil says what is a
   // tag, not which of them someone is designing.
