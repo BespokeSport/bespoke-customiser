@@ -7511,8 +7511,35 @@ function bespokeTagSliderRanges(){
   });
 }
 
+/**
+ * Catch the design renderer the first time it exists.
+ *
+ * applyRegisteredDesignSVG() is defined in the script customiser-frontend.php
+ * injects after this file, and it rebuilds the design overlay long after the
+ * tags have been drawn. Wrapping it means every rebuild is followed by the
+ * tag treatment, so a design that arrives late is still held to the tags
+ * rather than painted across the shoes.
+ */
+var _bespokeTagWrapped = false;
+function bespokeTagWatchDesigns(){
+  if (_bespokeTagWrapped) return;
+  if (typeof window.applyRegisteredDesignSVG !== 'function') return;
+  _bespokeTagWrapped = true;
+  var _original = window.applyRegisteredDesignSVG;
+  window.applyRegisteredDesignSVG = function(){
+    var out = _original.apply(this, arguments);
+    try {
+      if (typeof bespokeBaseType === 'function' && bespokeBaseType() === 'running_tags') {
+        for (var i = 0; i < 6; i++) { try { applyTagPlates(i); } catch (e) {} }
+      }
+    } catch (e) {}
+    return out;
+  };
+}
+
 function applyTagPlates(stepId){
   if (typeof bespokeBaseType !== 'function' || bespokeBaseType() !== 'running_tags') return;
+  bespokeTagWatchDesigns();
   // People put a photograph on these as often as a club badge.
   var uploadLabel = document.getElementById('label-badge-upload');
   if (uploadLabel) uploadLabel.textContent = bespokeT('Upload badge or photo');
