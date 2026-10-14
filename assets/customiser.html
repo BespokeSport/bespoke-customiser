@@ -7527,9 +7527,7 @@ var _bespokeTagObserver = null;
 function bespokeTagWatchDesigns(){
   if (_bespokeTagObserver || typeof MutationObserver !== 'function') return;
   var root = document.getElementById('bespoke-customiser-root') || document.body;
-  var pending = false;
   _bespokeTagObserver = new MutationObserver(function(records){
-    if (pending) return;
     var hit = false;
     for (var i = 0; i < records.length && !hit; i++) {
       var added = records[i].addedNodes;
@@ -7539,17 +7537,19 @@ function bespokeTagWatchDesigns(){
       }
     }
     if (!hit) return;
-    // Once per batch: the renderer appends an overlay to every preview in
-    // one go, so let it finish before going round them.
-    pending = true;
-    setTimeout(function(){
-      pending = false;
-      if (typeof bespokeBaseType !== 'function' || bespokeBaseType() !== 'running_tags') return;
-      Object.keys(previews || {}).forEach(function(id){
-        try { applyTagPlates(id); } catch (e) {}
-        try { applyTagShoeOverlay(id); } catch (e) {}
-      });
-    }, 0);
+    // Now, in this same microtask — not on a timeout. The renderer rebuilds
+    // inside an animation frame and the observer hears of it before that
+    // frame is painted; a timeout of 0 runs after the paint, so one frame
+    // went out with the design stretched across the shoes and no fill. A
+    // flicker on every click of a colour. The renderer appends an overlay to
+    // every preview in one pass, so the records arrive together and one
+    // round of the previews covers them all; the mutations made here are
+    // delivered to a later callback, which finds no overlay and returns.
+    if (typeof bespokeBaseType !== 'function' || bespokeBaseType() !== 'running_tags') return;
+    Object.keys(previews || {}).forEach(function(id){
+      try { applyTagPlates(id); } catch (e) {}
+      try { applyTagShoeOverlay(id); } catch (e) {}
+    });
   });
   _bespokeTagObserver.observe(root, { childList: true, subtree: true });
 }
