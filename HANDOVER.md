@@ -536,6 +536,31 @@ attachment and stores `_bespoke_thumb_id`, because that is the only key the
 admin list, the edit screen and the picker read. Its first version stored a
 URL under `_bespoke_thumb_url`, which nothing reads — 16 of the 17 imported
 tag designs had no thumbnail.
+### 6.20 Running tags: the two badge keys are two spots on ONE tag
+
+On a running tag `badgeL` / `badgeR` are the **left end and right end of
+the upper tag** — what the Left / Right badge cards describe — and the lower
+tag repeats them through `BAND_MIRRORS.running_tags` (scale 1, one plate
+pitch down), the same mechanism as the armbands' 3D mirror. So a pair of
+tags always matches, and `+ Add another badge` / `Swap sides` / an empty
+side all mean what they say on each tag. Text is per tag: `nameR` on the
+upper plate, `nameL` on the lower.
+
+Nick's spec, 14 Oct 2026: one badge, the same badge at both ends, or two
+different badges — "full flexibility". A tag starts with one badge
+(`bespokeBadgeSpotsStartMode()` answers `none` for tags, `same` for
+armbands; `bespokeResetBadgeSpots()` takes a mode so "Put the club badge on
+both sides" still asks for `same`). `bespokeUseBadgeSpots()` is the one
+switch for which products run their badges through the cards and lose the
+× on the preview; badges on those products lock to the strip
+(`bespokeLockBadgeY`) and `bespokeClampArmbandBadgeX` clamps a tag badge to
+its plate.
+
+The first version of this (13 Oct) had the two keys meaning "a badge on the
+upper tag" and "a badge on the lower tag", so a second badge could only
+replace one of them. If the two tags ever need to differ in their badges,
+that is a per-tag state (like the double-sided armbands' faces), not more
+keys.
 ## 7. Tooling notes (for you, on the new machine)
 
 - **There is no PHP locally.** `tools/` in the repo has what you need — run `npm install`
