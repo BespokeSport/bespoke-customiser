@@ -1651,14 +1651,16 @@ var DEFDESIGN = 'vanguard';
     DEFSZ.nameSize = 240;
   }
   if (pt === 'running_tags') {
-    // R is the upper plate, L the lower — the order they sit on the
-    // template. A badge at the left end, text filling the rest, which is how
-    // a lace tag reads. Figures from bespokeTagPlate(): each plate is 571 x
-    // 153 at 12.7 units to the millimetre, so these sit comfortably inside
-    // the 30 x 9mm the artwork allows between the holes.
-    DEF.badgeR = { x: 420, y: 173 };
+    // Text is per tag: R on the upper plate, L on the lower — the order
+    // they sit on the template. The two BADGE keys are the two spots on ONE
+    // tag, the left end and the right end, as the Left / Right badge cards
+    // describe them; the lower plate repeats them through BAND_MIRRORS so a
+    // pair of tags always matches. Figures from bespokeTagPlate(): each
+    // plate is 587 x 161 units with its middle at 600, and the two spots
+    // sit the same distance in from either end.
+    DEF.badgeL = { x: 420, y: 173 };
+    DEF.badgeR = { x: 780, y: 173 };
     DEF.nameR  = { x: 680, y: 173 };
-    DEF.badgeL = { x: 420, y: 367 };
     DEF.nameL  = { x: 680, y: 367 };
     // The shin-pad defaults are built for something the size of a shin pad.
     // A tag is 12mm tall, so everything starts far smaller.
@@ -4221,16 +4223,25 @@ function bespokeApplyBadgeSpots(){
   S.hidden[keys.club]  = false;
   S.hidden[keys.other] = (S.badge2Mode === 'none');
 }
-// Back to the start: club badge on both sides, no second badge. Takes a
-// state object so it can also reset the parked face on double-sided.
-function bespokeResetBadgeSpots(st){
+// What the second spot starts with: the club badge again on an armband;
+// nothing on a running tag, which is 45mm wide with its text in the middle,
+// so one badge until someone asks for two.
+function bespokeBadgeSpotsStartMode(){
+  var t = (typeof bespokeBaseType === 'function') ? bespokeBaseType() : '';
+  return (t === 'running_tags') ? 'none' : 'same';
+}
+// Back to the start: the club badge, no second badge, and the second spot
+// as the product starts it — or as asked, for "Put the club badge on both
+// sides". Takes a state object so it can also reset the parked face on
+// double-sided.
+function bespokeResetBadgeSpots(st, mode){
   if (!st) return;
   st.badge2 = null; st.badge2URL = null;
-  st.badge2Mode = 'same';
+  st.badge2Mode = mode || bespokeBadgeSpotsStartMode();
   st.badgeSwap = false;
   if (!st.hidden) st.hidden = {};
   st.hidden.badgeL = false;
-  st.hidden.badgeR = false;
+  st.hidden.badgeR = (st.badge2Mode === 'none');
 }
 // What one spot shows right now: 'club', 'other' or 'empty'.
 function bespokeBadgeSpotContent(key){
@@ -4353,7 +4364,7 @@ function toggleBadgeSwap(){
 // "Put the club badge on both sides" — shown while one side is empty.
 function bespokeClubBothSides(){
   if (!window.S) return;
-  bespokeResetBadgeSpots(S);
+  bespokeResetBadgeSpots(S, 'same');
   _bespokeBadgeSpotsChanged();
 }
 // "Remove badges": the club badge, any second badge, back to the upload box.
@@ -5316,6 +5327,9 @@ function fillSummary(){
 }
 function reset(){
   S={step:0,bgColor:'#feef00',patColor:'#211d33',patColors:[],bgGradient:null,patGradients:[],nameColor:DEFCOL.name,numColor:DEFCOL.num,nameL:'',nameR:'',numL:'',numR:'',sameName:true,sameNum:true,sameBadge:true,badge:null,badgeURL:null,badge2:null,badge2URL:null,badge2Mode:'same',badgeSwap:false,textBoxes:[],design:DEFDESIGN,padSize:bespokeDefaultSize(),orderNotes:"",badgeSize:DEFSZ.badgeSize,nameSize:DEFSZ.nameSize,numSize:DEFSZ.numSize,nameFontFamily:'"Arial Black", Arial, sans-serif',numFontFamily:'"Arial Black", Arial, sans-serif',useBgAlt:false, hidden:{badgeL:false,badgeR:false,nameL:false,nameR:false,numL:false,numR:false}, selected:null, rot:{badgeL:0,badgeR:0,nameL:0,nameR:0,numL:0,numR:0},pos:JSON.parse(JSON.stringify(DEF))};
+  // The fresh state is written for an armband's second spot; a product that
+  // starts differently is put right here, as at first load.
+  if (bespokeBadgeSpotsStartMode() !== 'same') bespokeResetBadgeSpots(S);
   previews={};
   for(var i=0;i<6;i++){var pb=document.getElementById('pb'+i);if(pb)pb.innerHTML='';}
   document.getElementById('s6').classList.remove('active');
@@ -6001,6 +6015,16 @@ var BAND_MIRRORS = {
       // 850 (orig) -> 862 -> 892. Increase to lower the letter, decrease to raise.
       nameL:  { x: 600, y: 892 }
     }
+  },
+  // Running tags: the lower plate repeats the upper plate's two badge spots,
+  // same size, one plate pitch straight down — so a pair of tags always
+  // matches. Text is not here: it is per tag.
+  running_tags: {
+    scale: 1,
+    positions: {
+      badgeL: { x: 420, y: 367 },
+      badgeR: { x: 780, y: 367 }
+    }
   }
 };
 function bespokeBandMirror(){
@@ -6055,13 +6079,13 @@ function bespokeBaseType(){
 function bespokeIsDoubleSided(){
   return bespokeProductType() === 'double_sided_armbands';
 }
-// Captain armbands (single + double-sided) constrain BADGE movement to the
-// horizontal axis. The band is a thin horizontal strip, so any vertical drift
-// pushes the badge off it — and on mobile a stray finger-drift doing exactly
-// that looked like the badge "deleting" itself. Only badge* keys lock; the
-// captain's letter/name text can still be moved freely.
+// Where badges sit on a thin horizontal strip — armbands, running tags —
+// BADGE movement is constrained to the horizontal axis: any vertical drift
+// pushes the badge off the strip, and on mobile a stray finger-drift doing
+// exactly that looked like the badge "deleting" itself. Only badge* keys
+// lock; text can still be moved freely.
 function bespokeLockBadgeY(key){
-  return !!key && key.indexOf('badge') === 0 && bespokeBaseType() === 'armbands';
+  return !!key && key.indexOf('badge') === 0 && bespokeUseBadgeSpots();
 }
 // Keep an armband badge's centre within the band cut-out. The mask's
 // transparent band runs x≈45–1154 in the 1200-wide canvas; clamping the
@@ -6069,6 +6093,13 @@ function bespokeLockBadgeY(key){
 // dragged off the tapered ends and disappear under the mask, while still
 // allowing plenty of left/right travel.
 function bespokeClampArmbandBadgeX(x){
+  // A running tag: the plate's own extent, less half a badge, so a badge
+  // can be pushed to either end of the tag but never off it.
+  if (bespokeBaseType() === 'running_tags' && typeof bespokeTagPlate === 'function') {
+    var p  = bespokeTagPlate('right');
+    var hs = ((window.S && S.badgeSize) || 95) / 2;
+    if (p) return Math.max(p.x + hs, Math.min(p.x + p.w - hs, x));
+  }
   return Math.max(150, Math.min(1050, x));
 }
 /**
@@ -8835,6 +8866,7 @@ _bsInit('buyBar',       function(){ bespokeBuyBarInit(); bespokeStepNumbers(); }
 _bsInit('bootSticker',  function(){ bespokeBootStickerUI(); });
 _bsInit('bootChooser',  function(){ bespokeBootChooserInit(); });
 _bsInit('tagSliders',   function(){ bespokeTagSliderRanges(); });
+_bsInit('badgeSpots',   function(){ if (bespokeBadgeSpotsStartMode() !== 'same') bespokeResetBadgeSpots(S); });
 _bsInit('bootFlag',     function(){ bespokeBootFlagInit(); });
 _bsInit('addBack',      function(){ renderAddBackPanel(); });
 
