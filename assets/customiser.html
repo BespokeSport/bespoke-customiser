@@ -2338,6 +2338,15 @@ var TEXT_BOX_MAX = 10;
 // second or third box doesn't land exactly on top of the last one.
 var TEXT_BOX_STEP = [0, 150, -150, 75, -75, 225, -225, 0, 150, -150];
 
+/* Which products run their badges through the Left / Right badge cards on
+   the badge step — a second badge, swap sides, one side empty — with no ×
+   on the preview badge. Armbands first. Running tags have the same two
+   spots, one tag each, and had the same trouble: the × sat under the
+   finger that was trying to move the badge. */
+function bespokeUseBadgeSpots(){
+  var t = (typeof bespokeBaseType === 'function') ? bespokeBaseType() : '';
+  return t === 'armbands' || t === 'running_tags';
+}
 function bespokeUseTextBoxes(){
   // Pennants want these too — Nick, 30 Sep. Everything downstream is already
   // product-neutral: the boxes travel in the same payload field, and the cart
@@ -2932,15 +2941,15 @@ function updatePreview(stepId) {
         img.setAttribute('width',S.badgeSize); img.setAttribute('height',S.badgeSize);
         img.setAttribute('preserveAspectRatio','xMidYMid meet');
         g.appendChild(img);
-        // Per-element delete X (Stage 2). NOT on armbands — their badge
-        // spots are owned by the Left / Right badge cards on the badge
-        // step, which replaced the X after repeated accidental
-        // scroll-tap deletions on mobile. The X is
-        // also hidden on ALL touch devices via the pointer:coarse CSS
-        // rule. Other 2-badge products keep it for desktop mice; never
-        // on the last visible badge.
+        // Per-element delete X (Stage 2). NOT where the Left / Right badge
+        // cards own the spots (armbands, running tags) — the cards replaced
+        // the X after repeated accidental deletions, under a scrolling
+        // thumb on a phone and under a mouse reaching for the badge. The X
+        // is also hidden on ALL touch devices via the pointer:coarse CSS
+        // rule. Other 2-badge products keep it for desktop mice; never on
+        // the last visible badge.
         if (bespokeBadgeZones() === 2 && _badges.length > 1 &&
-            bespokeBaseType() !== 'armbands') {
+            !bespokeUseBadgeSpots()) {
           g.appendChild(_makeDeleteBtn(ns, item.key, 0, -hs + 22));
         }
         // Stage 3 selection outline + resize handles — dashed mint box
@@ -4029,11 +4038,10 @@ function renderAddBackPanel(){
     host.innerHTML = '';
     grp.keys.forEach(function(k){
       if (!S.hidden[k]) return;
-      // Armbands: BOTH badge spots are owned by the Left / Right badge
-      // cards on the badge step. Offering "+ Add badge" here as well would
-      // un-hide a side while its card still says Empty.
-      if ((k === 'badgeR' || k === 'badgeL') && typeof bespokeBaseType === 'function' &&
-          bespokeBaseType() === 'armbands') return;
+      // Where the Left / Right badge cards own BOTH badge spots, offering
+      // "+ Add badge" here as well would un-hide a side while its card
+      // still says Empty.
+      if ((k === 'badgeR' || k === 'badgeL') && bespokeUseBadgeSpots()) return;
       // Whole phrases, not "+ Add " + side + kind: word order changes
       // between languages, so each button is its own string.
       var _addBack = {
@@ -4244,7 +4252,7 @@ function bespokeBadgeSidesText(){
 function bespokeShowBadge2UI(){
   var wrap = document.getElementById('badge2-wrap');
   if (!wrap) return;
-  var on = (typeof bespokeBaseType === 'function' && bespokeBaseType() === 'armbands');
+  var on = bespokeUseBadgeSpots();
   wrap.style.display = on ? '' : 'none';
   if (!on || !window.S) return;
   // The Left / Right cards stand in for the filename row, and the upload
@@ -5270,9 +5278,9 @@ function fillSummary(){
   var numFont  = FONTS.find(function(f){return f.family===S.numFontFamily;});
   document.getElementById('sum-name-font').textContent = nameFont ? nameFont.label : S.nameFontFamily;
   document.getElementById('sum-num-font').textContent  = numFont  ? numFont.label  : S.numFontFamily;
-  // Armbands say which badge is on which side.
+  // With two badge spots, say which badge is on which side.
   document.getElementById('sum-badge').textContent =
-    (bespokeBaseType() === 'armbands') ? bespokeBadgeSidesText() : (S.badge || bespokeT('Not added'));
+    bespokeUseBadgeSpots() ? bespokeBadgeSidesText() : (S.badge || bespokeT('Not added'));
   // Armbands' extra text boxes, when there are any.
   var _tbTxt = bespokeUseTextBoxes() ? bespokeTextBoxesText() : '';
   var _tbRow = document.getElementById('sum-tb-row');

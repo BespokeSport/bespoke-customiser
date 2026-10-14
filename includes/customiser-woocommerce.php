@@ -1515,6 +1515,40 @@ function bespoke_render_admin_double_sided_armbands( $d, $item ) {
 
 
 /* =========================================================================
+   RUNNING TAGS — cart + admin renderers
+   Two tags, one badge spot each, run through the armbands' Left / Right
+   badge cards — so the order says which badge went on which tag the way
+   an armband's says which side. The themed and emergency-ID tags inherit
+   running_tags and land here through the resolver.
+   ========================================================================= */
+
+function bespoke_render_cart_running_tags( $item_data, $d ) {
+    if ( ! empty( $d['design'] ) ) {
+        $item_data[] = [ 'name' => 'Design', 'value' => esc_html( bespoke_design_label( $d['design'] ) ) ];
+    }
+    // Right tag above left, as on the template.
+    foreach ( [ 'right' => 'Right tag', 'left' => 'Left tag' ] as $side => $label ) {
+        $text = bespoke_printed_text( $d, $side, 'name' );
+        if ( $text !== '' ) {
+            $item_data[] = [ 'name' => $label, 'value' => esc_html( $text ) ];
+        }
+    }
+    if ( empty( $d['badge']['url'] ) ) {
+        $item_data[] = [ 'name' => 'Badge', 'value' => 'Not added' ];
+    } else {
+        $item_data[] = [ 'name' => 'Badges', 'value' => esc_html( bespoke_badge_sides_text( $d ) ) ];
+    }
+    return $item_data;
+}
+
+function bespoke_render_admin_running_tags( $d, $item ) {
+    echo bespoke_render_admin_generic_card( 'Running Tags', $d, [
+        'show_text'   => [ 'right_name' => 'Right tag', 'left_name' => 'Left tag' ],
+        'badge_sides' => true,
+    ] );
+}
+
+/* =========================================================================
    PENNANT — cart + admin renderers
    ========================================================================= */
 
