@@ -586,7 +586,22 @@ function bespoke_render_product_setup_page() {
  */
 function bespoke_get_product_assets( $product_type ) {
     $assets = get_option( 'bespoke_customiser_product_assets', [] );
-    if ( isset( $assets[ $product_type ] ) && is_array( $assets[ $product_type ] ) ) {
+    // An entry with no files left in it — every asset deleted on Product
+    // Setup — is no entry: the type uses its parent's artwork, as a type
+    // that never had any of its own does. Otherwise deleting a child type's
+    // files left it with no artwork at all.
+    $has_files = function( $a ) {
+        if ( ! is_array( $a ) ) {
+            return false;
+        }
+        foreach ( $a as $k => $v ) {
+            if ( substr( (string) $k, -4 ) === '_url' && $v ) {
+                return true;
+            }
+        }
+        return false;
+    };
+    if ( isset( $assets[ $product_type ] ) && $has_files( $assets[ $product_type ] ) ) {
         return $assets[ $product_type ];
     }
     // Inherit the parent type's band photo / layers when this type has

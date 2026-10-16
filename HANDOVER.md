@@ -628,6 +628,20 @@ designs shows the picker as a dropdown (`.player-select`, as the boot
 stickers' country list) instead of the thumbnail strip, in the admin's
 design order — so the home nations go first by dragging them to the top of
 Customiser Designs.
+
+The themed and ID tag types should carry **no artwork of their own** on
+Product Setup: they then use the Running Tags background and Body stencil.
+`bespoke_get_product_assets()` treats an entry with no files left (every
+asset deleted) as none and falls back to the parent; before 17 Oct 2026 an
+emptied entry left the type with no artwork at all. The first themed
+product had the tag OUTLINE uploaded as its mask, so the design showed only
+round the edges and the holes.
+
+First paint: the renderer's hook paints at once, while `S.design` is still
+the customiser's built-in 'vanguard' — not a registered design — so it
+paints none; `patchDesigns()` then switches to the first registered design
+and now calls `updateDesignLayers()` to paint it. Unseen where the customer
+picks a design; fatal on a single-design product with no design step.
 ## 7. Tooling notes (for you, on the new machine)
 
 - **There is no PHP locally.** `tools/` in the repo has what you need — run `npm install`

@@ -387,8 +387,10 @@ function bespoke_render_customiser( $atts ) {
                 });
                 // If the customiser's default design (vanguard) is no longer in
                 // the list, switch the initial selection to the first registered.
+                var switchedDesign = false;
                 if (window.S && !REG.some(function(d){ return d.id === window.S.design; })) {
                     window.S.design = REG[0].id;
+                    switchedDesign = true;
                 }
                 if (typeof window.buildDesignScroll === 'function') {
                     window.buildDesignScroll();
@@ -398,6 +400,14 @@ function bespoke_render_customiser( $atts ) {
                 // before this list existed.
                 if (typeof window.applyStepConfig === 'function') {
                     window.applyStepConfig();
+                }
+                // The renderer's first paint, from the hook installed just
+                // before this, ran with the old default — not a registered
+                // design, so no design was painted. Paint the one we switched
+                // to. Where the customer picks a design the gap went unseen;
+                // a themed tag has no design step, so nothing else would.
+                if (switchedDesign && typeof window.updateDesignLayers === 'function') {
+                    window.updateDesignLayers();
                 }
                 if (typeof window.updateDesignLayers === 'function') {
                     requestAnimationFrame(window.updateDesignLayers);
