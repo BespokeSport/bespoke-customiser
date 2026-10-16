@@ -1846,6 +1846,8 @@ var BESPOKE_FACE_FIELDS = [
   // the OTHER face's design id here, so the re-render wiped a Surprise-Me'd
   // face's colours back to the default (the "reverts to red" bug).
   '_bcpSeededDesign',
+  // Whether this face's colours are the customer's own picks.
+  'coloursChosen',
   'badgeSize','nameSize','numSize',
   'nameFontFamily','numFontFamily',
   'hidden','rot','selected','pos'
@@ -4928,6 +4930,7 @@ function bcpRevealPanel(){
 function onMugColour(idx, val){
   if (!window.S) return;
   if (!S.patColors) S.patColors = [];
+  S.coloursChosen = true;
   // Layer 0 is the shared base and is tinted with bgColor, not patColors.
   if (idx === 0) { S.bgColor = val; }
   else {
@@ -5102,6 +5105,10 @@ function debouncedColor(zone, val) {
   _colorDebounceTimer = setTimeout(function(){ onColor(zone, val); }, 40);
 }
 function onColor(zone,val){
+  // The customer has chosen: from here on a change of design keeps their
+  // colours rather than bringing its own (see the seeding in
+  // applyRegisteredDesignSVG, customiser-frontend.php).
+  if (zone === 'bg' || zone === 'pat' || /^pat\d+$/.test(zone)) S.coloursChosen = true;
   if(zone==='bg'){S.bgColor=val;document.getElementById('ct-bg').style.background=val;}
   if(zone==='pat'){
     S.patColor=val;

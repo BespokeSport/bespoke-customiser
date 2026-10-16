@@ -824,8 +824,18 @@ function bespoke_render_customiser( $atts ) {
                     var _designId = String(d.id || '');
                     if (window.S._bcpSeededDesign !== _designId) {
                         if (!window.S.patColors) window.S.patColors = [];
+                        // Colours the customer has picked (S.coloursChosen,
+                        // set by the pickers) stay with them from design to
+                        // design. A design's defaults fill only what they
+                        // have not chosen — a pattern slot the new design
+                        // has and the old one did not — and layers the
+                        // customer cannot recolour, which always take the
+                        // admin's colour.
+                        var _keep = !!window.S.coloursChosen;
                         d.layers.forEach(function(layer, idx){
                             if (!layer || !layer.default) return;
+                            if (_keep && bcpIsLayerEditable(layer) &&
+                                (idx === 0 ? !!window.S.bgColor : !!window.S.patColors[idx - 1])) return;
                             if (idx === 0) {
                                 // Layer 0 = pad-base ("Trophy Colour" /
                                 // "Pad background") → S.bgColor.
