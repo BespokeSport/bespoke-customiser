@@ -578,6 +578,22 @@ live first; the left goes as `bespoke_tag_left` (its own uploads through
 `$d['tags']`, and shown by the running-tag renderers as "Right tag badges /
 Left tag badges" with a second "Badge sides — left tag" section on the order
 screen.
+### 6.21 A saved placement outlives a change to what a key means
+
+The admin "Save placement" editor stores a product's positions
+(`BespokeConfig.geometry`, merged over `DEF` at load, `geometryIsOwn`
+true). Change what a key MEANS in the code — as 6.20 did, `badgeL` from
+"a badge on the lower tag" to "the left spot on the upper tag" — and the
+saved placement quietly keeps the old meaning: on staging, Running Tags had
+`badgeL` saved at (420,367), so the club badge landed on one tag, the
+second badge on the other, and the lower tag went off the canvas when it
+was being edited. The harness never shows this (its config has no
+geometry).
+
+**Rule:** when a key's meaning changes, go and look at what each product
+has saved (`window.BespokeConfig.geometry` in the console on the real
+page) before trusting the defaults — and guard the merge, as the running
+tags do, when old saved values can be told apart.
 ## 7. Tooling notes (for you, on the new machine)
 
 - **There is no PHP locally.** `tools/` in the repo has what you need — run `npm install`
