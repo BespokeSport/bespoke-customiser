@@ -658,6 +658,108 @@ function bespoke_parse_text_boxes( $boxes ) {
 }
 
 /**
+ * Boot stickers: which stickers are in the set, and what each is made from.
+ *
+ * bespoke_boot is one JSON blob: the picks (text / flag / badge), the flag's
+ * country, shape, stock and any request, and the sizes in millimetres. The
+ * text itself and the badge file travel in the usual fields. The flag
+ * picture is looked up here from the country and shape — never a URL from
+ * the page — and only if that file is one of the plugin's own flags. Null
+ * for every other product.
+ *
+ * @return array|null
+ */
+function bespoke_parse_boot() {
+    if ( ! isset( $_POST['bespoke_boot'] ) ) {
+        return null;
+    }
+    $raw = json_decode( wp_unslash( $_POST['bespoke_boot'] ), true );
+    if ( ! is_array( $raw ) ) {
+        return null;
+    }
+    $p     = ( isset( $raw['picks'] ) && is_array( $raw['picks'] ) ) ? $raw['picks'] : [];
+    $picks = [
+        'text'  => ! empty( $p['text'] ),
+        'flag'  => ! empty( $p['flag'] ),
+        'badge' => ! empty( $p['badge'] ),
+    ];
+    $f       = ( isset( $raw['flag'] ) && is_array( $raw['flag'] ) ) ? $raw['flag'] : [];
+    $country = trim( preg_replace( "/[^A-Za-z0-9 '&().-]/", '', (string) ( $f['country'] ?? '' ) ) );
+    $shape   = ( ( $f['shape'] ?? '' ) === 'rect' ) ? 'rect' : 'round';
+    $flag_url = '';
+    if ( $country !== '' && defined( 'BESPOKE_PLUGIN_DIR' ) && defined( 'BESPOKE_PLUGIN_URL' ) ) {
+        // The shape asked for, or the one held if that is all there is —
+        // the same picture the customer was shown.
+        foreach ( [ $shape, $shape === 'round' ? 'rect' : 'round' ] as $try ) {
+            $name = basename( ( $try === 'round' ? 'Round_' : '' ) . $country . '.png' );
+            if ( file_exists( BESPOKE_PLUGIN_DIR . 'assets/flags/' . $name ) ) {
+                $flag_url = BESPOKE_PLUGIN_URL . 'assets/flags/' . rawurlencode( $name );
+                break;
+            }
+        }
+    }
+    $keys = array_keys( array_filter( $picks ) );
+    return [
+        'picks'          => $picks,
+        'set'            => bespoke_boot_set_label( $keys ),
+        'flag'           => [
+            'country' => $country,
+            'shape'   => $shape,
+            'stocked' => ! empty( $f['stocked'] ),
+            'request' => sanitize_textarea_field( mb_substr( (string) ( $f['request'] ?? '' ), 0, 200 ) ),
+            'url'     => $flag_url,
+        ],
+        'text_height_mm' => round( (float) ( $raw['text_height_mm'] ?? 0 ), 1 ),
+        'badge_width_mm' => (int) round( (float) ( $raw['badge_width_mm'] ?? 0 ) ),
+    ];
+}
+
+/**
+ * Which stickers a variation name stands for, as sorted keys.
+ *
+ * The same reading the customiser does (bespokeBootSetOf): "All three" or
+ * "Set" is all of them; otherwise the words say which — text / name /
+ * initials / number, flag / country, badge / club / logo. Works on a
+ * variation's label or its slug ("text-flag").
+ */
+function bespoke_boot_set_of( $label ) {
+    $s = strtolower( (string) $label );
+    if ( preg_match( '/\ball\b|three|\bset\b/', $s ) ) {
+        return [ 'badge', 'flag', 'text' ];
+    }
+    $out = [];
+    if ( preg_match( '/badge|club|logo/', $s ) )          $out[] = 'badge';
+    if ( preg_match( '/flag|country/', $s ) )             $out[] = 'flag';
+    if ( preg_match( '/text|name|initial|number/', $s ) ) $out[] = 'text';
+    return $out;
+}
+
+/** "Text + Flag", "All three" — the set as the workshop reads it. */
+function bespoke_boot_set_label( $keys ) {
+    $keys = array_values( array_intersect( [ 'text', 'flag', 'badge' ], (array) $keys ) );
+    if ( count( $keys ) === 3 ) {
+        return 'All three';
+    }
+    return implode( ' + ', array_map( 'ucfirst', $keys ) );
+}
+
+/**
+ * The boot-sticker variation for exactly this set of stickers, or null.
+ *
+ * @return array|null [ 'id' => int, 'attributes' => array ]
+ */
+function bespoke_boot_match_variation( $product, $keys ) {
+    $want = array_values( array_intersect( [ 'badge', 'flag', 'text' ], (array) $keys ) );
+    foreach ( $product->get_available_variations() as $bv ) {
+        $label = implode( ' ', array_filter( (array) $bv['attributes'] ) );
+        if ( bespoke_boot_set_of( $label ) === $want ) {
+            return [ 'id' => (int) $bv['variation_id'], 'attributes' => $bv['attributes'] ];
+        }
+    }
+    return null;
+}
+
+/**
  * Running tags: the pair usually matches, but the left tag can carry its own
  * badges. bespoke_tags_match says which; when it is '0', bespoke_tag_left is
  * the left tag's badge arrangement as one JSON blob — its club badge and
@@ -1010,6 +1112,9 @@ function bespoke_handle_add_to_cart() {
             // ── Running tags: does the pair match, and the left tag if not ────
             'tags' => bespoke_parse_tag_pair(),
 
+            // ── Boot stickers: the set, the flag and the sizes ──────────────
+            'boot' => bespoke_parse_boot(),
+
             // ── Element positions on the pad (SVG coordinate space) ───────────
             // Stored so a production SVG can be regenerated server-side later.
             'positions' => [
@@ -1143,7 +1248,32 @@ function bespoke_handle_add_to_cart() {
     // this entirely and fall through with variation_id 0.
     $variation_id    = 0;
     $variation_attrs = [];
-    if ( $product->is_type( 'variable' ) ) {
+
+    // Boot stickers are sold by the SET of stickers, not a size: the
+    // variation is the one for exactly what was picked, and its price is
+    // what the basket charges.
+    $boot          = $customisation['data']['boot'] ?? null;
+    $boot_resolved = false;
+    if ( is_array( $boot ) ) {
+        $boot_keys = array_keys( array_filter( (array) ( $boot['picks'] ?? [] ) ) );
+        if ( ! $boot_keys ) {
+            wp_send_json_error( 'Choose at least one sticker.' );
+        }
+        if ( $product->is_type( 'variable' ) ) {
+            $boot_match = bespoke_boot_match_variation( $product, $boot_keys );
+            if ( ! $boot_match ) {
+                wp_send_json_error(
+                    'There is no variation for "' . esc_html( bespoke_boot_set_label( $boot_keys ) ) . '". ' .
+                    'Boot stickers need one variation for each set: Text, Flag, Badge, Text + Flag, Text + Badge, Flag + Badge and All three.'
+                );
+            }
+            $variation_id    = $boot_match['id'];
+            $variation_attrs = $boot_match['attributes'];
+            $boot_resolved   = true;
+        }
+    }
+
+    if ( ! $boot_resolved && $product->is_type( 'variable' ) ) {
         $customer_values = array_filter( [
             $customisation['data']['size']             ?? '',
             $customisation['data']['bg_variant_label'] ?? '',

@@ -4058,6 +4058,13 @@ function bespokeBuyBarPrice(){
       if (!isNaN(n)) text = '£' + n.toFixed(2);
     }
   } catch (e) {}
+  // Boot stickers are priced by the set of stickers picked, not a size.
+  try {
+    if (typeof bespokeBaseType === 'function' && bespokeBaseType() === 'boot_stickers' && typeof bespokeBootTotal === 'function') {
+      var bt = bespokeBootTotal();
+      if (bt) text = '£' + bt.toFixed(2);
+    }
+  } catch (e) {}
   for (var i = 0; i < els.length; i++) els[i].textContent = text || '—';
 }
 
@@ -7422,12 +7429,40 @@ var BOOT_PICKS = [
   { key: 'all',   title: 'All three',                sub: 'Text, flag and badge together',              fallback: 22 }
 ];
 
-function bespokeBootPrice(key){
+/* The product's variations are the sticker SETS: Text, Flag, Badge, the
+   three pairs and All three. Each is recognised by the words in its name,
+   so "Name / initials", "Country flag" and "Club badge" work as well as
+   the short names, and a pair can be priced below its two parts. The same
+   reading is done on the server (bespoke_boot_set_of), which is what the
+   basket actually charges. */
+function bespokeBootSetOf(label){
+  var s = String(label || '').toLowerCase();
+  if (/\ball\b|three|\bset\b/.test(s)) return ['badge', 'flag', 'text'];
+  var out = [];
+  if (/badge|club|logo/.test(s))          out.push('badge');
+  if (/flag|country/.test(s))             out.push('flag');
+  if (/text|name|initial|number/.test(s)) out.push('text');
+  return out;
+}
+function bespokeBootSetKey(picks){
+  var out = [];
+  if (picks && picks.badge) out.push('badge');
+  if (picks && picks.flag)  out.push('flag');
+  if (picks && picks.text)  out.push('text');
+  return out.join('+');
+}
+function bespokeBootVariation(setKey){
   var v = (window.BespokeConfig && BespokeConfig.variations) || [];
   for (var i = 0; i < v.length; i++) {
-    var name = String(v[i].attributes ? Object.keys(v[i].attributes).map(function(k){ return v[i].attributes[k]; }).join(' ') : '');
-    if (key === 'all' ? /all/i.test(name) : new RegExp(key, 'i').test(name)) return parseFloat(v[i].price) || 0;
+    var attrs = v[i].attributes || {};
+    var label = Object.keys(attrs).map(function(k){ return attrs[k]; }).join(' ');
+    if (bespokeBootSetOf(label).join('+') === setKey) return v[i];
   }
+  return null;
+}
+function bespokeBootPrice(key){
+  var hit = bespokeBootVariation(key === 'all' ? 'badge+flag+text' : key);
+  if (hit) return parseFloat(hit.price) || 0;
   for (var j = 0; j < BOOT_PICKS.length; j++) if (BOOT_PICKS[j].key === key) return BOOT_PICKS[j].fallback;
   return 0;
 }
@@ -7444,12 +7479,40 @@ function bespokeBootAll(){
 }
 
 function bespokeBootTotal(){
+  // The exact set's own price, when the product has one for it.
+  var key = bespokeBootSetKey(bespokeBootPicked());
+  if (!key) return 0;
+  var hit = bespokeBootVariation(key);
+  if (hit) return parseFloat(hit.price) || 0;
   if (bespokeBootAll()) return bespokeBootPrice('all');
   var p = bespokeBootPicked(), t = 0;
   if (p.text)  t += bespokeBootPrice('text');
   if (p.flag)  t += bespokeBootPrice('flag');
   if (p.badge) t += bespokeBootPrice('badge');
   return t;
+}
+
+/**
+ * What is still missing before a set of boot stickers can be made, or null.
+ * A text sticker needs its text, a flag a country or a request, a badge the
+ * upload. Step indices are the customiser's own: badge 0, text 1, flag 2.
+ */
+function bespokeBootMissing(){
+  var p = bespokeBootPicked();
+  if (!p.text && !p.flag && !p.badge) {
+    return { step: -1, message: bespokeT('Choose at least one sticker.') };
+  }
+  if (p.badge && !(window.S && S.badgeURL)) {
+    return { step: 0, message: bespokeT('Upload your club badge, or untick the badge sticker.') };
+  }
+  if (p.text && !String((window.S && (S.nameL || S.nameR)) || '').trim()) {
+    return { step: 1, message: bespokeT('Add the text for your name sticker, or untick it.') };
+  }
+  var f = bespokeBootFlagState();
+  if (p.flag && !f.country && !String(f.request || '').trim()) {
+    return { step: 2, message: bespokeT('Choose a flag, or tell us the one you need.') };
+  }
+  return null;
 }
 
 function bespokeBootChooserRender(){
@@ -7492,6 +7555,7 @@ function bespokeBootPick(key){
     S.bootPick[key] = !S.bootPick[key];
   }
   bespokeBootChooserRender();
+  if (typeof bespokeBuyBarPrice === 'function') bespokeBuyBarPrice();
 }
 
 /** Back to the chooser, with the steps left as they were until Next. */
@@ -8221,6 +8285,12 @@ function bespokeBootStickerUI(){
     'name-size-slider':  [29, 48],
     'num-size-slider':   [29, 48]
   };
+  // The design is held to the range as well as the slider: moving only the
+  // slider left a saved starting size (text at 51 against a ceiling of 48)
+  // in the preview and on the order.
+  var field = { 'badge-size-slider': 'badgeSize', 'name-size-slider': 'nameSize', 'num-size-slider': 'numSize' };
+  var label = { 'badge-size-slider': 'badge-size-val', 'name-size-slider': 'name-size-val', 'num-size-slider': 'num-size-val' };
+  var moved = false;
   Object.keys(ranges).forEach(function(id){
     var el = document.getElementById(id);
     if (!el) return;
@@ -8229,7 +8299,16 @@ function bespokeBootStickerUI(){
     var v = parseFloat(el.value);
     if (v < ranges[id][0]) { el.value = ranges[id][0]; }
     if (v > ranges[id][1]) { el.value = ranges[id][1]; }
+    var key = field[id];
+    if (window.S && key && typeof S[key] === 'number') {
+      var held = Math.max(ranges[id][0], Math.min(ranges[id][1], S[key]));
+      if (held !== S[key]) { S[key] = held; moved = true; }
+      el.value = S[key];
+      var lab = document.getElementById(label[id]);
+      if (lab) lab.textContent = S[key];
+    }
   });
+  if (moved && typeof syncAll === 'function') syncAll();
 
   // The step bar grew by the height of the "change what goes on your
   // stickers" link, and the screens clear it with a fixed padding, so the
@@ -8797,6 +8876,16 @@ function bespokeAddToCart() {
     return;
   }
 
+  // Boot stickers: each sticker picked needs what it is made from.
+  if (typeof bespokeBaseType === 'function' && bespokeBaseType() === 'boot_stickers') {
+    var _missing = bespokeBootMissing();
+    if (_missing) {
+      alert(_missing.message);
+      if (_missing.step >= 0 && typeof goTo === 'function') goTo(_missing.step);
+      return;
+    }
+  }
+
   var cfg = window.BespokeConfig;
 
   // Not in WordPress - just show success screen
@@ -9007,6 +9096,29 @@ function _bespokeCommitAddToCart(cfg, btn, insideFace) {
     // the right. Only meaningful while the sides differ.
     formData.append('bespoke_badge2_swap',
       (S.badgeSwap && (S.badge2Mode || 'same') !== 'same') ? '1' : '0');
+
+    // Boot stickers: the set, the flag and the sizes in millimetres. The
+    // server reads the set from these picks and charges that set's
+    // variation, so the price is never taken from the page.
+    if (typeof bespokeBaseType === 'function' && bespokeBaseType() === 'boot_stickers') {
+      var _bp = bespokeBootPicked();
+      var _bf = bespokeBootFlagState();
+      formData.append('bespoke_boot', JSON.stringify({
+        picks: { text: !!_bp.text, flag: !!_bp.flag, badge: !!_bp.badge },
+        // A capital is about 0.72 of the font size; the text sits on the
+        // side view, the badge on the rear view.
+        // Held to what is sold, whatever the design says: text 6-10mm, a
+        // badge 20-30mm.
+        text_height_mm: Math.max(BESPOKE_BOOT_MIN_MM, Math.min(BESPOKE_BOOT_MAX_MM, Math.round(S.nameSize * 0.72 / BESPOKE_BOOT_ZONES.side.unitsPerMm * 10) / 10)),
+        badge_width_mm: Math.max(20, Math.min(30, Math.round(S.badgeSize / BESPOKE_BOOT_ZONES.heel.unitsPerMm))),
+        flag: {
+          country: _bf.country || '',
+          shape:   _bf.shape || 'round',
+          request: _bf.request || '',
+          stocked: !!(_bf.country && bespokeBootFlagStocked(_bf.country, _bf.shape))
+        }
+      }));
+    }
 
     // Running tags: whether the pair matches, and the left tag's own
     // arrangement when it does not. The badge fields above are the right

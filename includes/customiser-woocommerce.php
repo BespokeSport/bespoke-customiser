@@ -1556,6 +1556,83 @@ function bespoke_render_admin_double_sided_armbands( $d, $item ) {
 
 
 /* =========================================================================
+   BOOT STICKERS — cart + admin renderers
+   Sold by the set: the variation (Text + Flag, All three …) shows in the
+   basket on its own, so these lines say what each sticker is made from.
+   The positions on the preview are not here — the customer sticks them on
+   at home, so the picture is for them, not for the workshop.
+   ========================================================================= */
+
+function bespoke_render_cart_boot_stickers( $item_data, $d ) {
+    $boot  = ( isset( $d['boot'] ) && is_array( $d['boot'] ) ) ? $d['boot'] : [];
+    $picks = $boot['picks'] ?? [];
+    if ( ! empty( $picks['text'] ) ) {
+        $text = (string) ( $d['left']['name'] ?? '' );
+        $item_data[] = [ 'name' => 'Text', 'value' => esc_html( $text !== '' ? $text : '—' ) ];
+    }
+    if ( ! empty( $picks['flag'] ) ) {
+        $f = $boot['flag'] ?? [];
+        if ( ! empty( $f['country'] ) ) {
+            $item_data[] = [ 'name' => 'Flag', 'value' => esc_html( $f['country'] . ( ( $f['shape'] ?? '' ) === 'rect' ? ', rectangle' : ', round' ) ) ];
+        }
+        if ( ! empty( $f['request'] ) ) {
+            $item_data[] = [ 'name' => 'Flag request', 'value' => esc_html( $f['request'] ) . ' — we will email you a picture before we print' ];
+        }
+    }
+    if ( ! empty( $picks['badge'] ) ) {
+        $item_data[] = [ 'name' => 'Club badge', 'value' => empty( $d['badge']['url'] ) ? 'Not added' : 'Uploaded' ];
+    }
+    return $item_data;
+}
+
+function bespoke_render_admin_boot_stickers( $d, $item ) {
+    $boot  = ( isset( $d['boot'] ) && is_array( $d['boot'] ) ) ? $d['boot'] : [];
+    $picks = $boot['picks'] ?? [];
+    $f     = $boot['flag'] ?? [];
+
+    $set = [ [ 'Stickers', esc_html( $boot['set'] ?? '—' ) ] ];
+    if ( function_exists( 'bespoke_format_bg_variant' ) ) {
+        $set[] = [ 'Preview shown on', esc_html( bespoke_format_bg_variant( $d ) ) ];
+    }
+    $sections = [ 'Boot stickers' => $set ];
+
+    if ( ! empty( $picks['text'] ) && ! empty( $boot['text_height_mm'] ) ) {
+        $sections['Text sticker'] = [ [ 'Letter height', esc_html( $boot['text_height_mm'] . 'mm (capitals)' ) ] ];
+    }
+    if ( ! empty( $picks['badge'] ) && ! empty( $boot['badge_width_mm'] ) ) {
+        $sections['Badge sticker'] = [ [ 'Width', esc_html( $boot['badge_width_mm'] . 'mm' ) ] ];
+    }
+    if ( ! empty( $picks['flag'] ) ) {
+        $rows = [];
+        if ( ! empty( $f['country'] ) ) {
+            $rows[] = [ 'Country', esc_html( $f['country'] ) ];
+            $rows[] = [ 'Shape', ( $f['shape'] ?? '' ) === 'rect' ? 'Rectangle' : 'Round' ];
+            $rows[] = [ 'Stock', ! empty( $f['stocked'] )
+                ? 'On the shelf'
+                : '<span style="color:#b26a00;">Order in — about 2 days</span>' ];
+            if ( ! empty( $f['url'] ) ) {
+                $rows[] = [ 'Flag', '<img src="' . esc_url( $f['url'] ) . '" alt="" style="height:36px;width:auto;border:1px solid #eee;border-radius:3px;background:#fff;" />' ];
+            }
+        }
+        if ( ! empty( $f['request'] ) ) {
+            $rows[] = [ 'Request', esc_html( $f['request'] ) ];
+            $rows[] = [ 'Before printing', '<span style="color:#b32d2e;">Email the customer a picture of it</span>' ];
+        }
+        if ( ! $rows ) {
+            $rows[] = [ 'Flag', '<span style="color:#b32d2e;">Nothing chosen</span>' ];
+        }
+        $sections['Flag sticker'] = $rows;
+    }
+
+    echo bespoke_render_admin_generic_card( 'Boot Stickers', $d, [
+        'show_text'           => ! empty( $picks['text'] ) ? [ 'left_name' => 'Text' ] : [],
+        'hide_size'           => true,
+        'hide_design_colours' => true,
+        'extra_sections'      => $sections,
+    ] );
+}
+
+/* =========================================================================
    RUNNING TAGS — cart + admin renderers
    Two tags, one badge spot each, run through the armbands' Left / Right
    badge cards — so the order says which badge went on which tag the way
@@ -2132,6 +2209,11 @@ function bespoke_render_admin_generic_card( $product_label, $d, $opts = [] ) {
     $show_text    = $opts['show_text']    ?? [];
     // Armbands: list what's on the Left and Right badge spots.
     $badge_sides  = ! empty( $opts['badge_sides'] );
+    // Products with no size or design colours of their own (boot stickers),
+    // and sections of their own: [ heading => [ [ label, value_html ], … ] ].
+    $hide_size           = ! empty( $opts['hide_size'] );
+    $hide_design_colours = ! empty( $opts['hide_design_colours'] );
+    $extra_sections      = ( isset( $opts['extra_sections'] ) && is_array( $opts['extra_sections'] ) ) ? $opts['extra_sections'] : [];
     $badge_sides_heading = $opts['badge_sides_heading'] ?? 'Badge sides';
 
     ob_start();
@@ -2146,10 +2228,18 @@ function bespoke_render_admin_generic_card( $product_label, $d, $opts = [] ) {
             <div>
                 <?php
                 $product_rows = '';
-                if ( ! empty( $d['size']   ) ) $product_rows .= $row( $size_label, esc_html( $d['size'] ) );
+                if ( ! empty( $d['size'] ) && ! $hide_size ) $product_rows .= $row( $size_label, esc_html( $d['size'] ) );
                 if ( ! empty( $d['design'] ) ) $product_rows .= $row( 'Design',   esc_html( bespoke_design_label( $d['design'] ) ) );
                 if ( $show_variant )           $product_rows .= $row( $show_variant, esc_html( bespoke_format_bg_variant( $d ) ) );
                 if ( $product_rows ) echo $section( 'Product', $product_rows );
+
+                foreach ( $extra_sections as $heading => $pairs ) {
+                    $html = '';
+                    foreach ( (array) $pairs as $pair ) {
+                        $html .= $row( $pair[0], $pair[1] );
+                    }
+                    if ( $html ) echo $section( $heading, $html );
+                }
 
                 // Helper: clean a font reference. The customiser sends
                 // either a friendly label ("Villain") or a CSS family
@@ -2279,8 +2369,8 @@ function bespoke_render_admin_generic_card( $product_label, $d, $opts = [] ) {
                 }
 
                 $colour_rows = '';
-                if ( ! empty( $d['colours']['background']   ) ) $colour_rows .= $row( 'Background',  $swatch( $d['colours']['background'] ) );
-                if ( ! empty( $d['colours']['pattern']      ) ) $colour_rows .= $row( 'Pattern',     $swatch( $d['colours']['pattern'] ) );
+                if ( ! empty( $d['colours']['background'] ) && ! $hide_design_colours ) $colour_rows .= $row( 'Background',  $swatch( $d['colours']['background'] ) );
+                if ( ! empty( $d['colours']['pattern'] )    && ! $hide_design_colours ) $colour_rows .= $row( 'Pattern',     $swatch( $d['colours']['pattern'] ) );
                 if ( ! empty( $d['colours']['name_text']    ) ) $colour_rows .= $row( 'Name text',   $swatch( $d['colours']['name_text'] ) );
                 if ( ! empty( $d['colours']['number_text'] ) && in_array( 'left_number', array_keys( $show_text ), true ) ) {
                     $colour_rows .= $row( 'Bottom text', $swatch( $d['colours']['number_text'] ) );
