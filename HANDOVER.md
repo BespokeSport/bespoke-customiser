@@ -620,6 +620,14 @@ TINTED flat to one colour, so a full-colour flag or multi-colour logo must
 be a **.jpg** (`isPhotoUrl`) — no transparency needed, the stencil cuts the
 tag — while flat-colour artwork is PNG layers with "Customer editable"
 unticked so the colours stay the charity's.
+
+Country flags are ONE product ("Country Flag Running Tags", every flag
+ticked), not one per country — Nick's call, 17 Oct 2026, for a single strong
+page. A tag product offering more than `BESPOKE_DESIGN_DROPDOWN_FROM` (12)
+designs shows the picker as a dropdown (`.player-select`, as the boot
+stickers' country list) instead of the thumbnail strip, in the admin's
+design order — so the home nations go first by dragging them to the top of
+Customiser Designs.
 ## 7. Tooling notes (for you, on the new machine)
 
 - **There is no PHP locally.** `tools/` in the repo has what you need — run `npm install`

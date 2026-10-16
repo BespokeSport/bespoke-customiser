@@ -225,6 +225,8 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
 .font-nav-btn:hover{border-color:#5DCAA5;color:#5DCAA5;}
 .font-nav-wrap{flex:1;overflow:hidden;}
 .design-scroll{display:flex;gap:10px;overflow-x:auto;padding:6px 2px 12px;-webkit-overflow-scrolling:touch;scrollbar-width:none;scroll-behavior:smooth;}
+.bcp-design-pick{flex:1 1 100%;grid-column:1 / -1;width:100%;}
+.bcp-design-pick .player-select{width:100%;}
 .design-scroll::-webkit-scrollbar{display:none;}
 
 .design-thumb{flex:0 0 auto;width:150px;border:2px solid #2A2A2A;border-radius:12px;overflow:hidden;cursor:pointer;background:#161616;transition:border-color .15s,transform .1s;}
@@ -2931,10 +2933,40 @@ function drawDesignPattern(g, id, col, ns) {
 // Add your real thumbnail images as src when ready
 var ALL_DESIGNS = [];
 
+/* A strip of thumbnails is right up to a dozen designs and clumsy at 87
+   country flags. On a tag product with more than this many, the picker is
+   a dropdown instead, in the admin's order. */
+var BESPOKE_DESIGN_DROPDOWN_FROM = 12;
+function bespokeDesignsAsDropdown(){
+  return typeof bespokeBaseType === 'function' && bespokeBaseType() === 'running_tags' &&
+         ALL_DESIGNS.length > BESPOKE_DESIGN_DROPDOWN_FROM;
+}
 function buildDesignScroll() {
   var scroll = document.getElementById('design-scroll');
   if(!scroll) return;
   scroll.innerHTML = '';
+  if (bespokeDesignsAsDropdown()) {
+    var wrap = document.createElement('div');
+    wrap.className = 'bcp-design-pick';
+    var sel = document.createElement('select');
+    sel.className = 'player-select';
+    sel.setAttribute('aria-label', bespokeT('Design'));
+    ALL_DESIGNS.forEach(function(d){
+      var o = document.createElement('option');
+      o.value = d.id;
+      o.textContent = d.label;
+      if (S.design === d.id) o.selected = true;
+      sel.appendChild(o);
+    });
+    sel.onchange = function(){
+      S.design = sel.value;
+      updateDesignLayers();
+      syncAll();
+    };
+    wrap.appendChild(sel);
+    scroll.appendChild(wrap);
+    return;
+  }
   ALL_DESIGNS.forEach(function(d) {
     var item = document.createElement('div');
     item.className = 'design-thumb' + (S.design === d.id ? ' sel' : '');
