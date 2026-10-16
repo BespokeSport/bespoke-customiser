@@ -1538,14 +1538,19 @@ function bespoke_render_customiser( $atts ) {
                     var tasks = [];
                     for (var i = 0; i < images.length; i++) {
                         (function(img){
-                            var href = img.getAttribute('href') ||
+                            // Plain and xlink addresses read separately: an
+                            // xlink one set without a prefix is ALSO named
+                            // "href", so getAttribute / setAttribute('href')
+                            // would quietly act on it, and removing the xlink
+                            // one afterwards would leave no address at all.
+                            var href = img.getAttributeNS(null, 'href') ||
                                        img.getAttributeNS('http://www.w3.org/1999/xlink', 'href');
                             if (!href || href.indexOf('data:') === 0) return;
                             tasks.push(
                                 urlToDataURI(href)
                                     .then(function(dataUri){
-                                        img.setAttribute('href', dataUri);
                                         img.removeAttributeNS('http://www.w3.org/1999/xlink', 'href');
+                                        img.setAttributeNS(null, 'href', dataUri);
                                     })
                                     .catch(function(err){
                                         console.warn('Bespoke: could not inline image', href, err);
@@ -1607,12 +1612,19 @@ function bespoke_render_customiser( $atts ) {
                                     badgeImgs[i].setAttribute('href', badgeServerUrl);
                                 }
                             }
-                            // Belt and braces: drop xlink:href if href exists
+                            // Belt and braces: one plain href per image. An
+                            // xlink address is dropped where a plain one
+                            // exists, and BECOMES the plain one where it does
+                            // not. Checking hasAttribute('href') here matched
+                            // an unprefixed xlink href as well, and deleted
+                            // the only address the tag stencil had.
                             var allImgs = clone.querySelectorAll('image');
                             for (var j = 0; j < allImgs.length; j++) {
-                                if (allImgs[j].hasAttribute('href')) {
-                                    allImgs[j].removeAttributeNS('http://www.w3.org/1999/xlink', 'href');
-                                }
+                                var _plain = allImgs[j].getAttributeNS(null, 'href');
+                                var _xl    = allImgs[j].getAttributeNS('http://www.w3.org/1999/xlink', 'href');
+                                if (_xl === null) continue;
+                                allImgs[j].removeAttributeNS('http://www.w3.org/1999/xlink', 'href');
+                                if (_plain === null) allImgs[j].setAttributeNS(null, 'href', _xl);
                             }
 
                             // Inline all external image references BEFORE

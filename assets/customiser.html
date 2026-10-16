@@ -4078,6 +4078,28 @@ function bespokeStepNumbers(){
       tab.removeAttribute('data-step-no');
     }
   }
+  bespokeBuyBarLastStep();
+}
+
+/**
+ * One "Add to basket" on the last step, not two.
+ *
+ * The buy bar puts the button on every step, and the last step's Next is
+ * itself "Add to basket" now the review step has gone. A product with
+ * several steps only meets the pair at the end; an awareness tag has ONE
+ * step, so the customer lands on both. The last step keeps its full-width
+ * Next, and the buy bar there shows just the price. Run with the step
+ * numbers, so it follows every change to which steps are on.
+ */
+function bespokeBuyBarLastStep(){
+  var last = -1;
+  for (var i = 0; i < 5; i++) {
+    if (typeof bespokeIsStepActive === 'function' && bespokeIsStepActive(i)) last = i;
+  }
+  for (var j = 0; j < 5; j++) {
+    var btn = document.querySelector('#s' + j + ' .bcp-buy-btn');
+    if (btn) btn.style.display = (j === last) ? 'none' : '';
+  }
 }
 
 function bespokeRefreshPriceDisplay(){
@@ -7927,7 +7949,10 @@ function applyTagPlates(stepId){
     mask.style.maskType = 'alpha';
     mask.setAttribute('mask-type', 'alpha');
     var img = document.createElementNS(ns, 'image');
-    img.setAttributeNS('http://www.w3.org/1999/xlink', 'href', stencil);
+    // A plain href only. Set as well through the xlink namespace without a
+    // prefix, the two collapse into one xlink attribute, which the basket
+    // capture strips — and the stencil, and everything held to it, vanished
+    // from the saved preview.
     img.setAttribute('href', stencil);
     img.setAttribute('x', 0); img.setAttribute('y', 0);
     img.setAttribute('width', 1200); img.setAttribute('height', 1200);
@@ -8151,7 +8176,7 @@ function applyBootStickerOverlay(stepId){
   var cy = pos.y + (picked.badge ? 150 : 0);
 
   var img = document.createElementNS(ns, 'image');
-  img.setAttributeNS('http://www.w3.org/1999/xlink', 'href', url);
+  // A plain href only — see the tag stencil in applyTagPlates().
   img.setAttribute('href', url);
   img.setAttribute('x', Math.round(pos.x - w / 2));
   img.setAttribute('y', Math.round(cy - h / 2));
