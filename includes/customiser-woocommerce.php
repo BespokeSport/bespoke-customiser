@@ -1522,6 +1522,30 @@ function bespoke_render_admin_double_sided_armbands( $d, $item ) {
    running_tags and land here through the resolver.
    ========================================================================= */
 
+/**
+ * The left tag of a pair that does not match, shaped like the order data so
+ * bespoke_badge_sides_text() can read it as it reads the right tag. Null
+ * when the pair matches (or on orders from before pairs could differ).
+ */
+function bespoke_tag_left( $d ) {
+    $tags = ( isset( $d['tags'] ) && is_array( $d['tags'] ) ) ? $d['tags'] : null;
+    if ( ! $tags || ! empty( $tags['match'] ) || empty( $tags['left'] ) || ! is_array( $tags['left'] ) ) {
+        return null;
+    }
+    $left   = $tags['left'];
+    $hidden = [];
+    foreach ( [ 'badgeL', 'badgeR' ] as $k ) {
+        if ( ! empty( $left['spots'][ $k ]['hidden'] ) ) {
+            $hidden[] = $k;
+        }
+    }
+    return [
+        'badge'           => $left['badge']  ?? [],
+        'badge2'          => $left['badge2'] ?? [],
+        'hidden_elements' => $hidden,
+    ];
+}
+
 function bespoke_render_cart_running_tags( $item_data, $d ) {
     if ( ! empty( $d['design'] ) ) {
         $item_data[] = [ 'name' => 'Design', 'value' => esc_html( bespoke_design_label( $d['design'] ) ) ];
@@ -1533,19 +1557,53 @@ function bespoke_render_cart_running_tags( $item_data, $d ) {
             $item_data[] = [ 'name' => $label, 'value' => esc_html( $text ) ];
         }
     }
-    if ( empty( $d['badge']['url'] ) ) {
-        $item_data[] = [ 'name' => 'Badge', 'value' => 'Not added' ];
+    // Badges: one line when the pair matches, one per tag when it does not.
+    $left = bespoke_tag_left( $d );
+    if ( $left === null ) {
+        if ( empty( $d['badge']['url'] ) ) {
+            $item_data[] = [ 'name' => 'Badge', 'value' => 'Not added' ];
+        } else {
+            $item_data[] = [ 'name' => 'Badges', 'value' => esc_html( bespoke_badge_sides_text( $d ) ) ];
+        }
     } else {
-        $item_data[] = [ 'name' => 'Badges', 'value' => esc_html( bespoke_badge_sides_text( $d ) ) ];
+        $item_data[] = [ 'name' => 'Right tag badges', 'value' => empty( $d['badge']['url'] ) ? 'None' : esc_html( bespoke_badge_sides_text( $d ) ) ];
+        $item_data[] = [ 'name' => 'Left tag badges',  'value' => empty( $left['badge']['url'] ) ? 'None' : esc_html( bespoke_badge_sides_text( $left ) ) ];
     }
     return $item_data;
 }
 
 function bespoke_render_admin_running_tags( $d, $item ) {
+    $left = bespoke_tag_left( $d );
     echo bespoke_render_admin_generic_card( 'Running Tags', $d, [
         'show_text'   => [ 'right_name' => 'Right tag', 'left_name' => 'Left tag' ],
         'badge_sides' => true,
+        // The generic card's badge sections describe the RIGHT tag; say so
+        // when the left one differs.
+        'badge_sides_heading' => ( $left === null ) ? 'Badge sides' : 'Badge sides — right tag',
     ] );
+    if ( $left === null ) {
+        return;
+    }
+    // The left tag's own badges, with their files, so production has both.
+    $file = function( $b ) {
+        if ( empty( $b['url'] ) ) {
+            return '<span style="color:#b32d2e;">no file received</span>';
+        }
+        $name = ! empty( $b['filename'] ) ? $b['filename'] : 'open file';
+        return '<a href="' . esc_url( $b['url'] ) . '" target="_blank"><code>' . esc_html( $name ) . '</code></a>';
+    };
+    $sides = bespoke_badge_sides( $left );
+    $spot  = function( $what ) use ( $left, $file ) {
+        if ( $what === 'empty' )  return '<span style="color:#aaa;">Empty</span>';
+        if ( $what === 'second' ) return 'Second badge — ' . $file( $left['badge2'] );
+        return 'Club badge — ' . $file( $left['badge'] );
+    };
+    echo '<div style="margin-top:-6px;padding:12px 16px;background:#f9f8f6;border:1px solid #e5e5e5;border-radius:6px;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',sans-serif;">'
+        . '<div style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.6px;padding-bottom:4px;margin-bottom:6px;border-bottom:1px solid #eee;">Badge sides — left tag</div>'
+        . '<table style="width:100%;border-collapse:collapse;font-size:12px;">'
+        . '<tr><td style="padding:5px 10px 5px 0;color:#666;white-space:nowrap;vertical-align:top;">Left</td><td style="padding:5px 0;font-weight:600;color:#1a1a1a;">' . $spot( $sides['left'] ) . '</td></tr>'
+        . '<tr><td style="padding:5px 10px 5px 0;color:#666;white-space:nowrap;vertical-align:top;">Right</td><td style="padding:5px 0;font-weight:600;color:#1a1a1a;">' . $spot( $sides['right'] ) . '</td></tr>'
+        . '</table></div>';
 }
 
 /* =========================================================================
@@ -2033,6 +2091,7 @@ function bespoke_render_admin_generic_card( $product_label, $d, $opts = [] ) {
     $show_text    = $opts['show_text']    ?? [];
     // Armbands: list what's on the Left and Right badge spots.
     $badge_sides  = ! empty( $opts['badge_sides'] );
+    $badge_sides_heading = $opts['badge_sides_heading'] ?? 'Badge sides';
 
     ob_start();
     ?>
@@ -2160,7 +2219,7 @@ function bespoke_render_admin_generic_card( $product_label, $d, $opts = [] ) {
                         return 'Second badge — <a href="' . esc_url( $b2['url'] ) . '" target="_blank"><code>' . esc_html( $name ) . '</code></a>';
                     };
                     $sides = bespoke_badge_sides( $d );
-                    echo $section( 'Badge sides',
+                    echo $section( $badge_sides_heading,
                         $row( 'Left', $spot( $sides['left'] ) ) . $row( 'Right', $spot( $sides['right'] ) ) );
                 } elseif ( is_array( $b2 ) && ( $b2['mode'] ?? 'same' ) !== 'same' ) {
                     // Any other card: the old second-badge summary.

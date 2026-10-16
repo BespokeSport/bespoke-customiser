@@ -658,6 +658,60 @@ function bespoke_parse_text_boxes( $boxes ) {
 }
 
 /**
+ * Running tags: the pair usually matches, but the left tag can carry its own
+ * badges. bespoke_tags_match says which; when it is '0', bespoke_tag_left is
+ * the left tag's badge arrangement as one JSON blob — its club badge and
+ * second badge (uploaded through bespoke_upload_badge like the others),
+ * what each of its two spots shows, and where they sit. The right tag is
+ * in the usual badge fields. Null for every other product.
+ *
+ * @return array|null
+ */
+function bespoke_parse_tag_pair() {
+    if ( ! isset( $_POST['bespoke_tags_match'] ) ) {
+        return null;
+    }
+    $match = ( $_POST['bespoke_tags_match'] ?? '1' ) !== '0';
+    if ( $match ) {
+        return [ 'match' => true ];
+    }
+    $raw = json_decode( wp_unslash( $_POST['bespoke_tag_left'] ?? '' ), true );
+    if ( ! is_array( $raw ) ) {
+        $raw = [];
+    }
+    $b     = ( isset( $raw['badge'] )  && is_array( $raw['badge'] ) )  ? $raw['badge']  : [];
+    $b2    = ( isset( $raw['badge2'] ) && is_array( $raw['badge2'] ) ) ? $raw['badge2'] : [];
+    $mode  = sanitize_key( $b2['mode'] ?? 'none' );
+    $spots = [];
+    foreach ( [ 'badgeL', 'badgeR' ] as $k ) {
+        $s = ( isset( $raw['spots'][ $k ] ) && is_array( $raw['spots'][ $k ] ) ) ? $raw['spots'][ $k ] : [];
+        $spots[ $k ] = [
+            'x'        => round( (float) ( $s['x'] ?? 0 ), 1 ),
+            'y'        => round( (float) ( $s['y'] ?? 0 ), 1 ),
+            'rotation' => round( (float) ( $s['rotation'] ?? 0 ), 1 ),
+            'hidden'   => ! empty( $s['hidden'] ),
+        ];
+    }
+    return [
+        'match' => false,
+        'left'  => [
+            'badge'  => [
+                'url'      => bespoke_is_local_upload_url( $b['url'] ?? '' ) ? esc_url_raw( $b['url'] ) : '',
+                'filename' => sanitize_file_name( $b['filename'] ?? '' ),
+                'size'     => floatval( $raw['size'] ?? 0 ),
+            ],
+            'badge2' => [
+                'mode'     => in_array( $mode, [ 'same', 'different', 'none' ], true ) ? $mode : 'none',
+                'url'      => bespoke_is_local_upload_url( $b2['url'] ?? '' ) ? esc_url_raw( $b2['url'] ) : '',
+                'filename' => sanitize_file_name( $b2['filename'] ?? '' ),
+                'swap'     => ! empty( $b2['swap'] ),
+            ],
+            'spots'  => $spots,
+        ],
+    ];
+}
+
+/**
  * Parse + sanitise the INSIDE face of a double-sided armband from POST.
  *
  * The customiser sends the outside face as the usual flat bespoke_* fields
@@ -952,6 +1006,9 @@ function bespoke_handle_add_to_cart() {
                 // swap, which is what they meant.
                 'swap'     => ( $_POST['bespoke_badge2_swap'] ?? '' ) === '1',
             ],
+
+            // ── Running tags: does the pair match, and the left tag if not ────
+            'tags' => bespoke_parse_tag_pair(),
 
             // ── Element positions on the pad (SVG coordinate space) ───────────
             // Stored so a production SVG can be regenerated server-side later.

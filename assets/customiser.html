@@ -2340,6 +2340,204 @@ var TEXT_BOX_MAX = 10;
 // second or third box doesn't land exactly on top of the last one.
 var TEXT_BOX_STEP = [0, 150, -150, 75, -75, 225, -225, 0, 150, -150];
 
+/* ============================================================
+   RUNNING TAGS — THE PAIR
+   ============================================================
+   Two tags. Usually they match: the lower plate repeats the upper plate's
+   badge spots through BAND_MIRRORS. But a pair can differ — club badge on
+   the right tag, a charity logo on the left — so the left tag can carry
+   its own badge arrangement.
+
+   Borrowed from the double-sided armbands: the tag being edited lives in
+   S.* exactly as before, so the Left / Right badge cards and every handler
+   keep working unchanged, and the other tag's arrangement is parked in
+   S.tagStore. Unlike the armbands' faces, both tags stay on screen — the
+   parked one is drawn from its snapshot, and is not draggable until it is
+   picked. Text is per tag already (nameR upper, nameL lower) and is not
+   part of this. The order carries the right tag in the usual fields and
+   the left tag as its own payload (bespoke_tag_left). */
+var BESPOKE_TAG_PITCH = 194; // upper plate to lower, canvas units — as BAND_MIRRORS.running_tags
+function bespokeTagPair(){
+  return typeof bespokeBaseType === 'function' && bespokeBaseType() === 'running_tags';
+}
+function bespokeTagsMatch(){
+  return !window.S || S.tagsMatch !== false;
+}
+// One tag's badge arrangement: the club badge, the second badge, what the
+// two spots show and where they sit. Plain data; the File objects live in
+// S.tagFiles, as the faces keep theirs in S.faceBadgeFiles.
+function bespokeTagSnapshot(){
+  var pick = function(obj){ obj = obj || {}; return { badgeL: _bespokeCloneVal(obj.badgeL), badgeR: _bespokeCloneVal(obj.badgeR) }; };
+  return {
+    badge: S.badge, badgeURL: S.badgeURL,
+    badge2: S.badge2, badge2URL: S.badge2URL,
+    badge2Mode: S.badge2Mode, badgeSwap: !!S.badgeSwap,
+    hidden: pick(S.hidden), pos: pick(S.pos), rot: pick(S.rot)
+  };
+}
+function bespokeTagApply(snap){
+  if (!snap) return;
+  S.badge = snap.badge; S.badgeURL = snap.badgeURL;
+  S.badge2 = snap.badge2; S.badge2URL = snap.badge2URL;
+  S.badge2Mode = snap.badge2Mode; S.badgeSwap = !!snap.badgeSwap;
+  if (!S.hidden) S.hidden = {};
+  if (!S.pos) S.pos = {};
+  if (!S.rot) S.rot = {};
+  ['badgeL', 'badgeR'].forEach(function(k){
+    S.hidden[k] = !!(snap.hidden && snap.hidden[k]);
+    if (snap.pos && snap.pos[k]) S.pos[k] = _bespokeCloneVal(snap.pos[k]);
+    S.rot[k] = (snap.rot && snap.rot[k]) || 0;
+  });
+  S.selected = null;
+}
+// Both tags start from the fresh state. Idempotent.
+function bespokeTagInit(){
+  if (!bespokeTagPair() || !window.S) return;
+  if (S.tagStore && S.tagStore._init) return;
+  S.tagsMatch  = true;
+  S.currentTag = 'right';
+  S.tagStore   = { _init: true, right: bespokeTagSnapshot(), left: bespokeTagSnapshot() };
+  S.tagFiles   = { right: { badge: null, badge2: null }, left: { badge: null, badge2: null } };
+}
+// Which tag the cards edit. Parks the live arrangement and loads the other.
+function bespokeTagSwitch(tag){
+  if (!bespokeTagPair() || (tag !== 'right' && tag !== 'left')) return;
+  bespokeTagInit();
+  if (tag !== S.currentTag) {
+    S.tagStore[S.currentTag] = bespokeTagSnapshot();
+    bespokeTagApply(S.tagStore[tag]);
+    S.currentTag = tag;
+  }
+  bespokeShowBadge2UI();
+  if (typeof syncAll === 'function') syncAll();
+}
+// "Same badges on both tags". ON: the left tag follows the right one, as
+// it did before there was a choice. OFF: nothing changes on screen — the
+// left tag starts as a copy of the right — and the customer changes
+// whichever tag they like.
+function bespokeTagToggleMatch(){
+  if (!bespokeTagPair()) return;
+  bespokeTagInit();
+  if (S.tagsMatch === false) {
+    if (S.currentTag === 'left') {
+      S.tagStore.left = bespokeTagSnapshot();
+      bespokeTagApply(S.tagStore.right);
+      S.currentTag = 'right';
+    }
+    S.tagsMatch = true;
+  } else {
+    if (S.currentTag !== 'right') bespokeTagSwitch('right');
+    S.tagStore.left = bespokeTagSnapshot();
+    S.tagFiles.left = { badge: S.tagFiles.right.badge, badge2: S.tagFiles.right.badge2 };
+    S.tagsMatch = false;
+  }
+  bespokeShowBadge2UI();
+  if (typeof syncAll === 'function') syncAll();
+}
+// The parked tag's arrangement, for drawing and for the order.
+function bespokeTagOther(){
+  if (!bespokeTagPair() || !S.tagStore) return null;
+  var other = (S.currentTag === 'left') ? 'right' : 'left';
+  return { tag: other, snap: S.tagStore[other], files: S.tagFiles ? S.tagFiles[other] : null };
+}
+// The parked tag, drawn from its snapshot on its own plate. Not draggable:
+// you pick a tag to change it.
+function bespokeTagDrawOther(bl, ns, hs){
+  var other = bespokeTagOther();
+  if (!other || !other.snap || !other.snap.badgeURL) return;
+  var snap = other.snap;
+  var keys = snap.badgeSwap ? { club: 'badgeR', other: 'badgeL' } : { club: 'badgeL', other: 'badgeR' };
+  var wrap = document.createElementNS(ns, 'g');
+  wrap.setAttribute('class', 'bcp-tag-parked');
+  wrap.setAttribute('pointer-events', 'none');
+  wrap.setAttribute('transform', 'translate(0,' + (other.tag === 'left' ? BESPOKE_TAG_PITCH : 0) + ')');
+  ['badgeL', 'badgeR'].forEach(function(key){
+    if (snap.hidden && snap.hidden[key]) return;
+    var href = (key === keys.other && snap.badge2Mode === 'different' && snap.badge2URL) ? snap.badge2URL : snap.badgeURL;
+    var p = (snap.pos && snap.pos[key]) || DEF[key];
+    if (!href || !p) return;
+    var g = document.createElementNS(ns, 'g');
+    var t = 'translate(' + p.x + ',' + p.y + ')';
+    var r = (snap.rot && snap.rot[key]) || 0;
+    if (r) t += ' rotate(' + r + ')';
+    g.setAttribute('transform', t);
+    var img = document.createElementNS(ns, 'image');
+    img.setAttribute('href', href);
+    img.setAttribute('x', -hs); img.setAttribute('y', -hs);
+    img.setAttribute('width', S.badgeSize); img.setAttribute('height', S.badgeSize);
+    img.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    g.appendChild(img);
+    wrap.appendChild(g);
+  });
+  bl.appendChild(wrap);
+}
+// The controls above the badge cards: the match toggle and the two tabs.
+function bespokeTagPairControls(wrap){
+  var box = document.getElementById('tag-pair');
+  if (!bespokeTagPair()) { if (box) box.style.display = 'none'; return; }
+  bespokeTagInit();
+  if (!box) {
+    if (typeof _bespokeInjectFaceCss === 'function') _bespokeInjectFaceCss();
+    box = document.createElement('div');
+    box.id = 'tag-pair';
+    var row = document.createElement('div');
+    row.className = 'toggle-row';
+    row.id = 'tag-match-row';
+    row.onclick = function(){ bespokeTagToggleMatch(); };
+    row.innerHTML = '<div class="tog-track on" id="tag-match-tog"><div class="tog-thumb"></div></div>' +
+      '<div><div class="tog-label">' + bespokeT('Same badges on both tags') + '</div>' +
+      '<div class="tog-sub">' + bespokeT('Turn off to give each tag its own badges') + '</div></div>';
+    box.appendChild(row);
+    var tabs = document.createElement('div');
+    tabs.className = 'bcp-face-tabs';
+    tabs.id = 'tag-tabs';
+    [['right', 'Right tag'], ['left', 'Left tag']].forEach(function(t){
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'bcp-face-tab';
+      b.setAttribute('data-tag', t[0]);
+      b.textContent = bespokeT(t[1]);
+      b.onclick = function(){ bespokeTagSwitch(t[0]); };
+      tabs.appendChild(b);
+    });
+    box.appendChild(tabs);
+    wrap.insertBefore(box, wrap.firstChild);
+  }
+  box.style.display = '';
+  var tog = document.getElementById('tag-match-tog');
+  if (tog) tog.className = 'tog-track' + (bespokeTagsMatch() ? ' on' : '');
+  var tabsEl = document.getElementById('tag-tabs');
+  if (tabsEl) tabsEl.style.display = bespokeTagsMatch() ? 'none' : '';
+  Array.prototype.forEach.call(box.querySelectorAll('.bcp-face-tab'), function(b){
+    b.className = 'bcp-face-tab' + (b.getAttribute('data-tag') === S.currentTag ? ' active' : '');
+  });
+}
+// The left tag's own badge files, uploaded the way the second badge is,
+// with its arrangement. Resolves null when the pair matches.
+function bespokeTagLeftUploads(cfg, other){
+  if (!other || !other.snap) return Promise.resolve(null);
+  var snap = other.snap;
+  var send = function(url, name, what){
+    if (!url || !name) return Promise.resolve({ url: '', filename: '' });
+    return fetch(url).then(function(r){ return r.blob(); }).then(function(blob){
+      var fd = new FormData();
+      fd.append('action', 'bespoke_upload_badge');
+      fd.append('nonce',  cfg.nonce);
+      fd.append('badge',  blob, name);
+      return fetch(cfg.ajaxUrl, { method: 'POST', body: fd });
+    }).then(function(r){ return r.json(); })
+      .then(function(d){ if (d && d.success) return d.data; throw bespokeUploadFailed(what, (d && d.data) || ''); })
+      .catch(function(err){ throw err.bespokeUserMessage ? err : bespokeUploadFailed(what); });
+  };
+  var wantSecond = (snap.badge2Mode === 'different' && snap.badge2URL && snap.badge2);
+  return Promise.all([
+    send(snap.badgeURL, snap.badge, 'left tag badge'),
+    wantSecond ? send(snap.badge2URL, snap.badge2, 'left tag second badge') : Promise.resolve({ url: '', filename: '' })
+  ]).then(function(parts){
+    return { badge: parts[0], badge2: parts[1], snap: snap };
+  });
+}
+
 /* Which products run their badges through the Left / Right badge cards on
    the badge step — a second badge, swap sides, one side empty — with no ×
    on the preview badge. Armbands first. Running tags have the same two
@@ -2895,6 +3093,11 @@ function updatePreview(stepId) {
   var bl = document.getElementById('badge-layer-'+stepId);
   if(bl) {
     bl.innerHTML = '';
+    // Running tags that no longer match: the other tag, from its parked
+    // arrangement. Drawn whether or not the tag being edited has a badge.
+    if (typeof bespokeTagPair === 'function' && bespokeTagPair() && !bespokeTagsMatch()) {
+      bespokeTagDrawOther(bl, ns, S.badgeSize / 2);
+    }
     // Player cards render the badge in a fixed slot via the
     // applyPlayerCardOverlay() call at the end of this function —
     // skip the draggable badge render here to avoid a double badge.
@@ -2969,6 +3172,20 @@ function updatePreview(stepId) {
         }
         bl.appendChild(g);
       });
+      // Running tags that no longer match: the live draggables belong to
+      // the tag being edited, which is the LOWER plate when that is the
+      // left tag. A wrapper carries them there; drags work in deltas, so
+      // the positions underneath stay in upper-plate terms, as on the
+      // band-mirror clones.
+      if (typeof bespokeTagPair === 'function' && bespokeTagPair() && !bespokeTagsMatch() && S.currentTag === 'left') {
+        var _liveWrap = document.createElementNS(ns, 'g');
+        _liveWrap.setAttribute('class', 'bcp-tag-live');
+        _liveWrap.setAttribute('transform', 'translate(0,' + BESPOKE_TAG_PITCH + ')');
+        Array.prototype.slice.call(bl.children).forEach(function(node){
+          if (node.classList && node.classList.contains('draggable')) _liveWrap.appendChild(node);
+        });
+        bl.appendChild(_liveWrap);
+      }
       // ── Band-mirror clones ──────────────────────────────────────────
       // Each flat draggable gets a cloned copy inside its own parent
       // group with both translate AND scale on the outer transform.
@@ -4265,6 +4482,7 @@ function bespokeShowBadge2UI(){
   if (!wrap) return;
   var on = bespokeUseBadgeSpots();
   wrap.style.display = on ? '' : 'none';
+  if (on && window.S) bespokeTagPairControls(wrap);
   if (!on || !window.S) return;
   // The Left / Right cards stand in for the filename row, and the upload
   // box only shows until there's a club badge.
@@ -4332,6 +4550,7 @@ function _bespokeBadgeSpotsChanged(){
 function handleBadge2(e){
   var file = e.target.files[0]; if (!file) return;
   S.badge2 = file.name; S.badge2URL = URL.createObjectURL(file);
+  if (bespokeTagPair()) { bespokeTagInit(); S.tagFiles[S.currentTag].badge2 = file; }
   // The new badge takes the "other" spot: the right-hand side, or the left
   // if the customer had swapped and then emptied it.
   S.badge2Mode = 'different';
@@ -4348,6 +4567,7 @@ function handleBadge2(e){
 function removeBadge2(){
   S.badge2 = null; S.badge2URL = null;
   var f = document.getElementById('badge2-file'); if (f) f.value = '';
+  if (bespokeTagPair() && S.tagFiles) S.tagFiles[S.currentTag || 'right'].badge2 = null;
   if (typeof bespokeIsDoubleSided === 'function' && bespokeIsDoubleSided() && S.faceBadge2Files){
     S.faceBadge2Files[S.currentFace || 'outside'] = null;
   }
@@ -4372,6 +4592,7 @@ function bespokeRemoveAllBadges(){
   if (!window.S) return;
   bespokeResetBadgeSpots(S);
   var f = document.getElementById('badge2-file'); if (f) f.value = '';
+  if (bespokeTagPair() && S.tagFiles) S.tagFiles[S.currentTag || 'right'].badge2 = null;
   if (typeof bespokeIsDoubleSided === 'function' && bespokeIsDoubleSided()){
     if (S.faceBadge2Files) S.faceBadge2Files[S.currentFace || 'outside'] = null;
     // A shared club badge comes off the other face too (removeBadge does
@@ -5197,6 +5418,7 @@ function surpriseMe(){
 function handleBadge(e){
   var file=e.target.files[0];if(!file)return;
   S.badge=file.name; S.badgeURL=URL.createObjectURL(file);
+  if (bespokeTagPair()) { bespokeTagInit(); S.tagFiles[S.currentTag].badge = file; }
   // Double-sided: remember THIS face's badge File separately — the single
   // file input only holds the most recent upload, so without this the
   // outside + inside would end up sharing one badge at add-to-cart.
@@ -5226,6 +5448,7 @@ function handleBadge(e){
 }
 function removeBadge(){
   S.badge=null;S.badgeURL=null;document.getElementById('badge-file').value='';
+  if (bespokeTagPair() && S.tagFiles) S.tagFiles[S.currentTag || 'right'].badge = null;
   if (typeof bespokeIsDoubleSided === 'function' && bespokeIsDoubleSided() && S.faceBadgeFiles){
     S.faceBadgeFiles[S.currentFace || 'outside'] = null;
     // Shared badge ⇒ removing it removes it from BOTH faces.
@@ -5330,6 +5553,7 @@ function reset(){
   // The fresh state is written for an armband's second spot; a product that
   // starts differently is put right here, as at first load.
   if (bespokeBadgeSpotsStartMode() !== 'same') bespokeResetBadgeSpots(S);
+  if (typeof bespokeTagInit === 'function') { S.tagStore = null; bespokeTagInit(); }
   previews={};
   for(var i=0;i<6;i++){var pb=document.getElementById('pb'+i);if(pb)pb.innerHTML='';}
   document.getElementById('s6').classList.remove('active');
@@ -6028,6 +6252,9 @@ var BAND_MIRRORS = {
   }
 };
 function bespokeBandMirror(){
+  // A pair of running tags that has stopped matching draws its other tag
+  // from its own arrangement instead — see bespokeTagDrawOther().
+  if (typeof bespokeTagPair === 'function' && bespokeTagPair() && !bespokeTagsMatch()) return null;
   return BAND_MIRRORS[bespokeBaseType()] || null;
 }
 function applyZoneConfig(){
@@ -8532,6 +8759,16 @@ function _bespokeCommitAddToCart(cfg, btn, insideFace) {
       });
   }
 
+  // Running tags: the usual fields describe the RIGHT tag. If the customer
+  // was editing the left tag, park it and bring the right one back first;
+  // the left tag's own files and arrangement go as their own payload.
+  if (typeof bespokeTagPair === 'function' && bespokeTagPair() && !bespokeTagsMatch() && S.currentTag === 'left') {
+    bespokeTagSwitch('right');
+  }
+  var tagLeftPromise = (typeof bespokeTagPair === 'function' && bespokeTagPair() && !bespokeTagsMatch())
+    ? bespokeTagLeftUploads(cfg, bespokeTagOther())
+    : Promise.resolve(null);
+
   // Step 1a-armbands: upload the SECOND badge (charity / sponsor logo)
   // when the customer picked "Different badge". Same endpoint as the
   // main badge; resolves empty when not applicable.
@@ -8607,11 +8844,12 @@ function _bespokeCommitAddToCart(cfg, btn, insideFace) {
   // Step 2: Add to cart with all design data — ALSO wait for the
   // player-photo upload to finish so its server URL is on
   // S.playerPhoto.serverUrl before the form-data appender reads it.
-  Promise.all([combinedPromise, playerPhotoPromise, badge2Promise]).then(function(parts) {
+  Promise.all([combinedPromise, playerPhotoPromise, badge2Promise, tagLeftPromise]).then(function(parts) {
     var result     = parts[0];
     var badgeData  = result.badgeData;
     var previewUrl = result.previewUrl;
     var badge2Data = parts[2] || {url:'', filename:''};
+    var tagLeftData = parts[3] || null;
     var formData = new FormData();
     formData.append('action',                'bespoke_add_to_cart');
     formData.append('nonce',                 cfg.nonce);
@@ -8687,6 +8925,28 @@ function _bespokeCommitAddToCart(cfg, btn, insideFace) {
     // the right. Only meaningful while the sides differ.
     formData.append('bespoke_badge2_swap',
       (S.badgeSwap && (S.badge2Mode || 'same') !== 'same') ? '1' : '0');
+
+    // Running tags: whether the pair matches, and the left tag's own
+    // arrangement when it does not. The badge fields above are the right
+    // tag's.
+    if (typeof bespokeTagPair === 'function' && bespokeTagPair()) {
+      formData.append('bespoke_tags_match', bespokeTagsMatch() ? '1' : '0');
+      if (tagLeftData && tagLeftData.snap) {
+        var _ls = tagLeftData.snap;
+        var _spots = {};
+        ['badgeL', 'badgeR'].forEach(function(k){
+          var p = (_ls.pos && _ls.pos[k]) || DEF[k] || { x: 0, y: 0 };
+          _spots[k] = { x: p.x, y: p.y, rotation: (_ls.rot && _ls.rot[k]) || 0, hidden: !!(_ls.hidden && _ls.hidden[k]) };
+        });
+        formData.append('bespoke_tag_left', JSON.stringify({
+          badge:  { url: tagLeftData.badge.url || '', filename: tagLeftData.badge.filename || '' },
+          badge2: { mode: _ls.badge2Mode || 'none', url: tagLeftData.badge2.url || '', filename: tagLeftData.badge2.filename || '',
+                    swap: !!(_ls.badgeSwap && (_ls.badge2Mode || 'same') !== 'same') },
+          spots:  _spots,
+          size:   S.badgeSize
+        }));
+      }
+    }
 
     // Background variant choice — currently used by the Pennant (With
     // Frill / No Frill) and Armbands (5cm band / 8cm band). Sent for
@@ -8867,6 +9127,7 @@ _bsInit('bootSticker',  function(){ bespokeBootStickerUI(); });
 _bsInit('bootChooser',  function(){ bespokeBootChooserInit(); });
 _bsInit('tagSliders',   function(){ bespokeTagSliderRanges(); });
 _bsInit('badgeSpots',   function(){ if (bespokeBadgeSpotsStartMode() !== 'same') bespokeResetBadgeSpots(S); });
+_bsInit('tagPair',      function(){ bespokeTagInit(); });
 _bsInit('bootFlag',     function(){ bespokeBootFlagInit(); });
 _bsInit('addBack',      function(){ renderAddBackPanel(); });
 
