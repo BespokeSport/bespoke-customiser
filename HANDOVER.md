@@ -594,6 +594,32 @@ geometry).
 has saved (`window.BespokeConfig.geometry` in the console on the real
 page) before trusting the defaults — and guard the merge, as the running
 tags do, when old saved values can be told apart.
+### 6.22 Awareness tags: one product per theme, no product type per theme
+
+Designs are registered against a product TYPE, so every product of a type
+shows the type's whole list — fine for a picker, wrong for "Autism
+Awareness Tags" as its own page for the search engines. Rather than a
+self-serve type per theme (which would also need the inheritance chain
+walked everywhere), a product can tick which of its type's designs it
+shows: `_bespoke_design_allow` (design post IDs), the tick-list in the
+product's BEspoke customiser box, read as `post__in` where
+customiser-frontend.php builds `BESPOKE_REGISTERED_DESIGNS`.
+
+So an awareness tag is: a WooCommerce product of type **Running Tags —
+Themed** (steps: text + design; inherits the tags' assets and placement),
+with ONE design ticked. `bespokeActiveSteps()` drops the design step for a
+tag product with a single design, and the PHP calls `applyStepConfig()`
+again once the design list is known, since the steps were first worked out
+before it existed. A product with nothing ticked shows every themed design
+(an "Awareness Tags" picker product); the Emergency ID tag is type
+**Running Tags — Emergency ID**, with its own single design, and keeps its
+own list (`bespoke_type_has_exclusive_designs`).
+
+Artwork rule for themed designs (the renderer's, not ours): a layer PNG is
+TINTED flat to one colour, so a full-colour flag or multi-colour logo must
+be a **.jpg** (`isPhotoUrl`) — no transparency needed, the stencil cuts the
+tag — while flat-colour artwork is PNG layers with "Customer editable"
+unticked so the colours stay the charity's.
 ## 7. Tooling notes (for you, on the new machine)
 
 - **There is no PHP locally.** `tools/` in the repo has what you need — run `npm install`
