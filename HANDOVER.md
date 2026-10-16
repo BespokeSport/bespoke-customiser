@@ -558,9 +558,26 @@ its plate.
 
 The first version of this (13 Oct) had the two keys meaning "a badge on the
 upper tag" and "a badge on the lower tag", so a second badge could only
-replace one of them. If the two tags ever need to differ in their badges,
-that is a per-tag state (like the double-sided armbands' faces), not more
-keys.
+replace one of them.
+
+**A pair that differs** (16 Oct 2026, "they can match but they can be
+completely different too"): the RUNNING TAGS — THE PAIR section in
+customiser.html. `S.tagsMatch` (default on) is the "Same badges on both
+tags" switch above the cards; off, Right tag / Left tag tabs say which tag
+the cards edit. The tag being edited lives in `S.*` as always, so the cards
+and every handler are untouched; the other tag's arrangement (badge,
+badge2, mode, swap, the two spots' hidden/pos/rot) is parked in
+`S.tagStore`, its File objects in `S.tagFiles`, and `bespokeBandMirror()`
+answers null so the lower plate is drawn from that snapshot instead
+(`bespokeTagDrawOther()`, not draggable until picked). When the LEFT tag is
+live its draggables sit in a `g.bcp-tag-live` wrapper translated one plate
+pitch down — drags work in deltas, so positions stay in upper-plate terms,
+exactly as the band-mirror clones do. At add-to-cart the right tag is made
+live first; the left goes as `bespoke_tag_left` (its own uploads through
+`bespoke_upload_badge`), parsed by `bespoke_parse_tag_pair()` into
+`$d['tags']`, and shown by the running-tag renderers as "Right tag badges /
+Left tag badges" with a second "Badge sides — left tag" section on the order
+screen.
 ## 7. Tooling notes (for you, on the new machine)
 
 - **There is no PHP locally.** `tools/` in the repo has what you need — run `npm install`
