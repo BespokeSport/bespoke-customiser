@@ -205,6 +205,8 @@ function bespoke_type_has_exclusive_designs( $product_type ) {
         // Themed tags keep their design list to themselves, so a poppy does
         // not appear in the picker beside a country flag.
         'running_tags_themed',
+        // The ID tag has one design of its own.
+        'running_tags_id',
     ] );
     return in_array( $product_type, (array) $exclusive, true );
 }

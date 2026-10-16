@@ -54,6 +54,37 @@ function bespoke_wc_add_customiser_type_field() {
         'desc_tip'    => false,
         'options'     => $options,
     ] );
+
+    // Designs shown on this product. Nothing ticked = every design
+    // registered for the type above, which is the usual. Ticked = only
+    // those: one awareness tag per product, for the search engines,
+    // without a product type per theme.
+    $designs = get_posts( [
+        'post_type'   => 'bespoke_design',
+        'post_status' => 'publish',
+        'numberposts' => -1,
+        'orderby'     => 'title',
+        'order'       => 'ASC',
+    ] );
+    if ( $designs ) {
+        global $post;
+        $allow = array_map( 'intval', (array) get_post_meta( $post->ID, '_bespoke_design_allow', true ) );
+        echo '<p class="form-field" style="margin-bottom:4px;"><label>Designs shown</label>'
+            . '<span class="description">Leave every box unticked to show all designs registered for the customiser above. Tick to show only these.</span></p>';
+        echo '<div style="max-height:220px;overflow:auto;margin:0 12px 12px;padding:8px 10px;border:1px solid #ddd;background:#fff;">';
+        foreach ( $designs as $d ) {
+            $for    = (array) get_post_meta( $d->ID, '_bespoke_products', true );
+            $labels = array_map( function( $k ) use ( $types ) { return $types[ $k ] ?? $k; }, $for );
+            printf(
+                '<label style="display:block;margin:2px 0;"><input type="checkbox" name="_bespoke_design_allow[]" value="%d"%s> %s <span style="color:#888;">— %s</span></label>',
+                $d->ID,
+                checked( in_array( (int) $d->ID, $allow, true ), true, false ),
+                esc_html( $d->post_title ),
+                esc_html( implode( ', ', $labels ) )
+            );
+        }
+        echo '</div>';
+    }
     echo '</div>';
 }
 
@@ -82,6 +113,16 @@ function bespoke_wc_save_customiser_type_field( $post_id ) {
         update_post_meta( $post_id, '_bespoke_product_type', $value );
     } else {
         delete_post_meta( $post_id, '_bespoke_product_type' );
+    }
+
+    // Designs shown on this product (the tick-list in the same box).
+    $allow = isset( $_POST['_bespoke_design_allow'] )
+        ? array_values( array_filter( array_map( 'intval', (array) wp_unslash( $_POST['_bespoke_design_allow'] ) ) ) )
+        : [];
+    if ( $allow ) {
+        update_post_meta( $post_id, '_bespoke_design_allow', $allow );
+    } else {
+        delete_post_meta( $post_id, '_bespoke_design_allow' );
     }
 }
 

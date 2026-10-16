@@ -6372,9 +6372,17 @@ function bespokeActiveSteps(){
   // with different defaults), but some deliberately differ: pre-designed
   // armbands inherit every armband behaviour yet show only badge + design.
   // Falling straight through to the base type made that impossible.
-  return BESPOKE_STEP_CONFIG[bespokeProductType()]
+  var steps = BESPOKE_STEP_CONFIG[bespokeProductType()]
       || BESPOKE_STEP_CONFIG[bespokeBaseType()]
       || BESPOKE_STEP_CONFIG.shinpads;
+  // A tag product offered a single design — an awareness tag, the ID tag —
+  // has nothing to choose on the design step, so the step is not shown.
+  // The design is applied all the same: the renderer takes the first one.
+  var reg = window.BESPOKE_REGISTERED_DESIGNS;
+  if (bespokeBaseType() === 'running_tags' && reg && reg.length === 1 && steps.indexOf('design') !== -1) {
+    steps = steps.filter(function(s){ return s !== 'design'; });
+  }
+  return steps;
 }
 function bespokeIsStepActive(idx){
   if (idx >= 5) return true; // Review / Success always shown

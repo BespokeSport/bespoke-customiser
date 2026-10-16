@@ -84,7 +84,7 @@ function page(type, i18n) {
   const body = (raw.match(/<body[^>]*>([\s\S]*)<\/body>/i) || [, raw])[1];
   const config = {
     productId: 1, productType: type,
-    inheritMap: { referee_armbands: 'armbands', double_sided_armbands: 'armbands' },
+    inheritMap: { referee_armbands: 'armbands', double_sided_armbands: 'armbands', armbands_predesign: 'armbands', remembrance_armbands: 'armbands', running_tags_themed: 'running_tags', running_tags_id: 'running_tags' },
     price: '£12.00', ajaxUrl: '/fake-ajax', nonce: 'x', uploadUrl: '', pluginAssetsUrl: '/',
     sizes: [], geometry: {}, geometryIsOwn: false, canEditGeometry: false,
     adminAjaxUrl: '', geometryNonce: '', variations: []

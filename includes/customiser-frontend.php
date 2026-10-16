@@ -315,7 +315,7 @@ function bespoke_render_customiser( $atts ) {
                 'compare' => 'LIKE',
             ];
         }
-        $q = new WP_Query( [
+        $design_query = [
             'post_type'      => 'bespoke_design',
             'post_status'    => 'publish',
             'posts_per_page' => -1,
@@ -327,7 +327,20 @@ function bespoke_render_customiser( $atts ) {
             'meta_key' => '_bespoke_order',
             'orderby'  => 'meta_value_num',
             'order'    => 'ASC',
-        ] );
+        ];
+        // A product may show only some of its type's designs — one
+        // awareness tag per product, for the search engines, without a
+        // product type per theme. Ticked in the product's customiser box.
+        $design_product_id = ( isset( $product ) && is_object( $product ) && method_exists( $product, 'get_id' ) )
+            ? (int) $product->get_id()
+            : (int) get_the_ID();
+        $design_allow = $design_product_id
+            ? array_values( array_filter( array_map( 'intval', (array) get_post_meta( $design_product_id, '_bespoke_design_allow', true ) ) ) )
+            : [];
+        if ( $design_allow ) {
+            $design_query['post__in'] = $design_allow;
+        }
+        $q = new WP_Query( $design_query );
         foreach ( $q->posts as $p ) {
             $thumb_id  = get_post_meta( $p->ID, '_bespoke_thumb_id', true );
             $thumb_url = $thumb_id ? wp_get_attachment_image_url( $thumb_id, 'medium' ) : '';
@@ -379,6 +392,12 @@ function bespoke_render_customiser( $atts ) {
                 }
                 if (typeof window.buildDesignScroll === 'function') {
                     window.buildDesignScroll();
+                }
+                // The step list can depend on how many designs there are
+                // (one design: no design step), and it was first worked out
+                // before this list existed.
+                if (typeof window.applyStepConfig === 'function') {
+                    window.applyStepConfig();
                 }
                 if (typeof window.updateDesignLayers === 'function') {
                     requestAnimationFrame(window.updateDesignLayers);
