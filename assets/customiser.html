@@ -1678,7 +1678,17 @@ var DEFDESIGN = 'vanguard';
 // shin-pad behaviour is unchanged.
 (function(){
   var GEO = (window.BespokeConfig && window.BespokeConfig.geometry) || {};
+  // Running tags: the two badge keys are the two spots on the UPPER tag
+  // (16 Oct 2026); the lower tag is the mirror's job. A placement saved
+  // before then holds badgeL on the lower plate, and merged in it would put
+  // the club badge on one tag and the second badge on the other. A saved
+  // badge position below the upper plate is from that time, so both badge
+  // positions are left out; the text positions are kept.
+  var _tagBase   = (typeof bespokeBaseType === 'function') ? bespokeBaseType() : '';
+  var _onLower   = function(g){ return !!(g && typeof g.y === 'number' && g.y > 300); };
+  var _staleTags = _tagBase === 'running_tags' && (_onLower(GEO.badgeL) || _onLower(GEO.badgeR));
   ['badgeL','badgeR','nameL','nameR','numL','numR'].forEach(function(k){
+    if (_staleTags && k.indexOf('badge') === 0) return;
     if (GEO[k] && typeof GEO[k].x === 'number' && typeof GEO[k].y === 'number') {
       DEF[k] = { x: GEO[k].x, y: GEO[k].y };
     }
