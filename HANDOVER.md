@@ -799,6 +799,46 @@ affbaf1 fixed it). The same goes for `<head`, `</head>` and `</body>` — and
 (`tools/customiser-harness.mjs`) shows a red bar and logs an error when the
 count is wrong — look at a harness page after every customiser.html edit,
 not only at what the scripts do.
+### 6.28 SEO packs: a group of products' names, wording and SEO in one go
+
+`includes/customiser-seo-pack.php` (**Designs → SEO Packs**, `manage_options`)
+applies a pack from `includes/seo-packs/*.php`: per product its name, web
+address, both descriptions, Rank Math title / description / focus keyword
+(`rank_math_*` post meta), categories (made if missing, parents first),
+catalog visibility, menu order, the featured picture's alt text and the
+BEspoke Page fields; per page only the Rank Math fields — a page's words
+live in Elementor, so the review screen shows them with a Copy button each
+(`'elementor'` in the pack). Review first; Apply keeps each post's original
+values in `_bespoke_seo_backup` (written once, so applying again doesn't
+overwrite them) and the run in `bespoke_seo_last_run`; Undo puts them back
+and removes categories it made that are empty.
+
+Products are matched by web address — the pack's new one first, then the
+old ones in `match` — never by ID, so the same pack runs on staging and on
+live. Product fields go through WooCommerce's CRUD, so a changed web address
+leaves `_wp_old_slug` for WordPress's redirect. A pack file is `include`d
+in a closure of its own and may load twice in one request: closures only,
+no named functions.
+
+**Running tags pack (17 Oct 2026):** the 16 tag products become "… Running
+Tags" at "…-running-tags"; categories Running Tags › Awareness Running Tags;
+the 15 awareness tags go to *search only* (out of the shop, still in the
+site's search box — the themed armbands are fully hidden) and menu order
+101–115, past the shop's own hand-sorted order, so Personalised Running Tags
+keeps its shop place and still comes first on the Awareness Running Tags
+page, whose Elementor products grid shows category Running Tags by Menu
+order. Every description is 600+ words (Rank Math's content-length
+threshold) with the keyword early, in an H2 and ~1% density; each awareness
+tag is written around its own cause, with one link to its main charity —
+Nick: no money goes to them, so the copy never says it does.
+
+**At launch:** Copy to Live makes the products on live as drafts (names,
+addresses, wording, Rank Math, categories, pictures with alt text) but not
+their visibility or menu order — so after it, apply the pack on live too.
+The Awareness Running Tags page (Elementor) and its shop tile (a product
+with no price, Page Links To → the page, like the pre-designed armbands
+tile) are made on live by hand, then the pack applied once more for the
+page's Rank Math fields.
 ## 7. Tooling notes (for you, on the new machine)
 
 - **There is no PHP locally.** `tools/` in the repo has what you need — run `npm install`
