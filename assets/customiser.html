@@ -41,6 +41,10 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
 /* Boot stickers are all made 10mm tall, so there is no size to choose —
    the badge and text size sliders are put away. See bespokeBootSizes(). */
 .bcp-boot [data-boot-hide]{display:none !important;}
+/* And the other way round: only on boot stickers, and only with something
+   to say — see bespokeBootTextSize(). */
+[data-boot-only]{display:none;}
+.bcp-boot [data-boot-only]:not(:empty){display:block;}
 .frame{width:100%;max-width:440px;background:#0D0D0D;border-radius:20px;border:1px solid #2A2A2A;overflow:hidden;}
 .top-bar{background:#161616;border-bottom:1px solid #2A2A2A;padding:13px 18px;display:flex;align-items:center;justify-content:space-between;}
 .brand{font-size:15px;font-weight:700;color:#F5F5F0;letter-spacing:-0.3px;}
@@ -1313,6 +1317,9 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
       <div id="nLb"><div class="text-row"><textarea id="name-L" rows="1" placeholder="e.g. SMITH (press Enter for a new line)" oninput="onNameSplit('L')"></textarea><div class="char-count"><span id="nLc">0</span></div></div></div>
       <div id="nRb" style="display:none;"><div class="text-row"><textarea id="name-R" rows="1" placeholder="e.g. JONES (press Enter for a new line)" oninput="onNameSplit('R')"></textarea><div class="char-count"><span id="nRc">0</span></div></div></div>
     </div>
+    <!-- Boot stickers: how long the text sticker comes out — see
+         bespokeBootTextSize(). -->
+    <p class="hint" id="boot-text-size" data-boot-only style="margin:8px 0 14px;"></p>
     <!-- Colour picker sits directly under the text input (below the
          split tabs when they're active) so the customer can pick a
          colour without hunting for it under Size / Font. -->
@@ -3605,6 +3612,7 @@ function updatePreview(stepId) {
   // text layers. No-op on every other product type.
   if (typeof applyPlayerCardOverlay === 'function') {
     try { applyBootStickerOverlay(stepId); } catch(e) {}
+    try { bespokeBootTextSize(); } catch(e) {}
     try { applyTagPlates(stepId); } catch(e) {}
     try {
       if (bespokeTagFitText() && typeof syncAll === 'function') {
@@ -6220,6 +6228,52 @@ var BESPOKE_BOOT_CAP_RATIO = 0.72;
 // pictures in assets/flags, every one 208 x 130. The round ones are square.
 var BESPOKE_BOOT_FLAG_RATIO = 208 / 130;
 
+// The room Nick's own size buttons gave the side of the boot, under the
+// ankle. A text sticker can be longer — it is as long as the name needs —
+// but past this it may not fit a smaller boot, and the customer is told.
+var BESPOKE_BOOT_ROOM_MM = 48;
+
+/**
+ * How long the text sticker comes out, in mm, with its capitals 10mm tall —
+ * measured in the customer's own font, so a wide font says so. The longest
+ * line, the ink only. 0 with no text.
+ */
+function bespokeBootTextLengthMm(){
+  var txt = String((window.S && (S.nameL || S.nameR)) || '').trim();
+  if (!txt) return 0;
+  var c = bespokeBootTextLengthMm.ctx ||
+          (bespokeBootTextLengthMm.ctx = document.createElement('canvas').getContext('2d'));
+  if (!c) return 0;
+  c.font = '900 100px ' + (S.nameFontFamily || 'sans-serif');
+  var cap = c.measureText('H').actualBoundingBoxAscent || 72;
+  var widest = 0;
+  txt.split(/\r?\n/).forEach(function(line){
+    var m = c.measureText(line);
+    var ink = (m.actualBoundingBoxLeft || 0) + (m.actualBoundingBoxRight || m.width);
+    if (ink > widest) widest = ink;
+  });
+  return widest / cap * BESPOKE_BOOT_STICKER_MM;
+}
+
+/**
+ * Under the text box: how big the text sticker comes out (Nick, 17 Oct 2026:
+ * as wide as it needs to be, though it "might not fit on a small boot").
+ * Run with every redraw, so it follows the typing and the font.
+ */
+function bespokeBootTextSize(){
+  var el = document.getElementById('boot-text-size');
+  if (!el) return;
+  var mm = (bespokeBaseType() === 'boot_stickers') ? Math.round(bespokeBootTextLengthMm()) : 0;
+  var msg = '';
+  if (mm) {
+    msg = bespokeT('Your sticker will be about %dmm long and %dmm tall.', mm, BESPOKE_BOOT_STICKER_MM);
+    if (mm > BESPOKE_BOOT_ROOM_MM) {
+      msg += ' ' + bespokeT('That may be too long for a smaller boot, so measure yours, or try initials.');
+    }
+  }
+  if (el.textContent !== msg) el.textContent = msg;
+}
+
 /** The badge and text sizes that make a sticker 10mm tall, in canvas units. */
 function bespokeBootSizes(){
   return {
@@ -7670,7 +7724,7 @@ var BG_VARIANT_LABELS = {
 // a fallback only: once the product has its variations, the live ones are
 // read from window.BespokeConfig and these are never seen.
 var BOOT_PICKS = [
-  { key: 'text',  title: 'Name, initials or number', sub: 'One line, up to 48mm wide',                  fallback: 10 },
+  { key: 'text',  title: 'Name, initials or number', sub: 'One line, 10mm tall',                        fallback: 10 },
   { key: 'flag',  title: 'Country flag',             sub: 'Pick one, or tell us what you need',         fallback: 7  },
   { key: 'badge', title: 'Your club badge',          sub: 'Upload it, in full colour',                  fallback: 10 },
   { key: 'all',   title: 'All three',                sub: 'Text, flag and badge together',              fallback: 22 }

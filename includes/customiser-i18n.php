@@ -192,6 +192,12 @@ function bespoke_customiser_ui_strings() {
 			=> __( 'Add the text for your name sticker, or untick it.', 'bespoke-customiser' ),
 		'Choose a flag, or tell us the one you need.'
 			=> __( 'Choose a flag, or tell us the one you need.', 'bespoke-customiser' ),
+
+		// ── Boot stickers: under the text box ────────────────────────────
+		'Your sticker will be about %dmm long and %dmm tall.'
+			=> __( 'Your sticker will be about %dmm long and %dmm tall.', 'bespoke-customiser' ),
+		'That may be too long for a smaller boot, so measure yours, or try initials.'
+			=> __( 'That may be too long for a smaller boot, so measure yours, or try initials.', 'bespoke-customiser' ),
 	];
 
 	// Only what a translation actually changed.

@@ -716,6 +716,13 @@ The order records the size itself — `height_mm` from
 and the order screen shows "Height: 10mm — every sticker"; orders from
 before carry `text_height_mm` / `badge_width_mm` and still show those.
 
+The text sticker is as long as the name needs. `bespokeBootTextSize()`
+(every redraw) says under the text box how long it comes out — measured in
+the customer's font with the capitals 10mm tall (`bespokeBootTextLengthMm()`,
+canvas `measureText`, ink width over the font's own "H" height) — and,
+past `BESPOKE_BOOT_ROOM_MM` (48, the side space on Nick's old size
+buttons), that it may be too long for a smaller boot.
+
 The "Change what goes on your stickers" link is now the full-width
 **Main menu** button (`.bcp-main-menu`, inside `#boot-rechoose` in the
 step bar).
