@@ -69,21 +69,80 @@ function bespoke_wc_add_customiser_type_field() {
     if ( $designs ) {
         global $post;
         $allow = array_map( 'intval', (array) get_post_meta( $post->ID, '_bespoke_design_allow', true ) );
+
+        // Which designs each customiser offers: its own, plus its parent's
+        // where it inherits them (double-sided armbands show the captain
+        // armband designs) — the same rule the product page follows. The list
+        // shows only those for the customiser picked above.
+        $offers = [];
+        foreach ( array_keys( $types ) as $tk ) {
+            $offers[ $tk ] = [ $tk ];
+            $parent    = function_exists( 'bespoke_inherit_product_type' ) ? bespoke_inherit_product_type( $tk ) : $tk;
+            $exclusive = function_exists( 'bespoke_type_has_exclusive_designs' ) && bespoke_type_has_exclusive_designs( $tk );
+            if ( $parent !== $tk && ! $exclusive ) {
+                $offers[ $tk ][] = $parent;
+            }
+        }
+
         echo '<p class="form-field" style="margin-bottom:4px;"><label>Designs shown</label>'
-            . '<span class="description">Leave every box unticked to show all designs registered for the customiser above. Tick to show only these.</span></p>';
-        echo '<div style="max-height:220px;overflow:auto;margin:0 12px 12px;padding:8px 10px;border:1px solid #ddd;background:#fff;">';
+            . '<span class="description">Only the designs for the customiser picked above are listed. Leave every box unticked to offer all of them; tick to offer only those.</span></p>';
+        echo '<div id="bespoke-design-allow">';
         foreach ( $designs as $d ) {
-            $for    = (array) get_post_meta( $d->ID, '_bespoke_products', true );
-            $labels = array_map( function( $k ) use ( $types ) { return $types[ $k ] ?? $k; }, $for );
+            $for = array_values( array_filter( (array) get_post_meta( $d->ID, '_bespoke_products', true ) ) );
+            $off = get_post_meta( $d->ID, '_bespoke_active', true ) === '0';
             printf(
-                '<label style="display:block;margin:2px 0;"><input type="checkbox" name="_bespoke_design_allow[]" value="%d"%s> %s <span style="color:#888;">— %s</span></label>',
+                '<label class="bespoke-da-row" data-types="%s"><input type="checkbox" name="_bespoke_design_allow[]" value="%d"%s> %s%s</label>',
+                esc_attr( implode( ' ', $for ) ),
                 $d->ID,
                 checked( in_array( (int) $d->ID, $allow, true ), true, false ),
                 esc_html( $d->post_title ),
-                esc_html( implode( ', ', $labels ) )
+                $off ? ' <span class="bespoke-da-off">(not active)</span>' : ''
             );
         }
+        echo '<p id="bespoke-design-allow-empty"></p>';
         echo '</div>';
+        ?>
+        <style>
+            /* WooCommerce floats every label in a product panel into a 150px
+               column; these are the rows of a list. */
+            #bespoke-design-allow { max-height: 280px; overflow: auto; margin: 0 12px 12px; padding: 6px 10px; border: 1px solid #ddd; background: #fff; }
+            #bespoke-design-allow label.bespoke-da-row { float: none; width: auto; margin: 0; padding: 3px 0; display: flex; align-items: center; gap: 8px; }
+            #bespoke-design-allow label.bespoke-da-row input { margin: 0; }
+            #bespoke-design-allow .bespoke-da-off { color: #a00; font-size: 12px; }
+            #bespoke-design-allow-empty { margin: 4px 0; padding: 0; color: #777; }
+        </style>
+        <script>
+        (function(){
+            var offers = <?php echo wp_json_encode( $offers ); ?>;
+            var names  = <?php echo wp_json_encode( $types ); ?>;
+            var select = document.getElementById('_bespoke_product_type');
+            var box    = document.getElementById('bespoke-design-allow');
+            if (!select || !box) return;
+            function show(){
+                var type  = select.value;
+                var allow = offers[type] || (type ? [type] : []);
+                var shown = 0;
+                Array.prototype.forEach.call(box.querySelectorAll('.bespoke-da-row'), function(row){
+                    var mine = (row.getAttribute('data-types') || '').split(' ');
+                    var tick = row.querySelector('input');
+                    // A ticked design always stays in view, so it can be unticked.
+                    var on = (tick && tick.checked) || mine.some(function(t){ return t && allow.indexOf(t) !== -1; });
+                    row.style.display = on ? '' : 'none';
+                    if (on) shown++;
+                });
+                var empty = document.getElementById('bespoke-design-allow-empty');
+                if (empty) {
+                    empty.textContent = !type ? 'Pick a customiser above to see its designs.'
+                        : (shown ? '' : 'No designs are registered for ' + (names[type] || type) + ' yet.');
+                    empty.style.display = empty.textContent ? '' : 'none';
+                }
+            }
+            select.addEventListener('change', show);
+            if (window.jQuery) { window.jQuery(select).on('change', show); }
+            show();
+        })();
+        </script>
+        <?php
     }
     echo '</div>';
 }
