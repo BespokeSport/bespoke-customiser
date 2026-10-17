@@ -1024,6 +1024,9 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
       <span style="font-size:13px;color:#F5F5F0;flex:1;" id="badge-fname"></span>
       <button onclick="removeBadge()" style="background:none;border:none;cursor:pointer;color:#555555;font-size:20px;line-height:1;padding:0 4px;">×</button>
     </div>
+    <!-- Boot stickers: how wide the badge sticker comes out — see
+         bespokeBootBadgeSize(). -->
+    <p class="hint" id="boot-badge-size" data-boot-only style="margin:8px 0 14px;"></p>
     <!-- ARMBANDS ONLY (both types): where the badges go, from the mockup
          Nick approved on 21 Sep 2026. Once the club badge is uploaded the
          upload box gives way to a Left / Right card for each spot:
@@ -3224,12 +3227,26 @@ function updatePreview(stepId) {
                           S.badge2Mode === 'different' && S.badge2URL)
           ? S.badge2URL : S.badgeURL;
         img.setAttribute('href', _badgeHref);
-        // Boot stickers: the badge is made 10mm TALL, so the picture keeps
-        // its own shape at that height — a wide logo comes out wider.
+        // Boot stickers: the badge is made 10mm TALL from its artwork — the
+        // picture less any empty edges (bespokeImageArt) — so a wide logo
+        // comes out wider, and space round an upload doesn't shrink it. The
+        // whole picture is drawn, scaled and moved so the artwork fills the
+        // 10mm and sits on the badge's position.
         var _bw = S.badgeSize, _bh = S.badgeSize;
-        if (bespokeFixedSizes()) _bw = Math.round(S.badgeSize * bespokeImageAspect(_badgeHref));
-        img.setAttribute('x', -_bw / 2); img.setAttribute('y', -_bh / 2);
-        img.setAttribute('width', _bw); img.setAttribute('height', _bh);
+        var _ix = -_bw / 2, _iy = -_bh / 2, _iw = _bw, _ih = _bh;
+        if (bespokeFixedSizes()) {
+          var _art = bespokeImageArt(_badgeHref);
+          _ih = _bh / _art.h;
+          _iw = _ih * _art.full;
+          _ix = -(_art.x + _art.w / 2) * _iw;
+          _iy = -(_art.y + _art.h / 2) * _ih;
+          _bw = Math.round(_bh * _art.aspect);
+          // The finger-sized hit area covers a wide badge too.
+          _hit.setAttribute('x', -Math.max(_bw + 60, 200) / 2);
+          _hit.setAttribute('width', Math.max(_bw + 60, 200));
+        }
+        img.setAttribute('x', _ix); img.setAttribute('y', _iy);
+        img.setAttribute('width', _iw); img.setAttribute('height', _ih);
         img.setAttribute('preserveAspectRatio','xMidYMid meet');
         g.appendChild(img);
         // Per-element delete X (Stage 2). NOT where the Left / Right badge
@@ -3617,6 +3634,7 @@ function updatePreview(stepId) {
   if (typeof applyPlayerCardOverlay === 'function') {
     try { applyBootStickerOverlay(stepId); } catch(e) {}
     try { bespokeBootTextSize(); } catch(e) {}
+    try { bespokeBootBadgeSize(); } catch(e) {}
     try { applyTagPlates(stepId); } catch(e) {}
     try {
       if (bespokeTagFitText() && typeof syncAll === 'function') {
@@ -6355,27 +6373,88 @@ function bespokeFixedSizes(){
 }
 
 /**
- * A picture's width over its height, once it has loaded — 1 until then. A
- * boot sticker's badge is made 10mm TALL, so a wide logo comes out wider
- * than 10mm, and the preview needs the picture's own shape to show it so.
+ * Where the artwork is in a picture: the box left once see-through edges
+ * are trimmed — or, on a picture with no transparency, plain white ones —
+ * as fractions of the whole (x, y, w, h), with the artwork's width over its
+ * height (aspect) and the whole picture's (full). A boot sticker's badge is
+ * made 10mm TALL from its artwork, so empty space round an upload mustn't
+ * count: a square PNG with a wide logo in the middle is a wide badge, and a
+ * wide picture of some text padded out to a square is still too wide.
+ * Measured once per picture on a small canvas; the whole picture until
+ * then, and for anything the canvas can't read.
  */
-var _bespokeAspects = {};
-function bespokeImageAspect(url){
-  if (!url) return 1;
-  var known = _bespokeAspects[url];
-  if (typeof known === 'number') return known;
-  if (known !== null) {
-    _bespokeAspects[url] = null; // loading
-    var im = new Image();
-    im.onload = function(){
-      var r = (im.naturalWidth > 0 && im.naturalHeight > 0) ? im.naturalWidth / im.naturalHeight : 1;
-      _bespokeAspects[url] = r;
-      if (r !== 1 && typeof syncAll === 'function') syncAll();
-    };
-    im.onerror = function(){ _bespokeAspects[url] = 1; };
-    im.src = url;
+var _bespokeArt = {};
+function bespokeImageArt(url){
+  var whole = { x: 0, y: 0, w: 1, h: 1, aspect: 1, full: 1 };
+  if (!url) return whole;
+  var known = _bespokeArt[url];
+  if (known) return known;
+  if (known === null) return whole; // measuring
+  _bespokeArt[url] = null;
+  var im = new Image();
+  im.onload = function(){
+    var W = im.naturalWidth, H = im.naturalHeight;
+    var art = { x: 0, y: 0, w: 1, h: 1, aspect: (W > 0 && H > 0) ? W / H : 1 };
+    art.full = art.aspect;
+    try {
+      var k  = Math.min(1, 400 / Math.max(W, H));
+      var cw = Math.max(1, Math.round(W * k)), ch = Math.max(1, Math.round(H * k));
+      var cv = document.createElement('canvas');
+      cv.width = cw; cv.height = ch;
+      var cx = cv.getContext('2d');
+      cx.drawImage(im, 0, 0, cw, ch);
+      var px = cx.getImageData(0, 0, cw, ch).data;
+      var clear = false;
+      for (var i = 3; i < px.length; i += 4) { if (px[i] < 16) { clear = true; break; } }
+      var x0 = cw, y0 = ch, x1 = -1, y1 = -1;
+      for (var y = 0; y < ch; y++) {
+        for (var x = 0; x < cw; x++) {
+          var p = (y * cw + x) * 4;
+          var ink = clear ? px[p + 3] >= 16
+                          : Math.min(px[p], px[p + 1], px[p + 2]) < 245;
+          if (!ink) continue;
+          if (x < x0) x0 = x; if (x > x1) x1 = x;
+          if (y < y0) y0 = y; if (y > y1) y1 = y;
+        }
+      }
+      // A speck isn't artwork: anything under 2% either way keeps the whole.
+      if (x1 >= x0 && y1 >= y0 && (x1 - x0 + 1) > cw * 0.02 && (y1 - y0 + 1) > ch * 0.02) {
+        art.x = x0 / cw; art.y = y0 / ch;
+        art.w = (x1 - x0 + 1) / cw; art.h = (y1 - y0 + 1) / ch;
+        art.aspect = (art.w * W) / (art.h * H);
+      }
+    } catch (e) {}
+    _bespokeArt[url] = art;
+    if (typeof syncAll === 'function') syncAll();
+  };
+  im.onerror = function(){ _bespokeArt[url] = whole; };
+  im.src = url;
+  return whole;
+}
+
+/** How wide the badge sticker comes out, in mm, at 10mm tall. 0 with none. */
+function bespokeBootBadgeWidthMm(){
+  if (!window.S || !S.badgeURL) return 0;
+  return BESPOKE_BOOT_STICKER_MM * bespokeImageArt(S.badgeURL).aspect;
+}
+
+/**
+ * Under the badge upload: how wide the badge sticker comes out — and past
+ * 90mm, which a very wide picture of some text would be, that it can't be
+ * made (Nick, 17 Oct 2026). Run with every redraw, so it follows a new
+ * upload once it has been measured.
+ */
+function bespokeBootBadgeSize(){
+  var el = document.getElementById('boot-badge-size');
+  if (!el) return;
+  var mm = (bespokeBaseType() === 'boot_stickers') ? Math.round(bespokeBootBadgeWidthMm()) : 0;
+  var msg = '';
+  if (mm > BESPOKE_BOOT_MAX_MM) {
+    msg = bespokeT('At %dmm tall your badge would be about %dmm wide. The widest we make is %dmm, so upload a squarer version.', BESPOKE_BOOT_STICKER_MM, mm, BESPOKE_BOOT_MAX_MM);
+  } else if (mm) {
+    msg = bespokeT('Your badge sticker will be about %dmm wide and %dmm tall.', mm, BESPOKE_BOOT_STICKER_MM);
   }
-  return 1;
+  if (el.textContent !== msg) el.textContent = msg;
 }
 
 /* ============================================================
@@ -7869,6 +7948,9 @@ function bespokeBootMissing(){
   }
   if (p.badge && !(window.S && S.badgeURL)) {
     return { step: 0, message: bespokeT('Upload your club badge, or untick the badge sticker.') };
+  }
+  if (p.badge && bespokeBootBadgeWidthMm() > BESPOKE_BOOT_MAX_MM) {
+    return { step: 0, message: bespokeT('Your badge would be wider than %dmm at %dmm tall. Upload a squarer version, or untick the badge sticker.', BESPOKE_BOOT_MAX_MM, BESPOKE_BOOT_STICKER_MM) };
   }
   if (p.text && !String((window.S && (S.nameL || S.nameR)) || '').trim()) {
     return { step: 1, message: bespokeT('Add the text for your name sticker, or untick it.') };

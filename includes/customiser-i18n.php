@@ -206,6 +206,14 @@ function bespoke_customiser_ui_strings() {
 			=> __( 'Your text sticker would be longer than %dmm. Try fewer letters or a narrower font.', 'bespoke-customiser' ),
 		'e.g. SMITH'
 			=> __( 'e.g. SMITH', 'bespoke-customiser' ),
+
+		// ── Boot stickers: under the badge upload ────────────────────────
+		'Your badge sticker will be about %dmm wide and %dmm tall.'
+			=> __( 'Your badge sticker will be about %dmm wide and %dmm tall.', 'bespoke-customiser' ),
+		'At %dmm tall your badge would be about %dmm wide. The widest we make is %dmm, so upload a squarer version.'
+			=> __( 'At %dmm tall your badge would be about %dmm wide. The widest we make is %dmm, so upload a squarer version.', 'bespoke-customiser' ),
+		'Your badge would be wider than %dmm at %dmm tall. Upload a squarer version, or untick the badge sticker.'
+			=> __( 'Your badge would be wider than %dmm at %dmm tall. Upload a squarer version, or untick the badge sticker.', 'bespoke-customiser' ),
 	];
 
 	// Only what a translation actually changed.

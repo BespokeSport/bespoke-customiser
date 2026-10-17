@@ -726,6 +726,13 @@ at most `BESPOKE_BOOT_MAX_MM` (90): a wrapper on `onNameBoth()` drops line
 breaks and refuses a letter that would take it past 90mm in the chosen
 font (deleting always works); a font change that takes it past is said
 under the box and stopped at the basket by `bespokeBootMissing()`.
+A badge is made 10mm tall from its ARTWORK: `bespokeImageArt()` trims
+see-through edges (or plain white ones on a picture with no transparency)
+on a small canvas, once per picture, and the badge is drawn so that box is
+10mm tall on its position — empty space round an upload neither shrinks it
+nor gets a padded wide picture of text past the cap. Under the upload
+`bespokeBootBadgeSize()` says how wide it comes out; past 90mm it's said
+and stopped at the basket, as the text is.
 Boot stickers start in Jersey: `BESPOKE_START_FONTS` (by base type, with
 armbands' Villain), applied by `bespokeStartFont()` whenever the main
 font picker is drawn.
