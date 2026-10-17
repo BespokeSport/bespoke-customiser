@@ -2947,13 +2947,13 @@ function drawDesignPattern(g, id, col, ns) {
 // Add your real thumbnail images as src when ready
 var ALL_DESIGNS = [];
 
-/* A strip of thumbnails is right up to a dozen designs and clumsy at 87
-   country flags. On a tag product with more than this many, the picker is
-   a dropdown instead, in the admin's order. */
-var BESPOKE_DESIGN_DROPDOWN_FROM = 12;
+/* Pictures are how a design is chosen. A dropdown is only for a list too
+   long to scroll — the 87 country flags — and the product says so ("Show
+   the designs as a dropdown" in its BEspoke customiser box). Counting the
+   designs instead took the pictures away from the plain running tags the
+   moment they passed twelve. */
 function bespokeDesignsAsDropdown(){
-  return typeof bespokeBaseType === 'function' && bespokeBaseType() === 'running_tags' &&
-         ALL_DESIGNS.length > BESPOKE_DESIGN_DROPDOWN_FROM;
+  return !!(window.BespokeConfig && BespokeConfig.designDropdown);
 }
 function buildDesignScroll() {
   var scroll = document.getElementById('design-scroll');

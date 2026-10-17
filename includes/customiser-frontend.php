@@ -171,6 +171,9 @@ function bespoke_render_customiser( $atts ) {
         canEditGeometry: <?php echo current_user_can( 'manage_options' ) ? 'true' : 'false'; ?>,
         adminAjaxUrl:    '<?php echo esc_js( admin_url( 'admin-ajax.php' ) ); ?>',
         geometryNonce:   '<?php echo esc_js( wp_create_nonce( 'bespoke_save_geometry' ) ); ?>',
+        // The design picker as a dropdown rather than pictures (a tick-box
+        // on the product — for the country flags).
+        designDropdown:  <?php echo get_post_meta( $product->get_id(), '_bespoke_design_dropdown', true ) === '1' ? 'true' : 'false'; ?>,
         // A design reopened from the basket (Amend / Duplicate), or null.
         restore:         <?php echo wp_json_encode( $bespoke_restore, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT ); ?>,
         // Live variation lookup table — used by the JS picker to surface

@@ -101,6 +101,16 @@ function bespoke_wc_add_customiser_type_field() {
         }
         echo '<p id="bespoke-design-allow-empty"></p>';
         echo '</div>';
+
+        // Pictures, or a dropdown. Pictures are how a design is chosen; a
+        // dropdown is only for a list too long to scroll — the country flags.
+        $as_list = get_post_meta( $post->ID, '_bespoke_design_dropdown', true ) === '1';
+        printf(
+            '<p class="form-field" style="margin-top:0;"><label for="_bespoke_design_dropdown">Design picker</label>'
+            . '<input type="checkbox" id="_bespoke_design_dropdown" name="_bespoke_design_dropdown" value="1"%s style="width:auto;margin-right:6px;" /> '
+            . 'Show the designs as a dropdown <span class="description">— for a long list such as the country flags. Unticked, customers choose from the pictures.</span></p>',
+            checked( $as_list, true, false )
+        );
         ?>
         <style>
             /* WooCommerce floats every label in a product panel into a 150px
@@ -172,6 +182,13 @@ function bespoke_wc_save_customiser_type_field( $post_id ) {
         update_post_meta( $post_id, '_bespoke_product_type', $value );
     } else {
         delete_post_meta( $post_id, '_bespoke_product_type' );
+    }
+
+    // Pictures or a dropdown (the tick-box under Designs shown).
+    if ( ! empty( $_POST['_bespoke_design_dropdown'] ) ) {
+        update_post_meta( $post_id, '_bespoke_design_dropdown', '1' );
+    } else {
+        delete_post_meta( $post_id, '_bespoke_design_dropdown' );
     }
 
     // Designs shown on this product (the tick-list in the same box).

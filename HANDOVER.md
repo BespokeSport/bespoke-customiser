@@ -623,11 +623,14 @@ unticked so the colours stay the charity's.
 
 Country flags are ONE product ("Country Flag Running Tags", every flag
 ticked), not one per country — Nick's call, 17 Oct 2026, for a single strong
-page. A tag product offering more than `BESPOKE_DESIGN_DROPDOWN_FROM` (12)
-designs shows the picker as a dropdown (`.player-select`, as the boot
-stickers' country list) instead of the thumbnail strip, in the admin's
-design order — so the home nations go first by dragging them to the top of
-Customiser Designs.
+page. That product has **Show the designs as a dropdown** ticked in its
+BEspoke customiser box (`_bespoke_design_dropdown`, carried by Copy to
+Live), so its picker is a dropdown (`.player-select`, as the boot stickers'
+country list) instead of the thumbnail strip, in the admin's design order —
+so the home nations go first by dragging them to the top of Customiser
+Designs. It used to switch on by itself past twelve designs, which took the
+pictures away from the plain running tags when they reached twenty; every
+other product keeps the pictures.
 
 The themed and ID tag types should carry **no artwork of their own** on
 Product Setup: they then use the Running Tags background and Body stencil.

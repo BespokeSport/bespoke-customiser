@@ -78,6 +78,7 @@ function bespoke_copy_fields() {
 		'rank_math_title'            => [ 'label' => 'SEO title',              'where' => 'meta', 'kind' => 'text' ],
 		'rank_math_description'      => [ 'label' => 'SEO description',        'where' => 'meta', 'kind' => 'text' ],
 		'rank_math_focus_keyword'    => [ 'label' => 'SEO focus keyword',      'where' => 'meta', 'kind' => 'text' ],
+		'_bespoke_design_dropdown'   => [ 'label' => 'Designs as a dropdown',  'where' => 'meta', 'kind' => 'text' ],
 	];
 }
 
