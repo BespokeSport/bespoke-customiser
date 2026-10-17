@@ -26,6 +26,12 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
 /* Padding lives here rather than inline, or the desktop gutters below can
    never override it and the panel runs off the edge of the screen. */
 #boot-chooser{display:none;padding:4px 18px 8px;}
+/* Where boot stickers will and won't stick, above the sticker menu (Nick,
+   17 Oct 2026). The mint box the basket-edit note uses, with the info icon
+   the badge step's note has. */
+.bcp-boot-surface{display:flex;gap:10px;align-items:flex-start;margin:0 0 16px;padding:12px 14px;border:1px solid #5DCAA5;border-radius:10px;background:#0A2A20;color:#BFEBDD;font-size:13px;line-height:1.5;}
+.bcp-boot-surface svg{flex:none;margin-top:2px;}
+.bcp-boot-surface u{text-decoration:underline;text-decoration-thickness:1.5px;text-underline-offset:2px;}
 /* The flag step borrows the squad-number screen, so everything on it that is
    not the preview, the nav row or the flag picker is put away. A rule with
    !important rather than an inline style, because the step gets redrawn and
@@ -970,6 +976,10 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
        once something is picked; every other product goes straight to its
        first step. -->
   <div id="boot-chooser">
+    <div class="bcp-boot-surface">
+      <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="#5DCAA5" stroke-width="1.6" aria-hidden="true"><circle cx="10" cy="10" r="8"/><path d="M10 9v5M10 6h.01" stroke-linecap="round"/></svg>
+      <span>Boot stickers must be applied to a smooth, clean surface. These stickers will <u>not</u> attach to cloth material or suede.</span>
+    </div>
     <div style="font-size:11px;letter-spacing:.1em;color:#8a8a85;margin:0 0 10px;">WHAT DO YOU WANT ON YOUR BOOTS?</div>
     <div id="boot-chooser-opts"></div>
     <div style="display:flex;align-items:baseline;gap:8px;border-top:1px solid #2c2c2c;margin-top:12px;padding-top:12px;">
