@@ -12,8 +12,8 @@
  * - 1cm or 2cm high: text is always 1cm (capitals), flags and badges 1cm or
  *   the 2cm upgrade; text and badges run to 9cm at most, and past about 5cm
  *   the customiser warns they may not fit a smaller boot;
- * - made to order, posted 1st Class Royal Mail (lead time as Nick gave it:
- *   "> 5 day" — written as up to 5 working days, to confirm with him);
+ * - made to order in up to 5 working days (Nick wrote "> 5 day" and
+ *   confirmed "up to 5 working days"), posted 1st Class Royal Mail;
  * - grassroots club badges are welcome; copyright badges such as Premier
  *   League clubs' only from an official club email address (the upload
  *   pop-up's wording).

@@ -980,8 +980,11 @@ whole product page — description (476 words), short description, Rank
 Math, BEspoke category, BEspoke Page fields. Facts from Nick (17 Oct
 2026): pairs, waterproof, self-applied with no heat, MUST go on a clean
 smooth surface, 1cm or 2cm high, posted 1st Class Royal Mail; the
-material is not to be named. Lead time "> 5 day" written as "up to 5
-working days" — asked Nick to confirm. Alt text waits for a picture.
+material is not to be named. Lead time: up to 5 working days (Nick
+wrote "> 5 day", then confirmed). It scored 78 at first (no link out, no
+sentiment word in the title); with a Royal Mail link and the title
+"Personalised Football Boot Stickers – 2 Sizes, Perfect Pair" it scores
+**82** (staging, 17 Oct 2026).
 
 **Undo covers the last pack applied only** (`bespoke_seo_last_run` holds
 one run): apply one pack, check it, then the next. Earlier packs' posts
