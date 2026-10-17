@@ -8542,7 +8542,13 @@ function saveGeometry(statusEl){
     .then(function(r){ return r.json(); })
     .then(function(j){
       if (j && j.success){
-        if (statusEl){ statusEl.textContent = 'Saved ✓ — default layout for ' + (cfg.productType||''); statusEl.style.color = '#5DCAA5'; }
+        // Say the sizes that were actually stored, so a clamp on the server
+        // can never pass for a save.
+        var saved = (j.data && j.data.saved) || {};
+        var sizes = [];
+        if (saved.nameSize  != null) sizes.push('text ' + saved.nameSize);
+        if (saved.badgeSize != null) sizes.push('badge ' + saved.badgeSize);
+        if (statusEl){ statusEl.textContent = 'Saved ✓ — default layout for ' + (cfg.productType||'') + (sizes.length ? ' (' + sizes.join(', ') + ')' : ''); statusEl.style.color = '#5DCAA5'; }
       } else {
         if (statusEl){ statusEl.textContent = 'Error: ' + ((j && j.data) || 'could not save'); statusEl.style.color = '#ff6b6b'; }
       }

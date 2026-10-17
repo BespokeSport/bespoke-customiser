@@ -287,10 +287,13 @@ add_action( 'wp_ajax_bespoke_save_product_geometry', function() {
         }
     }
     // Keep these ranges in step with the customiser's own sliders + pinch /
-    // wheel clamps in customiser.html. nameSize runs to 300 so an armband's
-    // big captain's "C" (default 240) survives a Save placement instead of
-    // being silently clamped down.
-    foreach ( [ 'badgeSize' => [ 50, 500 ], 'nameSize' => [ 40, 300 ], 'numSize' => [ 60, 220 ] ] as $key => $r ) {
+    // wheel clamps in customiser.html — ALL of them, the smallest products'
+    // included. nameSize runs to 300 so an armband's big captain's "C"
+    // (default 240) survives a Save placement instead of being silently
+    // clamped down, and down to 8 because the running tags' text slider
+    // does: with the shin pads' floor of 40, a tag saved at 25 came back
+    // as 40 behind a "Saved" message.
+    foreach ( [ 'badgeSize' => [ 20, 500 ], 'nameSize' => [ 8, 300 ], 'numSize' => [ 8, 220 ] ] as $key => $r ) {
         if ( isset( $data[ $key ] ) ) {
             $clean[ $key ] = max( $r[0], min( $r[1], (int) $data[ $key ] ) );
         }
