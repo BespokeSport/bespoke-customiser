@@ -828,26 +828,33 @@ Tags, **Menu Order ASC**) lists Personalised first, then the 15 A–Z —
 checked against the Store API with `orderby=menu_order`. The shop is an
 Elementor Theme Builder product archive (#1882) whose Products widget runs
 its **own query**, not Current Query (`/shop/page/2/` shows the same
-products as page 1, and `?orderby=price` changes nothing), and **excludes
-by term**: Themed Captain's Armbands and the mug categories (Premier
-League, Championship, Grassroots Shirt Mugs — the shop has a tile for
-each range instead), and now Awareness Running Tags. Don't hide them from
-the catalogue instead: an Elementor products grid skips such products, so
-the range page showed Personalised alone when the pack set them to
-*search only*. That widget sorts by **Menu Order DESC** and shows at most
-**28** products with no page 2: until Awareness Running Tags was excluded,
-the tags (101–115) sat at the top of the shop and pushed the lowest six
-products, Personalised Running Tags among them, off the end. Anything past
-28 drops off silently, so watch the count as products are added (19 in the
-shop on 17 Oct 2026). Every description is 600+ words (Rank Math's content-length
+products as page 1, and `?orderby=price` changes nothing), and leaves
+products out **one by one**: Query → Exclude → Manual Selection lists each
+mug and themed armband by name (the shop has a tile for each range
+instead), and Nick added the 15 awareness tags there on 17 Oct 2026 —
+not by category, so **every new mug, themed armband or awareness tag must
+be added to that list by hand** or it lands in the shop. Three already
+slipped through, on live and staging alike: Remembrance Day armband,
+Grassroots Football mug, Aston Villa mug (asked Nick whether they're meant
+to be there). Don't hide products from the catalogue instead: an Elementor
+products grid skips such products, so the range page showed Personalised
+alone when the pack set them to *search only*. That widget sorts by
+**Menu Order DESC** and shows at most **28** products with no page 2:
+until the awareness tags were excluded, they (101–115) sat at the top of
+the shop and pushed the lowest six products, Personalised Running Tags
+among them, off the end. Anything past 28 drops off silently, so watch the
+count as products are added (19 in the staging shop, 21 in live's, on
+17 Oct 2026). Every description is 600+ words (Rank Math's content-length
 threshold) with the keyword early, in an H2 and ~1% density; each awareness
 tag is written around its own cause, with one link to its main charity —
 Nick: no money goes to them, so the copy never says it does.
 
 **At launch:** Copy to Live makes the products on live as drafts (names,
 addresses, wording, Rank Math, categories, pictures with alt text) but not
-their menu order — so after it, apply the pack on live too, and add
-Awareness Running Tags to the shop template's excluded categories on live.
+their menu order — so after it, apply the pack on live too, and add the
+15 awareness tags, one by one, to live's shop template (Query → Exclude →
+Manual Selection) — live's products get new IDs, so staging's list
+doesn't carry over.
 The Awareness Running Tags page (Elementor) and its shop tile (a product
 with no price, Page Links To → the page, like the pre-designed armbands
 tile) are made on live by hand, then the pack applied once more for the

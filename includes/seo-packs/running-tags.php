@@ -7,15 +7,15 @@
  * descriptions, Rank Math title, description and focus keyword, categories
  * (Running Tags, and Awareness Running Tags for the themed ones), the
  * picture's alt text and the BEspoke Page fields. The awareness tags stay
- * visible: the shop's Elementor template leaves the Awareness Running Tags
- * category out, as it does Themed Captains Armbands, because an Elementor
- * products grid skips anything hidden from the catalogue — the page's own
- * grid included (set to "search only", the page showed Personalised alone).
+ * visible: the shop's Elementor template leaves each one out by name, as it
+ * does every mug and themed armband, because an Elementor products grid
+ * skips anything hidden from the catalogue — the page's own grid included
+ * (set to "search only", the page showed Personalised alone).
  * They're ordered from 101, above Personalised Running Tags, so the page's
  * grid (Menu Order, ascending) shows it first and then the 15 A to Z.
  * Personalised Running Tags' own order, and so its place in the shop, is
  * left alone. (The shop sorts the other way, highest first, so until its
- * template leaves the category out the tags sit at the top of the shop.)
+ * template leaves them out the tags sit at the top of the shop.)
  *
  * Every awareness description is written around its own cause, so fifteen
  * pages don't read as copies of each other. Links inside the site are
@@ -104,8 +104,8 @@ $awareness = function ( $p ) use ( $glance, $personalise, $spec, $delivery, $faq
 		'seo_description' => $p['seo_description'],
 		'focus_keyword'   => $p['keywords'],
 		'categories'      => [ 'running-tags', 'awareness-running-tags' ],
-		// Visible, as the themed armbands are: the shop template leaves the
-		// category out. Hidden from the catalogue, Elementor's grids skip them.
+		// Visible, as the themed armbands are: the shop template leaves each
+		// one out by name. Hidden from the catalogue, Elementor's grids skip them.
 		'visibility'      => 'visible',
 		'menu_order'      => $p['order'],
 		'image_alt'       => $p['name'] . ' – a pair of waterproof aluminium tags for running shoe laces',
@@ -503,7 +503,7 @@ HTML,
 
 return [
 	'name'       => 'Running tags',
-	'summary'    => 'Personalised Running Tags and the 15 awareness tags: names, web addresses, descriptions, Rank Math, categories, alt text and the BEspoke Page fields. The awareness tags sort after Personalised Running Tags on the Awareness Running Tags page; the shop template leaves their category out.',
+	'summary'    => 'Personalised Running Tags and the 15 awareness tags: names, web addresses, descriptions, Rank Math, categories, alt text and the BEspoke Page fields. The awareness tags sort after Personalised Running Tags on the Awareness Running Tags page; the shop template leaves them out.',
 	'categories' => [
 		[
 			'slug'        => 'running-tags',
