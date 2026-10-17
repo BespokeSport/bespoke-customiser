@@ -849,16 +849,35 @@ threshold) with the keyword early, in an H2 and ~1% density; each awareness
 tag is written around its own cause, with one link to its main charity —
 Nick: no money goes to them, so the copy never says it does.
 
-**At launch:** Copy to Live makes the products on live as drafts (names,
-addresses, wording, Rank Math, categories, pictures with alt text) but not
-their menu order — so after it, apply the pack on live too, and add the
-15 awareness tags, one by one, to live's shop template (Query → Exclude →
-Manual Selection) — live's products get new IDs, so staging's list
-doesn't carry over.
-The Awareness Running Tags page (Elementor) and its shop tile (a product
-with no price, Page Links To → the page, like the pre-designed armbands
-tile) are made on live by hand, then the pack applied once more for the
-page's Rank Math fields.
+**At launch — the running tags on live, in this order** (each step
+learned on staging, 17 Oct 2026):
+1. Copy to Live makes the products on live as drafts (names, addresses,
+   wording, Rank Math, categories, pictures with alt text) but not their
+   menu order — so apply the running tags pack on live (Designs → SEO
+   Packs) for menu order 101–115 and anything else that differs.
+2. Shop template #1882 → product grid → Query → Exclude → Manual
+   Selection: add the 15 awareness tags by name (live's products get new
+   IDs, so staging's list doesn't carry over). The shop must not list
+   them; it shows 28 at most.
+3. Duplicate the pre-designed armbands page (its canonical is clean on
+   live now). Close every editor tab, then set the copy's slug to
+   `awareness-running-tags` with Quick Edit.
+4. In ONE fresh Elementor tab: the pack's words (SEO Packs screen, Copy
+   buttons) — H1, intro, H2, button text, button link
+   `/product/personalised-running-tags/`, the causes list (Text Editor,
+   Text tab, between the grid and the questions), the questions; the grid
+   **Source Latest Products**, Include → Term Running Tags + Awareness
+   Running Tags, **Order By Menu Order, ASC**; SEO tab → Advanced →
+   **Canonical URL empty**. Update, close the tab.
+5. Apply the pack again: the page gets its Rank Math title, description
+   and keywords (the duplicate arrives with the armbands page's).
+6. Shop tile: duplicate the armbands tile product (6060), title Awareness
+   Running Tags, permalink `awareness-running-tags`, Links to
+   `https://bespokesport.uk/awareness-running-tags/`, picture
+   `Awareness-Tags` with alt text. It lands beside the armbands tile.
+7. Check from outside: the page lists Personalised then the 15 A–Z, the
+   shop doesn't list the awareness tags, and `page-sitemap.xml` has the
+   page; in Elementor, Rank Math should read 90.
 
 **Duplicating a page copies its web address and its Rank Math fields.**
 Nick made the range page by duplicating the pre-designed armbands page, so
@@ -931,13 +950,16 @@ captains-armband-washing-care, grip-socks-wash-acre,
 grip-socks-washing-care, pre-designed-custom-captains-armbands) and pages
 edited since (home, the-locker-room) keep their old lastmod. Post and
 product sitemaps are current. Likely because the pages are all saved from
-Elementor, which isn't clearing Rank Math's page sitemap cache. Proposed
-fix, a Code Snippet on live:
+Elementor, which isn't clearing Rank Math's page sitemap cache. **Fixed
+the same day** with a Code Snippet on live, "Rank Math – always build
+fresh sitemaps":
 `add_filter( 'rank_math/sitemap/enable_caching', '__return_false' );` —
-Rank Math then builds sitemaps on request (a hundred-odd links, cheap).
-Check `page-sitemap.xml` lists all 20 pages afterwards; if not, the cause
-is elsewhere. `/grip-socks-wash-acre/` is an empty leftover (title only)
-beside the real `/grip-socks-washing-care/` — asked Nick to draft it.
+Rank Math builds sitemaps on request (a hundred-odd links, cheap). Checked
+from outside straight after: `page-sitemap.xml` lists all 19 published
+pages with their real lastmod; posts and products unchanged. The empty
+leftover `/grip-socks-wash-acre/` (title only, beside the real
+`/grip-socks-washing-care/`) is now a draft. If that snippet is ever
+removed, new and edited pages stop reaching the sitemap again.
 ## 7. Tooling notes (for you, on the new machine)
 
 - **There is no PHP locally.** `tools/` in the repo has what you need — run `npm install`
