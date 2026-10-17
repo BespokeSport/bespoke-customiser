@@ -45,13 +45,13 @@ $products[] = [
 <p>Your name, your initials or a nickname, your country's flag, your club badge, or all three together. Text is 1cm high, in capital letters, and as long as your name needs, up to 9cm. Flags and badges are 1cm high as standard, or 2cm high if you'd like them to stand out more.</p>
 <p>A name on the heel and a flag on the side, your initials and your club badge, or just your name in a bold font: every pair is designed by you and made to order.</p>
 <h2>Club badges</h2>
-<p>Grassroots club badges are welcome, so your whole team can wear their badge on their boots. Badges protected by copyright, such as Premier League club badges, can only be ordered from an official club email address.</p>
+<p>Grassroots club badges are welcome on personalised football boot stickers, so your whole team can wear their badge on their boots. Badges protected by copyright, such as Premier League club badges, can only be ordered from an official club email address.</p>
 <h2>Waterproof stickers you apply yourself</h2>
 <p>Every sticker is waterproof, so rain, mud and wet grass won't spoil it, and you apply them yourself, with no heat needed. They must go on a clean, smooth surface, so wipe the boot clean and let it dry first. They won't stick to fabric or suede, so choose a smooth panel on the heel or the side of the boot.</p>
 <h2>Will they fit my boots?</h2>
 <p>Most names fit easily. Longer names can run up to 9cm, so check your boot has a smooth, flat space that long, especially on smaller junior boots. The customiser shows the length of your text as you type, and tells you when it may be too long for a smaller boot.</p>
 <h2>Made to order and posted 1st class</h2>
-<p>Every pair of personalised football boot stickers is made to order, so please allow up to 5 working days before it's posted 1st Class with Royal Mail. They make a great gift for a birthday, a new season or a player of the match.</p>
+<p>Every pair of personalised football boot stickers is made to order, so please allow up to 5 working days before it's posted 1st Class with <a href="https://www.royalmail.com/" target="_blank" rel="noopener">Royal Mail</a>. They make a great gift for a birthday, a new season or a player of the match.</p>
 <h2>Good to know about personalised football boot stickers</h2>
 <h3>How many stickers do I get?</h3>
 <p>They come in pairs, one for each boot.</p>
@@ -63,7 +63,10 @@ $products[] = [
 <p>Clean, smooth, dry surfaces only. They won't stick to fabric, suede or textured panels.</p>
 <p>Kitting out a player for match day? See our <a href="/product/personalised-shin-pads/">personalised shin pads</a> and <a href="/product/personalised-grip-socks-bespoke-sports/">personalised grip socks</a> too.</p>
 HTML,
-	'seo_title'       => 'Personalised Football Boot Stickers – Waterproof, Pair of 2',
+	// Rank Math scored 78 with the first version: no link out, and no positive
+	// or negative word in the title. Royal Mail is the link out; "Perfect" is
+	// the word, and "2 Sizes" keeps a number in it.
+	'seo_title'       => 'Personalised Football Boot Stickers – 2 Sizes, Perfect Pair',
 	'seo_description' => 'Personalised football boot stickers with your name, flag or club badge. A waterproof pair, 1cm or 2cm high, made to order and posted 1st class.',
 	'focus_keyword'   => 'personalised football boot stickers,football boot name stickers',
 	'categories'      => [ 'bespoke' ],
