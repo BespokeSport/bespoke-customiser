@@ -207,6 +207,16 @@ function bespoke_customiser_ui_strings() {
 		'e.g. SMITH'
 			=> __( 'e.g. SMITH', 'bespoke-customiser' ),
 
+		// ── Every badge upload: the copyright notice ─────────────────────
+		'Before you upload your badge'
+			=> __( 'Before you upload your badge', 'bespoke-customiser' ),
+		'Badges protected by copyright, such as Premier League club badges (Liverpool, Man Utd, Chelsea and others), cannot be included. They can only be ordered from an official club email address.'
+			=> __( 'Badges protected by copyright, such as Premier League club badges (Liverpool, Man Utd, Chelsea and others), cannot be included. They can only be ordered from an official club email address.', 'bespoke-customiser' ),
+		'Upload my badge'
+			=> __( 'Upload my badge', 'bespoke-customiser' ),
+		'Cancel'
+			=> __( 'Cancel', 'bespoke-customiser' ),
+
 		// ── Boot stickers: the 20mm upgrade in the sticker menu ──────────
 		'Size'
 			=> __( 'Size', 'bespoke-customiser' ),
