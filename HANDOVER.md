@@ -769,6 +769,19 @@ note, "save payment information", other gateways' text) is dark by
 bespoke-master.css. The PayPal "Pay in 30 days" message is PayPal's frame:
 its text colour is a PayPal Payments setting, not ours.
 
+### 6.26 Every badge upload asks about copyright first
+
+Before the file window opens for a badge, `bespokeBadgeNotice()` shows a
+pop-up: badges protected by copyright (Premier League clubs) can't be
+included and can only be ordered from an official club email address
+(Nick, 17 Oct 2026). A capture-phase click listener on the document stops
+the click on any input in `BESPOKE_BADGE_INPUTS` (`badge-file`,
+`badge2-file`) — whether it came from the input, a label for it or a
+script — and the notice's "Upload my badge" button clicks the input again
+(a real user click, which browsers need before opening a file window).
+Confirmed once per page visit. **A new badge upload input must be added to
+`BESPOKE_BADGE_INPUTS`**, or it will skip the notice.
+
 ## 7. Tooling notes (for you, on the new machine)
 
 - **There is no PHP locally.** `tools/` in the repo has what you need — run `npm install`
