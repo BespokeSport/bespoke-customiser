@@ -6,11 +6,14 @@
  * ("… Awareness Running Tags" — every one is a pair), its web address, both
  * descriptions, Rank Math title, description and focus keyword, categories
  * (Running Tags, and Awareness Running Tags for the themed ones), the
- * picture's alt text and the BEspoke Page fields. The awareness tags leave
- * the shop (search only, not the shop) for the Awareness Running Tags page,
- * where they come after Personalised Running Tags: they're ordered from 101,
- * past anything the shop's own order uses, so Personalised Running Tags keeps
- * its place in the shop and still comes first on the page.
+ * picture's alt text and the BEspoke Page fields. The awareness tags stay
+ * visible: the shop's Elementor template leaves the Awareness Running Tags
+ * category out, as it does Themed Captains Armbands, because an Elementor
+ * products grid skips anything hidden from the catalogue — the page's own
+ * grid included (set to "search only", the page showed Personalised alone).
+ * They're ordered from 101, past anything the shop's own order uses, so
+ * Personalised Running Tags keeps its place in the shop and still comes
+ * first on the page.
  *
  * Every awareness description is written around its own cause, so fifteen
  * pages don't read as copies of each other. Links inside the site are
@@ -99,7 +102,9 @@ $awareness = function ( $p ) use ( $glance, $personalise, $spec, $delivery, $faq
 		'seo_description' => $p['seo_description'],
 		'focus_keyword'   => $p['keywords'],
 		'categories'      => [ 'running-tags', 'awareness-running-tags' ],
-		'visibility'      => 'search',
+		// Visible, as the themed armbands are: the shop template leaves the
+		// category out. Hidden from the catalogue, Elementor's grids skip them.
+		'visibility'      => 'visible',
 		'menu_order'      => $p['order'],
 		'image_alt'       => $p['name'] . ' – a pair of waterproof aluminium tags for running shoe laces',
 		'eyebrow'         => 'THE CUSTOMISER',
@@ -496,7 +501,7 @@ HTML,
 
 return [
 	'name'       => 'Running tags',
-	'summary'    => 'Personalised Running Tags and the 15 awareness tags: names, web addresses, descriptions, Rank Math, categories, alt text and the BEspoke Page fields. The awareness tags leave the shop for the Awareness Running Tags page, after Personalised Running Tags.',
+	'summary'    => 'Personalised Running Tags and the 15 awareness tags: names, web addresses, descriptions, Rank Math, categories, alt text and the BEspoke Page fields. The awareness tags sort after Personalised Running Tags on the Awareness Running Tags page; the shop template leaves their category out.',
 	'categories' => [
 		[
 			'slug'        => 'running-tags',

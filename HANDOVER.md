@@ -822,9 +822,13 @@ no named functions.
 
 **Running tags pack (17 Oct 2026):** the 16 tag products become "… Running
 Tags" at "…-running-tags"; categories Running Tags › Awareness Running Tags;
-the 15 awareness tags go to *search only* (out of the shop, still in the
-site's search box — the themed armbands are fully hidden) and menu order
-101–115, past the shop's own hand-sorted order, so Personalised Running Tags
+the 15 awareness tags stay **visible** and get menu order 101–115, past the
+shop's own hand-sorted order. The shop is an Elementor Theme Builder
+product archive (#1882) whose Products widget **excludes by category** —
+Themed Captains Armbands, and now Awareness Running Tags — which is how
+those stay out of the shop. Don't hide them from the catalogue instead: an
+Elementor products grid skips such products, so the range page showed
+Personalised alone when the pack set them to *search only*. Personalised Running Tags
 keeps its shop place and still comes first on the Awareness Running Tags
 page, whose Elementor products grid shows category Running Tags by Menu
 order. Every description is 600+ words (Rank Math's content-length
@@ -834,7 +838,8 @@ Nick: no money goes to them, so the copy never says it does.
 
 **At launch:** Copy to Live makes the products on live as drafts (names,
 addresses, wording, Rank Math, categories, pictures with alt text) but not
-their visibility or menu order — so after it, apply the pack on live too.
+their menu order — so after it, apply the pack on live too, and add
+Awareness Running Tags to the shop template's excluded categories on live.
 The Awareness Running Tags page (Elementor) and its shop tile (a product
 with no price, Page Links To → the page, like the pre-designed armbands
 tile) are made on live by hand, then the pack applied once more for the
