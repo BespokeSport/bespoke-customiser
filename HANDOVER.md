@@ -912,11 +912,32 @@ asked for.
 added to the shop template's excluded products on staging and live (Nick,
 17 Oct 2026); the Grassroots Football mug stays in the shop on purpose.
 
-**Live sitemap:** with its canonical fixed, the pre-designed armbands page
-(live #6061) was still missing from `page-sitemap.xml` — though the
-sitemap index's page lastmod matched its save time, and the mugs range
-page is listed — so something excludes that one page: first suspect,
-Rank Math → Sitemap Settings → General → Exclude Posts.
+**Range page score:** 90/100 with the extra paragraphs and the new title
+(728 words); the one red left is "use Content AI".
+
+**The shop tile** on staging is a duplicate of the armbands tile (product
+6060): title Awareness Running Tags, web address `awareness-running-tags`
+(the tile's address matches its page, as 6060's does), Links to → the
+page, its own picture. Everything else stays as copied — the tile only
+forwards visitors to the page.
+
+**Live page sitemap is stale (found 17 Oct 2026).** With its canonical
+fixed, the pre-designed armbands page (live #6061) was still missing from
+`page-sitemap.xml`, and Exclude Posts in Rank Math's sitemap settings is
+empty. Comparing every page's REST `modified_gmt` with the sitemap showed
+why: the page sitemap is a cached copy built between 22 Nov 2025 and
+27 Jan 2026 — every page created since is missing (cookie-policy-uk,
+captains-armband-washing-care, grip-socks-wash-acre,
+grip-socks-washing-care, pre-designed-custom-captains-armbands) and pages
+edited since (home, the-locker-room) keep their old lastmod. Post and
+product sitemaps are current. Likely because the pages are all saved from
+Elementor, which isn't clearing Rank Math's page sitemap cache. Proposed
+fix, a Code Snippet on live:
+`add_filter( 'rank_math/sitemap/enable_caching', '__return_false' );` —
+Rank Math then builds sitemaps on request (a hundred-odd links, cheap).
+Check `page-sitemap.xml` lists all 20 pages afterwards; if not, the cause
+is elsewhere. `/grip-socks-wash-acre/` is an empty leftover (title only)
+beside the real `/grip-socks-washing-care/` — asked Nick to draft it.
 ## 7. Tooling notes (for you, on the new machine)
 
 - **There is no PHP locally.** `tools/` in the repo has what you need — run `npm install`
