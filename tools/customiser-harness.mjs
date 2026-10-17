@@ -77,6 +77,25 @@ function pseudoI18n() {
   return map;
 }
 
+// customiser-frontend.php splits customiser.html with regexes, and the first
+// <body ...> it meets starts the markup. A second one anywhere — even in a
+// comment in the stylesheet — prints the rest of the CSS as text on every
+// product page (17 Oct 2026). Exactly one of each, or a red bar says so here.
+function tagWarning(raw) {
+  const counts = {
+    '<head': (raw.match(/<head[\s>]/gi) || []).length,
+    '</head>': (raw.match(/<\/head>/gi) || []).length,
+    '<body': (raw.match(/<body[\s>]/gi) || []).length,
+    '</body>': (raw.match(/<\/body>/gi) || []).length,
+  };
+  const wrong = Object.keys(counts).filter(k => counts[k] !== 1);
+  if (!wrong.length) return '';
+  const what = wrong.map(k => counts[k] + ' x ' + k.replace('<', '&lt;')).join(', ');
+  console.error('customiser.html: ' + what.replace(/&lt;/g, '<') + ' - must be exactly one of each (HANDOVER 6.27)');
+  return '<div style="background:#b00020;color:#fff;padding:14px 18px;font:600 14px/1.4 sans-serif;">customiser.html has ' + what +
+    ' &mdash; there must be exactly one of each, or the real page prints its own CSS as text. See HANDOVER 6.27.</div>';
+}
+
 function page(type, i18n) {
   const raw = fs.readFileSync(path.join(repo, 'assets/customiser.html'), 'utf8');
   const head = (raw.match(/<head[^>]*>([\s\S]*?)<\/head>/i) || [, ''])[1];
@@ -96,6 +115,7 @@ function page(type, i18n) {
 ${i18n ? '<script>window.BESPOKE_I18N = ' + JSON.stringify(pseudoI18n()) + ';</script>' : ''}
 <script>${FETCH_STUB}</script>
 </head><body style="margin:0;background:#0D0D0D;">
+${tagWarning(raw)}
 <div id="bespoke-customiser-root" data-product-type="${type}">
 ${styles}
 ${body}

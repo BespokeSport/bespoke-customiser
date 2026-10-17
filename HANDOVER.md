@@ -783,6 +783,22 @@ It asks every time a badge is uploaded: `_bespokeBadgeNoticePass` lets
 just that one click through. **A new badge upload input must be added to
 `BESPOKE_BADGE_INPUTS`**, or it will skip the notice.
 
+### 6.27 Never write the page's own tags in customiser.html — not even in a comment
+
+`customiser-frontend.php` doesn't parse customiser.html: it splits it with
+regexes — `/<head[^>]*>(.*?)<\/head>/` for the styles and
+`/<body[^>]*>(.*)<\/body>/` for the markup. The FIRST `<body …>` it meets
+starts the markup, wherever it is. On 17 Oct 2026 a CSS comment said the
+badge notice is "added to the page's <body>": the split started there, and
+every product page printed the rest of the stylesheet as text (commit
+affbaf1 fixed it). The same goes for `<head`, `</head>` and `</body>` — and
+`</style>` / `</script>` inside a block end that block early.
+
+**Rule:** customiser.html has exactly one each of `<head`, `</head>`,
+`<body` and `</body>`. Write "the page's body", never the tag. The harness
+(`tools/customiser-harness.mjs`) shows a red bar and logs an error when the
+count is wrong — look at a harness page after every customiser.html edit,
+not only at what the scripts do.
 ## 7. Tooling notes (for you, on the new machine)
 
 - **There is no PHP locally.** `tools/` in the repo has what you need — run `npm install`
