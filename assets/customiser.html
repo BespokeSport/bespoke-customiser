@@ -57,6 +57,9 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
    its own above Back / Next rather than fighting them for width. */
 .nav-row{flex-wrap:wrap;}
 .bcp-buy{flex:1 0 100%;display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+/* Running tags: what they are for, under the buttons — see bespokeTagSportNote(). */
+.bcp-tag-note{flex:1 0 100%;display:flex;gap:8px;align-items:flex-start;margin:10px 0 0;font-size:12px;line-height:1.45;color:#9A9A95;}
+.bcp-tag-note svg{flex:none;margin-top:1px;}
 /* When the variation changes, bespokeRefreshPriceDisplay() swaps in
    WooCommerce price HTML, which arrives wrapped in the theme's own markup
    and brings the theme's size and colour with it — the price jumped to large
@@ -4039,6 +4042,31 @@ function bespokeBuyBarInit(){
     nav.insertBefore(bar, nav.firstChild);
   }
   bespokeBuyBarPrice();
+  bespokeTagSportNote();
+}
+
+/**
+ * Running tags: what they are for, under the Add to basket on every step.
+ *
+ * Metal on laces is barred from matches in most team sports — football and
+ * rugby, and basketball, netball and hockey too — so a customer buying for
+ * a match has to hear it before they buy, not in the small print. Every
+ * running-tag product (plain, themed, emergency ID) is the same tag, so it
+ * goes on them all.
+ */
+function bespokeTagSportNote(){
+  if (typeof bespokeBaseType !== 'function' || bespokeBaseType() !== 'running_tags') return;
+  for (var i = 0; i < 5; i++) {
+    var nav = document.querySelector('#s' + i + ' .nav-row');
+    if (!nav || nav.querySelector('.bcp-tag-note')) continue;
+    var note = document.createElement('p');
+    note.className = 'bcp-tag-note';
+    note.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5DCAA5" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>';
+    var words = document.createElement('span');
+    words.textContent = bespokeT('Made for running, walking and everyday trainers. Not for football, rugby or other team sports — match rules don\'t allow metal on footwear.');
+    note.appendChild(words);
+    nav.appendChild(note);
+  }
 }
 
 /**

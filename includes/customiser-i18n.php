@@ -162,6 +162,30 @@ function bespoke_customiser_ui_strings() {
 		'Please try again.'                 => __( 'Please try again.', 'bespoke-customiser' ),
 		'Sorry, there was a connection problem. Please try again.'
 			=> __( 'Sorry, there was a connection problem. Please try again.', 'bespoke-customiser' ),
+
+		// ── Running tags: the pair, and what they are for ─────────────────
+		'Same badges on both tags'
+			=> __( 'Same badges on both tags', 'bespoke-customiser' ),
+		'Turn off to give each tag its own badges'
+			=> __( 'Turn off to give each tag its own badges', 'bespoke-customiser' ),
+		'Right tag'
+			=> __( 'Right tag', 'bespoke-customiser' ),
+		'Left tag'
+			=> __( 'Left tag', 'bespoke-customiser' ),
+		'Design'
+			=> __( 'Design', 'bespoke-customiser' ),
+		'Made for running, walking and everyday trainers. Not for football, rugby or other team sports — match rules don\'t allow metal on footwear.'
+			=> __( 'Made for running, walking and everyday trainers. Not for football, rugby or other team sports — match rules don\'t allow metal on footwear.', 'bespoke-customiser' ),
+
+		// ── Boot stickers: before anything goes in the basket ─────────────
+		'Choose at least one sticker.'
+			=> __( 'Choose at least one sticker.', 'bespoke-customiser' ),
+		'Upload your club badge, or untick the badge sticker.'
+			=> __( 'Upload your club badge, or untick the badge sticker.', 'bespoke-customiser' ),
+		'Add the text for your name sticker, or untick it.'
+			=> __( 'Add the text for your name sticker, or untick it.', 'bespoke-customiser' ),
+		'Choose a flag, or tell us the one you need.'
+			=> __( 'Choose a flag, or tell us the one you need.', 'bespoke-customiser' ),
 	];
 
 	// Only what a translation actually changed.
