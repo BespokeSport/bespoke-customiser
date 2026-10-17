@@ -212,6 +212,8 @@ function bespoke_customiser_ui_strings() {
 			=> __( 'Before you upload your badge', 'bespoke-customiser' ),
 		'Badges protected by copyright, such as Premier League club badges (Liverpool, Man Utd, Chelsea and others), cannot be included. They can only be ordered from an official club email address.'
 			=> __( 'Badges protected by copyright, such as Premier League club badges (Liverpool, Man Utd, Chelsea and others), cannot be included. They can only be ordered from an official club email address.', 'bespoke-customiser' ),
+		'Grassroots club badges are allowed.'
+			=> __( 'Grassroots club badges are allowed.', 'bespoke-customiser' ),
 		'Upload my badge'
 			=> __( 'Upload my badge', 'bespoke-customiser' ),
 		'Cancel'

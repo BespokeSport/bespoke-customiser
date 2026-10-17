@@ -41,7 +41,8 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
 #bcp-badge-notice .bcp-bn-head{display:flex;gap:10px;align-items:center;margin:0 0 10px;}
 #bcp-badge-notice .bcp-bn-head svg{flex:none;}
 #bcp-badge-notice .bcp-bn-title{color:#F5F5F0 !important;font-size:16px !important;font-weight:700 !important;margin:0 !important;line-height:1.3 !important;text-transform:none !important;letter-spacing:0 !important;}
-#bcp-badge-notice .bcp-bn-text{color:#BFBFBA !important;font-size:14px !important;line-height:1.55 !important;margin:0 0 18px !important;text-transform:none !important;letter-spacing:0 !important;}
+#bcp-badge-notice .bcp-bn-text{color:#BFBFBA !important;font-size:14px !important;line-height:1.55 !important;margin:0 0 10px !important;text-transform:none !important;letter-spacing:0 !important;}
+#bcp-badge-notice .bcp-bn-yes{color:#5DCAA5 !important;font-size:14px !important;font-weight:600 !important;line-height:1.55 !important;margin:0 0 18px !important;text-transform:none !important;letter-spacing:0 !important;}
 #bcp-badge-notice .bcp-bn-ok,
 #bcp-badge-notice .bcp-bn-cancel{display:block !important;width:100% !important;border-radius:10px !important;padding:12px !important;font-family:inherit !important;font-size:14px !important;font-weight:700 !important;letter-spacing:.04em !important;text-transform:uppercase !important;cursor:pointer !important;margin:0 !important;line-height:1.2 !important;}
 #bcp-badge-notice .bcp-bn-ok{background:#5DCAA5 !important;color:#04342C !important;border:none !important;}
@@ -5865,11 +5866,13 @@ function bespokeBadgeNotice(input){
         '<p class="bcp-bn-title" id="bcp-bn-title"></p>' +
       '</div>' +
       '<p class="bcp-bn-text"></p>' +
+      '<p class="bcp-bn-yes"></p>' +
       '<button type="button" class="bcp-bn-ok"></button>' +
       '<button type="button" class="bcp-bn-cancel"></button>' +
     '</div>';
   box.querySelector('.bcp-bn-title').textContent = bespokeT('Before you upload your badge');
   box.querySelector('.bcp-bn-text').textContent = bespokeT('Badges protected by copyright, such as Premier League club badges (Liverpool, Man Utd, Chelsea and others), cannot be included. They can only be ordered from an official club email address.');
+  box.querySelector('.bcp-bn-yes').textContent = bespokeT('Grassroots club badges are allowed.');
   var ok = box.querySelector('.bcp-bn-ok'), cancel = box.querySelector('.bcp-bn-cancel');
   ok.textContent = bespokeT('Upload my badge');
   cancel.textContent = bespokeT('Cancel');
