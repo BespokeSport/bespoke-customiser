@@ -822,16 +822,24 @@ no named functions.
 
 **Running tags pack (17 Oct 2026):** the 16 tag products become "… Running
 Tags" at "…-running-tags"; categories Running Tags › Awareness Running Tags;
-the 15 awareness tags stay **visible** and get menu order 101–115, past the
-shop's own hand-sorted order. The shop is an Elementor Theme Builder
-product archive (#1882) whose Products widget **excludes by category** —
-Themed Captains Armbands, and now Awareness Running Tags — which is how
-those stay out of the shop. Don't hide them from the catalogue instead: an
-Elementor products grid skips such products, so the range page showed
-Personalised alone when the pack set them to *search only*. Personalised Running Tags
-keeps its shop place and still comes first on the Awareness Running Tags
-page, whose Elementor products grid shows category Running Tags by Menu
-order. Every description is 600+ words (Rank Math's content-length
+the 15 awareness tags stay **visible** and get menu order 101–115, above
+Personalised Running Tags', so the range page's grid (category Running
+Tags, **Menu Order ASC**) lists Personalised first, then the 15 A–Z —
+checked against the Store API with `orderby=menu_order`. The shop is an
+Elementor Theme Builder product archive (#1882) whose Products widget runs
+its **own query**, not Current Query (`/shop/page/2/` shows the same
+products as page 1, and `?orderby=price` changes nothing), and **excludes
+by term**: Themed Captain's Armbands and the mug categories (Premier
+League, Championship, Grassroots Shirt Mugs — the shop has a tile for
+each range instead), and now Awareness Running Tags. Don't hide them from
+the catalogue instead: an Elementor products grid skips such products, so
+the range page showed Personalised alone when the pack set them to
+*search only*. That widget sorts by **Menu Order DESC** and shows at most
+**28** products with no page 2: until Awareness Running Tags was excluded,
+the tags (101–115) sat at the top of the shop and pushed the lowest six
+products, Personalised Running Tags among them, off the end. Anything past
+28 drops off silently, so watch the count as products are added (19 in the
+shop on 17 Oct 2026). Every description is 600+ words (Rank Math's content-length
 threshold) with the keyword early, in an H2 and ~1% density; each awareness
 tag is written around its own cause, with one link to its main charity —
 Nick: no money goes to them, so the copy never says it does.
@@ -844,6 +852,23 @@ The Awareness Running Tags page (Elementor) and its shop tile (a product
 with no price, Page Links To → the page, like the pre-designed armbands
 tile) are made on live by hand, then the pack applied once more for the
 page's Rank Math fields.
+
+**Duplicating a page copies its web address and its Rank Math fields.**
+Nick made the range page by duplicating the pre-designed armbands page, so
+on staging it came out at `/pre-designed-custom-captains-armbands-2/` with
+the armbands page's Rank Math title, description and **Canonical URL**.
+The pack finds a page only by its web address, so it reported "Not here
+yet" until the slug became `awareness-running-tags` (Pages → Quick Edit).
+The canonical was a fault on the armbands page itself, on **live** too
+(found 17 Oct 2026): Rank Math → Advanced → Canonical URL held the words
+"Pre-Designed Custom Captains Armbands", so the page declared
+`/Pre-Designed%20Custom%20Captains%20Armbands` as its real address (it
+serves the same page, spaces and all) and Rank Math left the page out of
+the sitemap. Clearing that box fixes both. Every other live page and
+product canonicalises to itself (all 88 sitemap addresses and all 20
+pages checked). Do the Elementor edits before applying the pack, and
+reopen Elementor afterwards — to be safe, so an editor opened earlier
+can't save older Rank Math values over the pack's.
 ## 7. Tooling notes (for you, on the new machine)
 
 - **There is no PHP locally.** `tools/` in the repo has what you need — run `npm install`

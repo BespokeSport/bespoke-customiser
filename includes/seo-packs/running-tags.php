@@ -11,9 +11,11 @@
  * category out, as it does Themed Captains Armbands, because an Elementor
  * products grid skips anything hidden from the catalogue — the page's own
  * grid included (set to "search only", the page showed Personalised alone).
- * They're ordered from 101, past anything the shop's own order uses, so
- * Personalised Running Tags keeps its place in the shop and still comes
- * first on the page.
+ * They're ordered from 101, above Personalised Running Tags, so the page's
+ * grid (Menu Order, ascending) shows it first and then the 15 A to Z.
+ * Personalised Running Tags' own order, and so its place in the shop, is
+ * left alone. (The shop sorts the other way, highest first, so until its
+ * template leaves the category out the tags sit at the top of the shop.)
  *
  * Every awareness description is written around its own cause, so fifteen
  * pages don't read as copies of each other. Links inside the site are
