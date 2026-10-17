@@ -197,7 +197,8 @@ function bespoke_seo_plan( $pack ) {
 				'type'    => $type,
 				'entry'   => $entry,
 				'id'      => $id,
-				'label'   => $entry['title'] ?? ( $entry['slug'] ?? ( $entry['match'][0] ?? '' ) ),
+				// 'label' names a row whose product name the pack leaves alone.
+				'label'   => $entry['label'] ?? ( $entry['title'] ?? ( $entry['slug'] ?? ( $entry['match'][0] ?? '' ) ) ),
 				'changes' => [],
 				'notes'   => [],
 			];

@@ -943,14 +943,51 @@ Awareness, Football vs Homophobia, Made for this Game, Love is Love and
 World Cancer Day captain armbands, Personalised Double Sided Captain's
 Armbands, and the Wolverhampton and Arsenal mugs. Checked from outside:
 descriptions of 141–208 words (Rank Math's product minimum is 200) with
-no subheadings and no links; the keyword used once, or never (Pride
-Captains Armband's description is a single word; Made for this Game and
-Double Sided don't use theirs); a few miss it in the meta description
-(Professional League), the picture's alt text (Women's Day, Mental
+no subheadings and no links; the keyword used once, or never (Made for
+this Game — quote marks split it — and Double Sided don't use theirs); a
+few miss it in the meta description (Professional League's was the Baby
+Loss armband's, pasted in), the picture's alt text (Women's Day, Mental
 Health, Double Sided) or the title's start (Double Sided: "Lead Your Team
 with …"). Personalised Football Boot Stickers has no Rank Math fields at
 all, no category and no picture. The Hull City mug (5737) is named
 "… Fan-Made Gift (Copy)" on live and staging alike.
+
+**Trap: a variation can share its product's web address.** The Store
+API's `?slug=pride-captains-armband` returns variation 4982 (empty, no
+categories, £10), not product 4967 — so a check by slug reported the
+Pride armband's description as one word, and Nick was told so before it
+was caught. Read products by ID (`/wc/store/v1/products/<id>`). The SEO
+pack's search looks at products only, so it finds 4967.
+
+**Armbands and mugs pack** (`includes/seo-packs/armbands-mugs.php`):
+those twelve, plus the Hull City name. Nick's wording is kept — tidied,
+not rewritten — and gains a keyword subheading, the cause's day with one
+link to the organisation behind it (HMD Trust, internationalwomensday.com,
+Stonewall, Mind, Kick It Out, Cancer Research UK), the official sizes,
+care from his washing guide with a link to it, and links to the range
+pages; Rank Math titles (keyword first, a number) and descriptions
+(≤ 160) where they missed, alt text where it lacked the keyword. Measured
+before upload: 290–434 words, keyword ~1%, in the first 10% and in a
+subheading. Entries find their product by `match` and name their row by
+`label` (new in `customiser-seo-pack.php`), so names, web addresses, focus
+keywords and short descriptions aren't touched — only the Hull City
+`title`. The washing guide (`/captains-armband-washing-care/`) is on live
+only — made after staging was copied — so that link 404s on staging until
+launch.
+
+**Boot stickers pack** (`includes/seo-packs/boot-stickers.php`): the
+whole product page — description (476 words), short description, Rank
+Math, BEspoke category, BEspoke Page fields. Facts from Nick (17 Oct
+2026): pairs, waterproof, self-applied with no heat, MUST go on a clean
+smooth surface, 1cm or 2cm high, posted 1st Class Royal Mail; the
+material is not to be named. Lead time "> 5 day" written as "up to 5
+working days" — asked Nick to confirm. Alt text waits for a picture.
+
+**Undo covers the last pack applied only** (`bespoke_seo_last_run` holds
+one run): apply one pack, check it, then the next. Earlier packs' posts
+keep their `_bespoke_seo_backup`, so a per-pack undo could be built from
+those if it's ever needed. **At launch** apply both packs on live too
+(after Copy to Live has made the boot stickers product).
 
 **The shop tile** on staging is a duplicate of the armbands tile (product
 6060): title Awareness Running Tags, web address `awareness-running-tags`
