@@ -352,6 +352,9 @@ function bespoke_render_customiser( $atts ) {
                 'thumb'   => $thumb_url,
                 'svg_url' => $svg_url,
                 'layers'  => is_array( $layers ) ? array_values( $layers ) : [],
+                // Wording the design starts with ("AUTISM AWARENESS"), if any.
+                'start_text'   => (string) get_post_meta( $p->ID, '_bespoke_start_text', true ),
+                'start_colour' => (string) get_post_meta( $p->ID, '_bespoke_start_colour', true ),
             ];
         }
     }
@@ -890,6 +893,18 @@ function bespoke_render_customiser( $atts ) {
                             }
                         });
                         window.S._bcpSeededDesign = _designId;
+                    }
+                }
+
+                // ─── Starting text, from the design ─────────────────────
+                // A design can carry its own wording — AUTISM AWARENESS on
+                // a blank awareness pattern. Applied once per design, and
+                // only while the customer's text is still the design's own:
+                // their own words are never replaced (bespokeApplyStartText).
+                if (d && window.S._bcpTextDesign !== String(d.id || '')) {
+                    window.S._bcpTextDesign = String(d.id || '');
+                    if (typeof window.bespokeApplyStartText === 'function') {
+                        try { window.bespokeApplyStartText(d.start_text || '', d.start_colour || ''); } catch (e) {}
                     }
                 }
 

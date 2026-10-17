@@ -1848,6 +1848,8 @@ var BESPOKE_FACE_FIELDS = [
   // the OTHER face's design id here, so the re-render wiped a Surprise-Me'd
   // face's colours back to the default (the "reverts to red" bug).
   '_bcpSeededDesign',
+  // The same for the design's starting wording (bespokeApplyStartText).
+  '_bcpTextDesign', '_bcpStartText', '_bcpStartColour',
   // Whether this face's colours are the customer's own picks.
   'coloursChosen',
   'badgeSize','nameSize','numSize',
@@ -5143,6 +5145,60 @@ function toggleSameNum(){
 }
 function switchNT(s){document.getElementById('ntL').className='pad-tab'+(s==='L'?' active':'');document.getElementById('ntR').className='pad-tab'+(s==='R'?' active':'');document.getElementById('nLb').style.display=s==='L'?'block':'none';document.getElementById('nRb').style.display=s==='R'?'block':'none';}
 function switchNT2(s){document.getElementById('nt2L').className='pad-tab'+(s==='L'?' active':'');document.getElementById('nt2R').className='pad-tab'+(s==='R'?' active':'');document.getElementById('n2Lb').style.display=s==='L'?'block':'none';document.getElementById('n2Rb').style.display=s==='R'?'block':'none';}
+/**
+ * A design's own starting wording, put in the text box as if typed, so it
+ * is on the product from the first look and changed like any text. Only
+ * while the text is still the last design's own, or empty — the customer's
+ * own words are never replaced, and a design with no wording clears only
+ * wording that came from the design before it. Called by the design
+ * renderer the first time it paints a design (customiser-frontend.php).
+ */
+function bespokeApplyStartText(text, colour){
+  if (!window.S) return;
+  bespokeApplyStartColour(colour);
+  var next = String(text || '').toUpperCase();
+  var prev = S._bcpStartText || '';
+  var l = S.nameL || '', r = S.nameR || '';
+  var untouched = (l === '' || l === prev) && (r === '' || r === prev);
+  if (!untouched) return;
+  S._bcpStartText = next;
+  if (l === next && r === next) return;
+  S.nameL = next;
+  S.nameR = next;
+  ['name-both', 'name-L', 'name-R'].forEach(function(id){
+    var ta = document.getElementById(id);
+    if (!ta) return;
+    ta.value = next;
+    ta.style.height = 'auto';
+    if (ta.scrollHeight) ta.style.height = ta.scrollHeight + 'px';
+  });
+  ['nbc', 'nLc', 'nRc'].forEach(function(id){
+    var el = document.getElementById(id);
+    if (el) el.textContent = next.length;
+  });
+  // After the renderer has finished its own pass.
+  setTimeout(function(){ if (typeof syncAll === 'function') syncAll(); }, 0);
+}
+/**
+ * The colour a design's starting text is shown in — dark text on a white
+ * pattern, where the usual white would vanish. Only while the customer has
+ * not picked a text colour of their own: the usual colour, or the last
+ * design's, counts as not picked.
+ */
+function bespokeApplyStartColour(colour){
+  if (!window.S) return;
+  var usual = (typeof DEFCOL === 'object' && DEFCOL.name) ? DEFCOL.name : '#FFFFFF';
+  var prev  = S._bcpStartColour || '';
+  var cur   = String(S.nameColor || '').toLowerCase();
+  var picked = cur !== String(usual).toLowerCase() && cur !== String(prev).toLowerCase();
+  if (picked) return;
+  var next = /^#[0-9a-f]{6}$/i.test(String(colour || '')) ? colour : usual;
+  S._bcpStartColour = (next === usual) ? '' : next;
+  if (cur === String(next).toLowerCase()) return;
+  S.nameColor = next;
+  var ct = document.getElementById('ct-name'); if (ct) ct.style.background = next;
+  var cp = document.getElementById('cp-name'); if (cp) cp.value = next;
+}
 function onNameBoth(){var ta=document.getElementById('name-both');var cur=ta.selectionStart;var v=ta.value.toUpperCase();if(ta.value!==v){ta.value=v;try{ta.setSelectionRange(cur,cur);}catch(e){}}ta.style.height='auto';ta.style.height=ta.scrollHeight+'px';document.getElementById('nbc').textContent=v.length;S.nameL=v;S.nameR=v;syncAll();}
 function onNameSplit(side){var ta=document.getElementById('name-'+side);var cur=ta.selectionStart;var v=ta.value.toUpperCase();if(ta.value!==v){ta.value=v;try{ta.setSelectionRange(cur,cur);}catch(e){}}ta.style.height='auto';ta.style.height=ta.scrollHeight+'px';document.getElementById('n'+side+'c').textContent=v.length;if(side==='L')S.nameL=v;else S.nameR=v;syncAll();}
 function onNumBoth(){var v=document.getElementById('num-both').value;S.numL=v;S.numR=v;syncAll();}

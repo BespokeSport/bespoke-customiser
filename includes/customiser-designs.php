@@ -410,6 +410,8 @@ function bespoke_design_details_cb( $post ) {
     $active       = get_post_meta( $post->ID, '_bespoke_active',   true );
     $order        = get_post_meta( $post->ID, '_bespoke_order',    true );
     $products     = get_post_meta( $post->ID, '_bespoke_products', true );
+    $start_text   = (string) get_post_meta( $post->ID, '_bespoke_start_text', true );
+    $start_colour = (string) get_post_meta( $post->ID, '_bespoke_start_colour', true );
     $active       = $active   === '' ? '1'  : $active;   // Default: active
     $order        = $order    === '' ? '10' : $order;    // Default: order 10
     $products     = is_array( $products ) ? $products : [];
@@ -452,6 +454,26 @@ function bespoke_design_details_cb( $post ) {
                     <?php endforeach; ?>
                 </fieldset>
                 <p class="description">Tick every product type this design can be used with.</p>
+            </td>
+        </tr>
+        <tr>
+            <th><label for="bespoke_start_text">Starting text</label></th>
+            <td>
+                <textarea name="bespoke_start_text" id="bespoke_start_text" rows="2" maxlength="60"
+                          style="width:100%;max-width:360px;text-transform:uppercase;"><?php echo esc_textarea( $start_text ); ?></textarea>
+                <p class="description">Optional. Wording that starts on the product with this design, e.g. AUTISM AWARENESS — the customer can change it. Press Enter for a second line. Leave empty for none.</p>
+            </td>
+        </tr>
+        <tr>
+            <th><label for="bespoke_start_colour">Starting text colour</label></th>
+            <td>
+                <input type="text" name="bespoke_start_colour" id="bespoke_start_colour"
+                       value="<?php echo esc_attr( $start_colour ); ?>" placeholder="#1A1A1A"
+                       maxlength="7" style="width:110px;font-family:monospace;" />
+                <?php if ( $start_colour ) : ?>
+                    <span style="display:inline-block;width:22px;height:22px;vertical-align:middle;border:1px solid #ccc;border-radius:3px;background:<?php echo esc_attr( $start_colour ); ?>;"></span>
+                <?php endif; ?>
+                <p class="description">Optional. A hex colour for the text that reads on this design — white text vanishes on a white pattern. Leave empty for the product's usual colour.</p>
             </td>
         </tr>
     </table>
@@ -1041,6 +1063,21 @@ function bespoke_design_save_meta( $post_id, $post ) {
     update_post_meta( $post_id, '_bespoke_order',
         absint( $_POST['bespoke_order'] ?? 10 )
     );
+
+    // ── Starting text ─────────────────────────────────────────────────────────
+    $start_text = sanitize_textarea_field( wp_unslash( $_POST['bespoke_start_text'] ?? '' ) );
+    $start_text = function_exists( 'mb_substr' ) ? mb_substr( $start_text, 0, 60 ) : substr( $start_text, 0, 60 );
+    if ( $start_text !== '' ) {
+        update_post_meta( $post_id, '_bespoke_start_text', $start_text );
+    } else {
+        delete_post_meta( $post_id, '_bespoke_start_text' );
+    }
+    $start_colour = sanitize_hex_color( trim( (string) wp_unslash( $_POST['bespoke_start_colour'] ?? '' ) ) );
+    if ( $start_colour ) {
+        update_post_meta( $post_id, '_bespoke_start_colour', $start_colour );
+    } else {
+        delete_post_meta( $post_id, '_bespoke_start_colour' );
+    }
 
     // ── Product assignment ────────────────────────────────────────────────────
     $raw_products = isset( $_POST['bespoke_products'] ) ? (array) $_POST['bespoke_products'] : [];
