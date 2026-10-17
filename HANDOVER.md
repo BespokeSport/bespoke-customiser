@@ -721,7 +721,14 @@ The text sticker is as long as the name needs. `bespokeBootTextSize()`
 the customer's font with the capitals 10mm tall (`bespokeBootTextLengthMm()`,
 canvas `measureText`, ink width over the font's own "H" height) — and,
 past `BESPOKE_BOOT_ROOM_MM` (48, the side space on Nick's old size
-buttons), that it may be too long for a smaller boot.
+buttons), that it may be too long for a smaller boot. It is ONE line and
+at most `BESPOKE_BOOT_MAX_MM` (90): a wrapper on `onNameBoth()` drops line
+breaks and refuses a letter that would take it past 90mm in the chosen
+font (deleting always works); a font change that takes it past is said
+under the box and stopped at the basket by `bespokeBootMissing()`.
+Boot stickers start in Jersey: `BESPOKE_START_FONTS` (by base type, with
+armbands' Villain), applied by `bespokeStartFont()` whenever the main
+font picker is drawn.
 
 The "Change what goes on your stickers" link is now the full-width
 **Main menu** button (`.bcp-main-menu`, inside `#boot-rechoose` in the
@@ -1463,8 +1470,8 @@ paste-ready copy: <https://claude.ai/code/artifact/6680476b-51b8-4db5-ab7e-15826
    text"), referee and remembrance.
 
    **Armbands start in Villain** (Nick, 21 Sep; commit c1c0b81, not yet uploaded):
-   `ARMBAND_START_FONT` in customiser.html, applied by `bespokeArmbandStartFont()`
-   whenever the armband font field is drawn. It only moves text still in a font the
+   now `BESPOKE_START_FONTS` in customiser.html (boot stickers start in Jersey),
+   applied by `bespokeStartFont()` whenever the font picker is drawn. It only moves text still in a font the
    customer can't pick (the built-in Arial Black), matched by label because uploaded
    fonts' family ids are just `bespoke-font-N`.
 

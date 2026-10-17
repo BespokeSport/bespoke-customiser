@@ -198,6 +198,14 @@ function bespoke_customiser_ui_strings() {
 			=> __( 'Your sticker will be about %dmm long and %dmm tall.', 'bespoke-customiser' ),
 		'That may be too long for a smaller boot, so measure yours, or try initials.'
 			=> __( 'That may be too long for a smaller boot, so measure yours, or try initials.', 'bespoke-customiser' ),
+		'That would take it past %dmm, the longest a sticker can be.'
+			=> __( 'That would take it past %dmm, the longest a sticker can be.', 'bespoke-customiser' ),
+		'Your sticker would be about %dmm long. The longest we make is %dmm, so try fewer letters or a narrower font.'
+			=> __( 'Your sticker would be about %dmm long. The longest we make is %dmm, so try fewer letters or a narrower font.', 'bespoke-customiser' ),
+		'Your text sticker would be longer than %dmm. Try fewer letters or a narrower font.'
+			=> __( 'Your text sticker would be longer than %dmm. Try fewer letters or a narrower font.', 'bespoke-customiser' ),
+		'e.g. SMITH'
+			=> __( 'e.g. SMITH', 'bespoke-customiser' ),
 	];
 
 	// Only what a translation actually changed.

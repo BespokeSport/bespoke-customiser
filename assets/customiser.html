@@ -2177,6 +2177,7 @@ function scrollFonts(dir, gridId) {
 }
 function buildFontGrid(target) {
   target = target || 'name';
+  if (target !== 'num') bespokeStartFont();
   // Armbands get the font dropdown instead of the sideways card strip.
   var useSelect = bespokeUseFontDropdown();
   var nav = document.getElementById(target === 'num' ? 'font-nav-num' : 'font-nav-name');
@@ -2221,18 +2222,22 @@ function buildFontGrid(target) {
 function bespokeUseFontDropdown(){
   return typeof bespokeBaseType === 'function' && bespokeBaseType() === 'armbands';
 }
-// Armband text starts in this font (Nick, 21 Sep 2026) — matched on its
-// name in the uploaded font list, since the uploads' family ids are just
-// numbered. Leave the name blank to start in the built-in default.
-var ARMBAND_START_FONT = 'Villain';
-// Move armband text still in the built-in default (a font the customer
-// can't pick, so they haven't chosen it) onto ARMBAND_START_FONT, once the
+// Where the text starts, by product (base type): in the font named here —
+// armbands Villain (Nick, 21 Sep 2026), boot stickers Jersey (17 Oct 2026),
+// a narrow one so a name comes out shorter. Matched on its name in the
+// uploaded font list, since the uploads' family ids are just numbered. A
+// product not listed starts in the built-in default.
+var BESPOKE_START_FONTS = { armbands: 'Villain', boot_stickers: 'Jersey' };
+// Move text still in the built-in default (a font the customer can't pick,
+// so they haven't chosen it) onto the product's start font, once the
 // uploaded fonts are in the list. Text boxes still on that default follow.
-function bespokeArmbandStartFont(){
-  if (!ARMBAND_START_FONT || !bespokeUseFontDropdown() || !window.S) return;
+// Run whenever the main text's font picker is drawn — cards or dropdown.
+function bespokeStartFont(){
+  var name = window.S && BESPOKE_START_FONTS[bespokeBaseType()];
+  if (!name) return;
   var cur = S.nameFontFamily;
   if (FONTS.some(function(f){ return f.family === cur; })) return;
-  var want = ARMBAND_START_FONT.toLowerCase();
+  var want = name.toLowerCase();
   var start = FONTS.find(function(f){ return String(f.label || '').toLowerCase() === want; });
   if (!start) return;
   S.nameFontFamily = start.family;
@@ -2242,7 +2247,6 @@ function bespokeArmbandStartFont(){
 function buildFontSelect(target){
   var host = document.getElementById(target === 'num' ? 'font-select-num' : 'font-select-name');
   if (!host) return;
-  if (target !== 'num') bespokeArmbandStartFont();
   var current = (target === 'num') ? S.numFontFamily : S.nameFontFamily;
   bespokeFontSelect(host, current, function(family){
     if (target === 'num') S.numFontFamily = family;
@@ -6233,18 +6237,34 @@ var BESPOKE_BOOT_FLAG_RATIO = 208 / 130;
 // but past this it may not fit a smaller boot, and the customer is told.
 var BESPOKE_BOOT_ROOM_MM = 48;
 
+// The longest a text sticker is made (Nick, 17 Oct 2026: "cap the max width
+// to be 90mm otherwise it opens us up to people taking advantage and adding
+// loads of text"). Typing stops there — see the onNameBoth wrapper below.
+var BESPOKE_BOOT_MAX_MM = 90;
+
 /**
  * How long the text sticker comes out, in mm, with its capitals 10mm tall —
  * measured in the customer's own font, so a wide font says so. The longest
- * line, the ink only. 0 with no text.
+ * line, the ink only. 0 with no text. The text on the sticker, or `text`.
  */
-function bespokeBootTextLengthMm(){
-  var txt = String((window.S && (S.nameL || S.nameR)) || '').trim();
+function bespokeBootTextLengthMm(text){
+  var txt = String((text != null) ? text : ((window.S && (S.nameL || S.nameR)) || '')).trim();
   if (!txt) return 0;
   var c = bespokeBootTextLengthMm.ctx ||
           (bespokeBootTextLengthMm.ctx = document.createElement('canvas').getContext('2d'));
   if (!c) return 0;
-  c.font = '900 100px ' + (S.nameFontFamily || 'sans-serif');
+  var spec = '900 100px ' + (S.nameFontFamily || 'sans-serif');
+  // The canvas measures a font only once it has loaded, and quietly uses a
+  // stand-in before that. Ask for each font once, and measure everything
+  // again when it arrives.
+  var asked = bespokeBootTextLengthMm.asked || (bespokeBootTextLengthMm.asked = {});
+  if (!asked[spec] && document.fonts && document.fonts.load) {
+    asked[spec] = true;
+    document.fonts.load(spec).then(function(){
+      if (typeof syncAll === 'function') syncAll();
+    }, function(){});
+  }
+  c.font = spec;
   var cap = c.measureText('H').actualBoundingBoxAscent || 72;
   var widest = 0;
   txt.split(/\r?\n/).forEach(function(line){
@@ -6265,14 +6285,58 @@ function bespokeBootTextSize(){
   if (!el) return;
   var mm = (bespokeBaseType() === 'boot_stickers') ? Math.round(bespokeBootTextLengthMm()) : 0;
   var msg = '';
-  if (mm) {
+  if (mm > BESPOKE_BOOT_MAX_MM) {
+    // Only a font change gets here — typing stops at the limit.
+    msg = bespokeT('Your sticker would be about %dmm long. The longest we make is %dmm, so try fewer letters or a narrower font.', mm, BESPOKE_BOOT_MAX_MM);
+  } else if (mm) {
     msg = bespokeT('Your sticker will be about %dmm long and %dmm tall.', mm, BESPOKE_BOOT_STICKER_MM);
-    if (mm > BESPOKE_BOOT_ROOM_MM) {
+    if (_bespokeBootRefused && _bespokeBootRefused === S.nameFontFamily) {
+      msg += ' ' + bespokeT('That would take it past %dmm, the longest a sticker can be.', BESPOKE_BOOT_MAX_MM);
+    } else if (mm > BESPOKE_BOOT_ROOM_MM) {
       msg += ' ' + bespokeT('That may be too long for a smaller boot, so measure yours, or try initials.');
     }
   }
   if (el.textContent !== msg) el.textContent = msg;
 }
+
+/* Boot stickers: one line of text, at most 90mm long. Enter adds nothing (a
+   pasted line break becomes a space) — a second line would make the sticker
+   20mm tall. A letter that would take it past 90mm in the chosen font isn't
+   taken: the box keeps what it had, and the line under it says why. When
+   it was a single letter, the text is full: nothing more is taken until
+   something comes out or the font changes, or a narrow letter would still
+   squeeze in after a wide one ("MAXIMILIA" refused N, then took an I). A
+   refused paste leaves room to type. Taking letters out always works, so
+   text a font change took past 90mm can be shortened.
+   _bespokeBootCapped: the font the text filled up in, or ''.
+   _bespokeBootRefused: the font the last change was refused in, or ''. */
+var _bespokeBootCapped = '';
+var _bespokeBootRefused = '';
+(function(){
+  var _onNameBoth = onNameBoth;
+  onNameBoth = function(){
+    var ta = (bespokeBaseType() === 'boot_stickers') ? document.getElementById('name-both') : null;
+    if (ta) {
+      var was = ta.value, cur = ta.selectionStart;
+      var v = was.replace(/[\r\n]+$/, '').replace(/[\r\n]+/g, ' ');
+      var keep = String((window.S && S.nameL) || '');
+      var font = S.nameFontFamily, grows = v.length > keep.length;
+      if (!grows || _bespokeBootCapped !== font) _bespokeBootCapped = '';
+      _bespokeBootRefused = '';
+      if (grows && (_bespokeBootCapped || bespokeBootTextLengthMm(v.toUpperCase()) > BESPOKE_BOOT_MAX_MM)) {
+        if (v.length - keep.length === 1) _bespokeBootCapped = font;
+        _bespokeBootRefused = font;
+        v = keep;
+      }
+      if (v !== was) {
+        ta.value = v;
+        var at = Math.max(0, Math.min(v.length, cur - (was.length - v.length)));
+        try { ta.setSelectionRange(at, at); } catch (e) {}
+      }
+    }
+    return _onNameBoth.apply(this, arguments);
+  };
+})();
 
 /** The badge and text sizes that make a sticker 10mm tall, in canvas units. */
 function bespokeBootSizes(){
@@ -7724,7 +7788,7 @@ var BG_VARIANT_LABELS = {
 // a fallback only: once the product has its variations, the live ones are
 // read from window.BespokeConfig and these are never seen.
 var BOOT_PICKS = [
-  { key: 'text',  title: 'Name, initials or number', sub: 'One line, 10mm tall',                        fallback: 10 },
+  { key: 'text',  title: 'Name, initials or number', sub: 'One line, 10mm tall, up to 90mm long',       fallback: 10 },
   { key: 'flag',  title: 'Country flag',             sub: 'Pick one, or tell us what you need',         fallback: 7  },
   { key: 'badge', title: 'Your club badge',          sub: 'Upload it, in full colour',                  fallback: 10 },
   { key: 'all',   title: 'All three',                sub: 'Text, flag and badge together',              fallback: 22 }
@@ -7808,6 +7872,9 @@ function bespokeBootMissing(){
   }
   if (p.text && !String((window.S && (S.nameL || S.nameR)) || '').trim()) {
     return { step: 1, message: bespokeT('Add the text for your name sticker, or untick it.') };
+  }
+  if (p.text && bespokeBootTextLengthMm() > BESPOKE_BOOT_MAX_MM) {
+    return { step: 1, message: bespokeT('Your text sticker would be longer than %dmm. Try fewer letters or a narrower font.', BESPOKE_BOOT_MAX_MM) };
   }
   var f = bespokeBootFlagState();
   if (p.flag && !f.country && !String(f.request || '').trim()) {
@@ -8635,6 +8702,9 @@ function bespokeBootStickerUI(){
   // can stay on the BEspoke Page tab — nothing reads them for this product.
   var sizes = document.getElementById('size-selector');
   if (sizes) sizes.style.display = 'none';
+  // One line only, so the box shouldn't suggest Enter for another.
+  var nameBox = document.getElementById('name-both');
+  if (nameBox) nameBox.setAttribute('placeholder', bespokeT('e.g. SMITH'));
 
   // The boot colour is cosmetic, so it belongs with the first question
   // rather than buried in the badge step. Moved rather than rebuilt, so it
