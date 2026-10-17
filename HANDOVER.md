@@ -934,6 +934,24 @@ added to the shop template's excluded products on staging and live (Nick,
 **Range page score:** 90/100 with the extra paragraphs and the new title
 (728 words); the one red left is "use Content AI".
 
+**Product scores after the pack (staging, Rank Math → Status & Tools →
+Update SEO Scores, 17 Oct 2026):** all 16 running tags green, 82–87
+(Personalised 86). Tiles (Page Links To products) are No Index, as
+intended. Orange elsewhere (74–79): Holocaust Memorial Day, International
+Women's Day, Professional League Inspired, Pride Captains, Mental Health
+Awareness, Football vs Homophobia, Made for this Game, Love is Love and
+World Cancer Day captain armbands, Personalised Double Sided Captain's
+Armbands, and the Wolverhampton and Arsenal mugs. Checked from outside:
+descriptions of 141–208 words (Rank Math's product minimum is 200) with
+no subheadings and no links; the keyword used once, or never (Pride
+Captains Armband's description is a single word; Made for this Game and
+Double Sided don't use theirs); a few miss it in the meta description
+(Professional League), the picture's alt text (Women's Day, Mental
+Health, Double Sided) or the title's start (Double Sided: "Lead Your Team
+with …"). Personalised Football Boot Stickers has no Rank Math fields at
+all, no category and no picture. The Hull City mug (5737) is named
+"… Fan-Made Gift (Copy)" on live and staging alike.
+
 **The shop tile** on staging is a duplicate of the armbands tile (product
 6060): title Awareness Running Tags, web address `awareness-running-tags`
 (the tile's address matches its page, as 6060's does), Links to → the
