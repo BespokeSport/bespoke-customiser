@@ -1691,6 +1691,20 @@ function bespoke_render_customiser( $atts ) {
                             var clone = svg.cloneNode(true);
                             clone.setAttribute('width',  '800');
                             clone.setAttribute('height', '800');
+                            // The page's stylesheet styles the preview's text — it takes
+                            // off the dark outline the text is drawn with. A picture of
+                            // the preview doesn't carry the page's stylesheet, so each
+                            // piece of text takes the look the page gives it, as plain
+                            // attributes. Done before anything is taken out of the copy,
+                            // while the two still line up one for one.
+                            var liveText = svg.querySelectorAll('text');
+                            var copyText = clone.querySelectorAll('text');
+                            for (var ti = 0; ti < liveText.length && ti < copyText.length; ti++) {
+                                var look = getComputedStyle(liveText[ti]);
+                                copyText[ti].setAttribute('stroke',       look.stroke);
+                                copyText[ti].setAttribute('stroke-width', look.strokeWidth);
+                                copyText[ti].setAttribute('paint-order',  look.paintOrder || 'normal');
+                            }
                             Array.prototype.forEach.call(clone.querySelectorAll(CAPTURE_CONTROLS), function(n){
                                 if (n.parentNode) n.parentNode.removeChild(n);
                             });
