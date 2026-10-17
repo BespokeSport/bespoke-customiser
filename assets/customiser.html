@@ -1668,10 +1668,12 @@ var DEFDESIGN = 'vanguard';
     DEF.nameR  = { x: 680, y: 173 };
     DEF.nameL  = { x: 680, y: 367 };
     // The shin-pad defaults are built for something the size of a shin pad.
-    // A tag is 12mm tall, so everything starts far smaller.
+    // A tag is 12mm tall, so everything starts far smaller. Text at 25
+    // (Nick, 17 Oct 2026): a name sits comfortably between the holes, and
+    // the fit-to-box only ever shrinks from there.
     DEFSZ.badgeSize = 95;
-    DEFSZ.nameSize  = 60;
-    DEFSZ.numSize   = 60;
+    DEFSZ.nameSize  = 25;
+    DEFSZ.numSize   = 25;
   }
 })();
 
@@ -1698,9 +1700,14 @@ var DEFDESIGN = 'vanguard';
       DEF[k] = { x: GEO[k].x, y: GEO[k].y };
     }
   });
-  if (typeof GEO.badgeSize === 'number') DEFSZ.badgeSize = GEO.badgeSize;
-  if (typeof GEO.nameSize  === 'number') DEFSZ.nameSize  = GEO.nameSize;
-  if (typeof GEO.numSize   === 'number') DEFSZ.numSize   = GEO.numSize;
+  // A running-tag placement from before the pair change is left out for its
+  // sizes too: they were the defaults of the time, and would hide the new
+  // ones. Saved again, a placement is followed as usual.
+  if (!_staleTags) {
+    if (typeof GEO.badgeSize === 'number') DEFSZ.badgeSize = GEO.badgeSize;
+    if (typeof GEO.nameSize  === 'number') DEFSZ.nameSize  = GEO.nameSize;
+    if (typeof GEO.numSize   === 'number') DEFSZ.numSize   = GEO.numSize;
+  }
 })();
 
 // ── Referee bands: their own starting text ────────────────────────────
@@ -7998,11 +8005,16 @@ function bespokeTagFitText(){
 function bespokeTagSliderRanges(){
   if (typeof bespokeBaseType !== 'function' || bespokeBaseType() !== 'running_tags') return;
   var ranges = { 'name-size-slider': [8, 200], 'num-size-slider': [8, 200], 'badge-size-slider': [20, 200] };
+  // Which size each slider shows. The markup's own minimum (40) clamped a
+  // smaller starting size before this range was set, so the slider sat at
+  // 40 while the text was 25 — it is put back on the real size here.
+  var field = { 'name-size-slider': 'nameSize', 'num-size-slider': 'numSize', 'badge-size-slider': 'badgeSize' };
   Object.keys(ranges).forEach(function(id){
     var el = document.getElementById(id);
     if (!el) return;
     el.min = ranges[id][0];
     el.max = ranges[id][1];
+    if (window.S && typeof S[field[id]] === 'number') el.value = S[field[id]];
   });
 }
 
