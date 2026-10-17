@@ -1668,8 +1668,20 @@ function bespoke_render_admin_boot_stickers( $d, $item ) {
     $f     = $boot['flag'] ?? [];
 
     $set = [ [ 'Stickers', esc_html( $boot['set'] ?? '—' ) ] ];
+    // How tall each sticker is made: the text 10mm, the badge and the flag
+    // 10mm or 20mm (the 20mm upgrade). Before the upgrade, height_mm alone.
     if ( ! empty( $boot['height_mm'] ) ) {
-        $set[] = [ 'Height', esc_html( $boot['height_mm'] . 'mm — every sticker (text on its capitals)' ) ];
+        $tall = [];
+        if ( ! empty( $picks['text'] ) ) {
+            $tall[] = 'text ' . $boot['height_mm'] . 'mm (capitals)';
+        }
+        if ( ! empty( $picks['flag'] ) ) {
+            $tall[] = 'flag ' . ( $boot['flag_height_mm'] ?? $boot['height_mm'] ) . 'mm';
+        }
+        if ( ! empty( $picks['badge'] ) ) {
+            $tall[] = 'badge ' . ( $boot['badge_height_mm'] ?? $boot['height_mm'] ) . 'mm';
+        }
+        $set[] = [ 'Height', esc_html( ucfirst( implode( ' · ', $tall ) ) ) ];
     }
     if ( function_exists( 'bespoke_format_bg_variant' ) ) {
         $set[] = [ 'Preview shown on', esc_html( bespoke_format_bg_variant( $d ) ) ];

@@ -733,6 +733,16 @@ on a small canvas, once per picture, and the badge is drawn so that box is
 nor gets a padded wide picture of text past the cap. Under the upload
 `bespokeBootBadgeSize()` says how wide it comes out; past 90mm it's said
 and stopped at the basket, as the text is.
+**The 20mm upgrade** (Nick, 17 Oct 2026; flag £7 → £8, badge £10 → £11):
+one tick in the sticker menu (`bespokeBootLargeRow()`, `S.bootLarge`)
+makes the badge and the flag 20mm tall; the text stays 10mm. The product
+has a second attribute, Size: 10mm | 20mm — 14 variations — and both
+sides read a variation's size from its name (`bespokeBootSizeOf()` /
+`bespoke_boot_size_of()`: "20mm", large or bigger; anything else is
+10mm). The tick only shows when the product has a 20mm variation, and
+shows the set's 20mm price less its 10mm one. `bespoke_boot` carries
+`large`; the server matches the set at that size, and records
+`badge_height_mm` / `flag_height_mm` for the order screen's Height row.
 Boot stickers start in Jersey: `BESPOKE_START_FONTS` (by base type, with
 armbands' Villain), applied by `bespokeStartFont()` whenever the main
 font picker is drawn.

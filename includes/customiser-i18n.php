@@ -207,6 +207,18 @@ function bespoke_customiser_ui_strings() {
 		'e.g. SMITH'
 			=> __( 'e.g. SMITH', 'bespoke-customiser' ),
 
+		// ── Boot stickers: the 20mm upgrade in the sticker menu ──────────
+		'Size'
+			=> __( 'Size', 'bespoke-customiser' ),
+		'Make my badge and flag %dmm tall'
+			=> __( 'Make my badge and flag %dmm tall', 'bespoke-customiser' ),
+		'Make my badge %dmm tall'
+			=> __( 'Make my badge %dmm tall', 'bespoke-customiser' ),
+		'Make my flag %dmm tall'
+			=> __( 'Make my flag %dmm tall', 'bespoke-customiser' ),
+		'Instead of the standard %dmm'
+			=> __( 'Instead of the standard %dmm', 'bespoke-customiser' ),
+
 		// ── Boot stickers: under the badge upload ────────────────────────
 		'Your badge sticker will be about %dmm wide and %dmm tall.'
 			=> __( 'Your badge sticker will be about %dmm wide and %dmm tall.', 'bespoke-customiser' ),

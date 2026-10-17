@@ -682,6 +682,11 @@ function bespoke_read_basket_state() {
 if ( ! defined( 'BESPOKE_BOOT_STICKER_MM' ) ) {
     define( 'BESPOKE_BOOT_STICKER_MM', 10 );
 }
+// The 20mm upgrade: the badge and the flag made this tall instead, for £1
+// more a sticker (Nick, 17 Oct 2026). The text stays 10mm.
+if ( ! defined( 'BESPOKE_BOOT_LARGE_MM' ) ) {
+    define( 'BESPOKE_BOOT_LARGE_MM', 20 );
+}
 
 /**
  * Boot stickers: which stickers are in the set, and what each is made from.
@@ -724,7 +729,8 @@ function bespoke_parse_boot() {
             }
         }
     }
-    $keys = array_keys( array_filter( $picks ) );
+    $keys  = array_keys( array_filter( $picks ) );
+    $large = ! empty( $raw['large'] ) && ( $picks['badge'] || $picks['flag'] );
     return [
         'picks'          => $picks,
         'set'            => bespoke_boot_set_label( $keys ),
@@ -735,9 +741,14 @@ function bespoke_parse_boot() {
             'request' => sanitize_textarea_field( mb_substr( (string) ( $f['request'] ?? '' ), 0, 200 ) ),
             'url'     => $flag_url,
         ],
-        // Every sticker. Orders from before 17 Oct 2026 carry
-        // text_height_mm / badge_width_mm instead — see the order screen.
-        'height_mm'      => BESPOKE_BOOT_STICKER_MM,
+        // The text — and every sticker, before the 20mm upgrade. Orders from
+        // before 17 Oct 2026 carry text_height_mm / badge_width_mm instead —
+        // see the order screen.
+        'height_mm'       => BESPOKE_BOOT_STICKER_MM,
+        // The 20mm upgrade, only with a badge or a flag in the set.
+        'large'           => $large,
+        'badge_height_mm' => $large ? BESPOKE_BOOT_LARGE_MM : BESPOKE_BOOT_STICKER_MM,
+        'flag_height_mm'  => $large ? BESPOKE_BOOT_LARGE_MM : BESPOKE_BOOT_STICKER_MM,
     ];
 }
 
@@ -771,15 +782,28 @@ function bespoke_boot_set_label( $keys ) {
 }
 
 /**
- * The boot-sticker variation for exactly this set of stickers, or null.
+ * How tall a variation's badge and flag are, from its name: 20 when it says
+ * 20mm (or large, or bigger), otherwise 10 — a name that says nothing about
+ * size included. The same reading the customiser does (bespokeBootSizeOf).
+ */
+function bespoke_boot_size_of( $label ) {
+    return preg_match( '/\b20\s*mm\b|\blarge\b|\bbigger\b/i', (string) $label )
+        ? BESPOKE_BOOT_LARGE_MM
+        : BESPOKE_BOOT_STICKER_MM;
+}
+
+/**
+ * The boot-sticker variation for exactly this set of stickers at this size
+ * (10mm unless given), or null.
  *
  * @return array|null [ 'id' => int, 'attributes' => array ]
  */
-function bespoke_boot_match_variation( $product, $keys ) {
+function bespoke_boot_match_variation( $product, $keys, $mm = 0 ) {
+    $mm   = $mm ? (int) $mm : BESPOKE_BOOT_STICKER_MM;
     $want = array_values( array_intersect( [ 'badge', 'flag', 'text' ], (array) $keys ) );
     foreach ( $product->get_available_variations() as $bv ) {
         $label = implode( ' ', array_filter( (array) $bv['attributes'] ) );
-        if ( bespoke_boot_set_of( $label ) === $want ) {
+        if ( bespoke_boot_set_of( $label ) === $want && bespoke_boot_size_of( $label ) === $mm ) {
             return [ 'id' => (int) $bv['variation_id'], 'attributes' => $bv['attributes'] ];
         }
     }
@@ -1287,11 +1311,12 @@ function bespoke_handle_add_to_cart() {
             wp_send_json_error( 'Choose at least one sticker.' );
         }
         if ( $product->is_type( 'variable' ) ) {
-            $boot_match = bespoke_boot_match_variation( $product, $boot_keys );
+            $boot_mm    = ! empty( $boot['large'] ) ? BESPOKE_BOOT_LARGE_MM : BESPOKE_BOOT_STICKER_MM;
+            $boot_match = bespoke_boot_match_variation( $product, $boot_keys, $boot_mm );
             if ( ! $boot_match ) {
                 wp_send_json_error(
-                    'There is no variation for "' . esc_html( bespoke_boot_set_label( $boot_keys ) ) . '". ' .
-                    'Boot stickers need one variation for each set: Text, Flag, Badge, Text + Flag, Text + Badge, Flag + Badge and All three.'
+                    'There is no variation for "' . esc_html( bespoke_boot_set_label( $boot_keys ) ) . '" at ' . $boot_mm . 'mm. ' .
+                    'Boot stickers need one variation for each set (Text, Flag, Badge, Text + Flag, Text + Badge, Flag + Badge and All three) at each size, 10mm and 20mm.'
                 );
             }
             $variation_id    = $boot_match['id'];

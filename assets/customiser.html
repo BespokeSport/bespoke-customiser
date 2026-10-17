@@ -6359,7 +6359,7 @@ var _bespokeBootRefused = '';
 /** The badge and text sizes that make a sticker 10mm tall, in canvas units. */
 function bespokeBootSizes(){
   return {
-    badgeSize: Math.round(BESPOKE_BOOT_STICKER_MM * BESPOKE_BOOT_ZONES.heel.unitsPerMm),
+    badgeSize: Math.round(bespokeBootBadgeFlagMm() * BESPOKE_BOOT_ZONES.heel.unitsPerMm),
     nameSize:  Math.round(BESPOKE_BOOT_STICKER_MM * BESPOKE_BOOT_ZONES.side.unitsPerMm / BESPOKE_BOOT_CAP_RATIO)
   };
 }
@@ -6435,7 +6435,7 @@ function bespokeImageArt(url){
 /** How wide the badge sticker comes out, in mm, at 10mm tall. 0 with none. */
 function bespokeBootBadgeWidthMm(){
   if (!window.S || !S.badgeURL) return 0;
-  return BESPOKE_BOOT_STICKER_MM * bespokeImageArt(S.badgeURL).aspect;
+  return bespokeBootBadgeFlagMm() * bespokeImageArt(S.badgeURL).aspect;
 }
 
 /**
@@ -6450,9 +6450,9 @@ function bespokeBootBadgeSize(){
   var mm = (bespokeBaseType() === 'boot_stickers') ? Math.round(bespokeBootBadgeWidthMm()) : 0;
   var msg = '';
   if (mm > BESPOKE_BOOT_MAX_MM) {
-    msg = bespokeT('At %dmm tall your badge would be about %dmm wide. The widest we make is %dmm, so upload a squarer version.', BESPOKE_BOOT_STICKER_MM, mm, BESPOKE_BOOT_MAX_MM);
+    msg = bespokeT('At %dmm tall your badge would be about %dmm wide. The widest we make is %dmm, so upload a squarer version.', bespokeBootBadgeFlagMm(), mm, BESPOKE_BOOT_MAX_MM);
   } else if (mm) {
-    msg = bespokeT('Your badge sticker will be about %dmm wide and %dmm tall.', mm, BESPOKE_BOOT_STICKER_MM);
+    msg = bespokeT('Your badge sticker will be about %dmm wide and %dmm tall.', mm, bespokeBootBadgeFlagMm());
   }
   if (el.textContent !== msg) el.textContent = msg;
 }
@@ -7895,14 +7895,55 @@ function bespokeBootSetKey(picks){
   if (picks && picks.text)  out.push('text');
   return out.join('+');
 }
-function bespokeBootVariation(setKey){
+/* The 20mm upgrade (Nick, 17 Oct 2026): the badge and the flag made 20mm
+   tall instead of 10mm, £1 more a sticker; the text stays 10mm. On the
+   product it's a second attribute, Size: 10mm | 20mm, so every set has a
+   price at each size — read from the words in the name, as the set is. A
+   name that says nothing about size is 10mm. bespoke_boot_size_of() does
+   the same reading on the server. */
+var BESPOKE_BOOT_LARGE_MM = 20;
+// What the upgrade adds for each sticker made bigger, when the product has
+// no 20mm prices to read.
+var BESPOKE_BOOT_LARGE_EACH = 1;
+function bespokeBootSizeOf(label){
+  return /\b20\s*mm\b|\blarge\b|\bbigger\b/i.test(String(label || '')) ? BESPOKE_BOOT_LARGE_MM : BESPOKE_BOOT_STICKER_MM;
+}
+function bespokeBootVariationLabel(v){
+  var attrs = (v && v.attributes) || {};
+  return Object.keys(attrs).map(function(k){ return attrs[k]; }).join(' ');
+}
+/** The variation for exactly this set, at this size (10mm unless said). */
+function bespokeBootVariation(setKey, mm){
+  mm = mm || BESPOKE_BOOT_STICKER_MM;
   var v = (window.BespokeConfig && BespokeConfig.variations) || [];
   for (var i = 0; i < v.length; i++) {
-    var attrs = v[i].attributes || {};
-    var label = Object.keys(attrs).map(function(k){ return attrs[k]; }).join(' ');
-    if (bespokeBootSetOf(label).join('+') === setKey) return v[i];
+    var label = bespokeBootVariationLabel(v[i]);
+    if (bespokeBootSetOf(label).join('+') === setKey && bespokeBootSizeOf(label) === mm) return v[i];
   }
   return null;
+}
+/** The upgrade applies: chosen, with a badge or a flag in the set. */
+function bespokeBootLarge(){
+  var p = bespokeBootPicked();
+  return !!(window.S && S.bootLarge && (p.badge || p.flag));
+}
+/** How tall the badge and the flag are made, in mm. */
+function bespokeBootBadgeFlagMm(){
+  return bespokeBootLarge() ? BESPOKE_BOOT_LARGE_MM : BESPOKE_BOOT_STICKER_MM;
+}
+/** Offered when the product has 20mm prices to charge — or no variations
+ *  yet, so the menu can be seen as it will be. */
+function bespokeBootLargeOffered(){
+  var v = (window.BespokeConfig && BespokeConfig.variations) || [];
+  if (!v.length) return true;
+  return v.some(function(x){ return bespokeBootSizeOf(bespokeBootVariationLabel(x)) === BESPOKE_BOOT_LARGE_MM; });
+}
+/** What the upgrade adds to the set picked: its 20mm price less its 10mm. */
+function bespokeBootLargeExtra(){
+  var p = bespokeBootPicked(), key = bespokeBootSetKey(p);
+  var big = bespokeBootVariation(key, BESPOKE_BOOT_LARGE_MM), std = bespokeBootVariation(key, BESPOKE_BOOT_STICKER_MM);
+  if (big && std) return (parseFloat(big.price) || 0) - (parseFloat(std.price) || 0);
+  return BESPOKE_BOOT_LARGE_EACH * ((p.badge ? 1 : 0) + (p.flag ? 1 : 0));
 }
 function bespokeBootPrice(key){
   var hit = bespokeBootVariation(key === 'all' ? 'badge+flag+text' : key);
@@ -7926,10 +7967,11 @@ function bespokeBootTotal(){
   // The exact set's own price, when the product has one for it.
   var key = bespokeBootSetKey(bespokeBootPicked());
   if (!key) return 0;
-  var hit = bespokeBootVariation(key);
+  var hit = bespokeBootVariation(key, bespokeBootBadgeFlagMm());
   if (hit) return parseFloat(hit.price) || 0;
-  if (bespokeBootAll()) return bespokeBootPrice('all');
-  var p = bespokeBootPicked(), t = 0;
+  var up = bespokeBootLarge() ? bespokeBootLargeExtra() : 0;
+  if (bespokeBootAll()) return bespokeBootPrice('all') + up;
+  var p = bespokeBootPicked(), t = up;
   if (p.text)  t += bespokeBootPrice('text');
   if (p.flag)  t += bespokeBootPrice('flag');
   if (p.badge) t += bespokeBootPrice('badge');
@@ -7950,7 +7992,7 @@ function bespokeBootMissing(){
     return { step: 0, message: bespokeT('Upload your club badge, or untick the badge sticker.') };
   }
   if (p.badge && bespokeBootBadgeWidthMm() > BESPOKE_BOOT_MAX_MM) {
-    return { step: 0, message: bespokeT('Your badge would be wider than %dmm at %dmm tall. Upload a squarer version, or untick the badge sticker.', BESPOKE_BOOT_MAX_MM, BESPOKE_BOOT_STICKER_MM) };
+    return { step: 0, message: bespokeT('Your badge would be wider than %dmm at %dmm tall. Upload a squarer version, or untick the badge sticker.', BESPOKE_BOOT_MAX_MM, bespokeBootBadgeFlagMm()) };
   }
   if (p.text && !String((window.S && (S.nameL || S.nameR)) || '').trim()) {
     return { step: 1, message: bespokeT('Add the text for your name sticker, or untick it.') };
@@ -7965,25 +8007,45 @@ function bespokeBootMissing(){
   return null;
 }
 
+/** One row of the sticker menu: a tick box, what it is, and its price. */
+function bespokeBootChooserRow(onclick, on, title, sub, price){
+  return '<div onclick="' + onclick + '" style="display:flex;align-items:flex-start;gap:10px;background:#1c1c1c;border:1px solid ' + (on ? '#5DCAA5' : '#2c2c2c') + ';border-radius:10px;padding:12px;margin-bottom:8px;cursor:pointer;">' +
+    '<span style="width:20px;height:20px;border-radius:5px;flex:none;margin-top:1px;border:1.5px solid ' + (on ? '#5DCAA5' : '#4a4a4a') + ';background:' + (on ? '#5DCAA5' : 'transparent') + ';"></span>' +
+    '<span><span style="color:#F5F5F0;font-size:14px;">' + title + '</span>' +
+    '<span style="display:block;font-size:12px;color:#8a8a85;margin-top:2px;">' + sub + '</span></span>' +
+    '<span style="margin-left:auto;font-size:13px;color:#8a8a85;white-space:nowrap;">' + price + '</span></div>';
+}
+
+/** The 20mm upgrade, under the stickers it applies to: shown once a badge
+ *  or a flag is picked, and only when the product can charge for it. */
+function bespokeBootLargeRow(){
+  var p = bespokeBootPicked();
+  if (!(p.badge || p.flag) || !bespokeBootLargeOffered()) return '';
+  var title = (p.badge && p.flag) ? bespokeT('Make my badge and flag %dmm tall', BESPOKE_BOOT_LARGE_MM)
+            : p.badge ? bespokeT('Make my badge %dmm tall', BESPOKE_BOOT_LARGE_MM)
+            : bespokeT('Make my flag %dmm tall', BESPOKE_BOOT_LARGE_MM);
+  return '<div style="font-size:11px;letter-spacing:.1em;color:#8a8a85;margin:14px 0 10px;text-transform:uppercase;">' + bespokeT('Size') + '</div>' +
+    bespokeBootChooserRow('bespokeBootLargeToggle()', !!(window.S && S.bootLarge), title,
+      bespokeT('Instead of the standard %dmm', BESPOKE_BOOT_STICKER_MM), '+£' + bespokeBootLargeExtra());
+}
+
 function bespokeBootChooserRender(){
   var host = document.getElementById('boot-chooser-opts');
   if (!host) return;
   var p = bespokeBootPicked(), all = bespokeBootAll();
   host.innerHTML = BOOT_PICKS.map(function(it){
     var on = (it.key === 'all') ? all : !!p[it.key];
-    return '<div onclick="bespokeBootPick(\'' + it.key + '\')" style="display:flex;align-items:flex-start;gap:10px;background:#1c1c1c;border:1px solid ' + (on ? '#5DCAA5' : '#2c2c2c') + ';border-radius:10px;padding:12px;margin-bottom:8px;cursor:pointer;">' +
-      '<span style="width:20px;height:20px;border-radius:5px;flex:none;margin-top:1px;border:1.5px solid ' + (on ? '#5DCAA5' : '#4a4a4a') + ';background:' + (on ? '#5DCAA5' : 'transparent') + ';"></span>' +
-      '<span><span style="color:#F5F5F0;font-size:14px;">' + it.title + '</span>' +
-      '<span style="display:block;font-size:12px;color:#8a8a85;margin-top:2px;">' + it.sub + '</span></span>' +
-      '<span style="margin-left:auto;font-size:13px;color:#8a8a85;white-space:nowrap;">£' + bespokeBootPrice(it.key) + '</span></div>';
-  }).join('');
+    return bespokeBootChooserRow('bespokeBootPick(\'' + it.key + '\')', on, it.title, it.sub, '£' + bespokeBootPrice(it.key));
+  }).join('') + bespokeBootLargeRow();
   var total = bespokeBootTotal();
   var tEl = document.getElementById('boot-chooser-total');
   var sEl = document.getElementById('boot-chooser-save');
   var nEl = document.getElementById('boot-chooser-next');
   if (tEl) tEl.innerHTML = total ? ('£' + total) : '&mdash;';
   if (sEl) {
-    var apart = bespokeBootPrice('text') + bespokeBootPrice('flag') + bespokeBootPrice('badge');
+    // The singles at the same size, so the upgrade doesn't eat the saving.
+    var apart = bespokeBootPrice('text') + bespokeBootPrice('flag') + bespokeBootPrice('badge') +
+                (bespokeBootLarge() ? bespokeBootLargeExtra() : 0);
     sEl.textContent = (all && apart > total) ? ('save £' + (apart - total)) : '';
   }
   if (nEl) {
@@ -8004,6 +8066,14 @@ function bespokeBootPick(key){
   } else {
     S.bootPick[key] = !S.bootPick[key];
   }
+  bespokeBootChooserRender();
+  if (typeof bespokeBuyBarPrice === 'function') bespokeBuyBarPrice();
+}
+
+/** The 20mm upgrade on or off. The preview follows on Next, with the steps. */
+function bespokeBootLargeToggle(){
+  if (!window.S) return;
+  S.bootLarge = !S.bootLarge;
   bespokeBootChooserRender();
   if (typeof bespokeBuyBarPrice === 'function') bespokeBuyBarPrice();
 }
@@ -8734,7 +8804,7 @@ function applyBootStickerOverlay(stepId){
   // bespokeBootFlagUrl): a round flag is as wide as it is tall, a
   // rectangle 1.6 times as wide.
   var round = bespokeBootFlagStocked(st.country, st.shape) ? (st.shape === 'round') : (st.shape !== 'round');
-  var h = Math.round(BESPOKE_BOOT_STICKER_MM * BESPOKE_BOOT_ZONES.heel.unitsPerMm);
+  var h = Math.round(bespokeBootBadgeFlagMm() * BESPOKE_BOOT_ZONES.heel.unitsPerMm);
   var w = round ? h : Math.round(h * BESPOKE_BOOT_FLAG_RATIO);
   var rot = (S.rot && S.rot.flag) || 0;
 
@@ -9619,6 +9689,8 @@ function _bespokeCommitAddToCart(cfg, btn, insideFace) {
       var _bf = bespokeBootFlagState();
       formData.append('bespoke_boot', JSON.stringify({
         picks: { text: !!_bp.text, flag: !!_bp.flag, badge: !!_bp.badge },
+        // The 20mm upgrade — the server charges the set's 20mm variation.
+        large: bespokeBootLarge(),
         flag: {
           country: _bf.country || '',
           shape:   _bf.shape || 'round',
