@@ -986,6 +986,16 @@ sentiment word in the title); with a Royal Mail link and the title
 "Personalised Football Boot Stickers – 2 Sizes, Perfect Pair" it scores
 **82** (staging, 17 Oct 2026).
 
+**Scores after the armbands and mugs pack** (staging, 17 Oct 2026):
+Professional League 77→82, Mental Health 77→82, Love is Love 79→82,
+Women's Day 76→81, Football vs Homophobia 78→81, Made for this Game
+78→81, World Cancer Day 79→84, Double Sided 79→86; Holocaust Memorial
+Day 74→78 and Pride Captains 77→80 still orange (their Rank Math panels
+asked for). Note that Rank Math's URL-length check counts the whole
+address: staging's domain is 9 characters longer than live's, so slugs
+of 34+ characters fail it on staging but not on live — scores on live
+can come out a little higher.
+
 **Undo covers the last pack applied only** (`bespoke_seo_last_run` holds
 one run): apply one pack, check it, then the next. Earlier packs' posts
 keep their `_bespoke_seo_backup`, so a per-pack undo could be built from
