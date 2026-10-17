@@ -992,9 +992,11 @@ Women's Day 76→81, Football vs Homophobia 78→81, Made for this Game
 78→81, World Cancer Day 79→84, Double Sided 79→86; Holocaust Memorial
 Day 74→78 and Pride Captains 77→80 still orange (their Rank Math panels
 asked for). Note that Rank Math's URL-length check counts the whole
-address: staging's domain is 9 characters longer than live's, so slugs
-of 34+ characters fail it on staging but not on live — scores on live
-can come out a little higher.
+address (the range page read "The URL is 56 characters long" for
+`https://staging2.bespokesport.uk/awareness-running-tags/`), and its
+limit is 75 characters: a product slug of 34–42 characters fails on
+staging (domain 9 characters longer) but passes on live, and 43+ fails
+on both — so scores on live can come out a little higher.
 
 **Undo covers the last pack applied only** (`bespoke_seo_last_run` holds
 one run): apply one pack, check it, then the next. Earlier packs' posts
