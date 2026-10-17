@@ -277,8 +277,9 @@ add_action( 'wp_ajax_bespoke_save_product_geometry', function() {
 
     // Sanitise: clamp positions to a generous band around the 1200x1200
     // canvas; clamp sizes to the same ranges the customiser sliders allow.
+    // 'flag' is the boot stickers' flag, which has a spot of its own.
     $clean = [];
-    foreach ( [ 'badgeL', 'badgeR', 'nameL', 'nameR', 'numL', 'numR' ] as $key ) {
+    foreach ( [ 'badgeL', 'badgeR', 'nameL', 'nameR', 'numL', 'numR', 'flag' ] as $key ) {
         if ( isset( $data[ $key ]['x'], $data[ $key ]['y'] ) ) {
             $clean[ $key ] = [
                 'x' => max( -300, min( 1500, (float) $data[ $key ]['x'] ) ),

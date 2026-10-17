@@ -31,6 +31,13 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
    !important rather than an inline style, because the step gets redrawn and
    inline styles lose that race — see HANDOVER 6.15. */
 .bcp-boot #s2 > *:not(.preview-box):not(.nav-row):not(#boot-flag-block){display:none !important;}
+/* Boot stickers: back to the chooser from any step. A full-width button, not
+   a small link (Nick, 17 Oct 2026: "MAIN MENU as a big button"). Outlined, so
+   Add to basket stays the one solid button. Named from the root with
+   !important like the other buttons, or the theme restyles it — HANDOVER 6.11. */
+#bespoke-customiser-root .bcp-main-menu{display:block !important;width:100% !important;margin:0 !important;background:transparent !important;border:1.5px solid #5DCAA5 !important;border-radius:10px !important;color:#5DCAA5 !important;padding:12px !important;font-family:"Inter", system-ui, sans-serif !important;font-size:14px !important;font-weight:700 !important;letter-spacing:.06em !important;text-transform:uppercase !important;line-height:1.2 !important;cursor:pointer !important;}
+#bespoke-customiser-root .bcp-main-menu:hover{background:#0A2A20 !important;}
+#bespoke-customiser-root .bcp-main-menu:focus-visible{outline:2px solid #5DCAA5;outline-offset:2px;}
 .frame{width:100%;max-width:440px;background:#0D0D0D;border-radius:20px;border:1px solid #2A2A2A;overflow:hidden;}
 .top-bar{background:#161616;border-bottom:1px solid #2A2A2A;padding:13px 18px;display:flex;align-items:center;justify-content:space-between;}
 .brand{font-size:15px;font-weight:700;color:#F5F5F0;letter-spacing:-0.3px;}
@@ -977,9 +984,10 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
     </div>
     <div class="prog-track"><div class="prog-fill" id="prog" style="width:20%"></div></div>
     <!-- Boot stickers only: back to "what do you want on your boots". Inside
-         the step bar so the desktop grid does not have to find it a cell. -->
-    <div id="boot-rechoose" style="display:none;padding:8px 18px 10px;">
-      <button type="button" onclick="bespokeBootChooserShow()" style="background:none;border:none;color:#8a8a85;font-size:12px;font-family:inherit;text-decoration:underline;cursor:pointer;padding:0;">Change what goes on your stickers</button>
+         the step bar so the desktop grid does not have to find it a cell.
+         The same width as the step names above it — see .bcp-main-menu. -->
+    <div id="boot-rechoose" style="display:none;padding:12px 0 14px;">
+      <button type="button" class="bcp-main-menu" onclick="bespokeBootChooserShow()">Main menu</button>
     </div>
   </div>
 
@@ -1696,7 +1704,9 @@ var DEFDESIGN = 'vanguard';
   var _tagBase   = (typeof bespokeBaseType === 'function') ? bespokeBaseType() : '';
   var _onLower   = function(g){ return !!(g && typeof g.y === 'number' && g.y > 300); };
   var _staleTags = _tagBase === 'running_tags' && (_onLower(GEO.badgeL) || _onLower(GEO.badgeR));
-  ['badgeL','badgeR','nameL','nameR','numL','numR'].forEach(function(k){
+  // 'flag' is the boot stickers' flag — saved only once it has been placed
+  // by hand; see bespokeBootFlagHome().
+  ['badgeL','badgeR','nameL','nameR','numL','numR','flag'].forEach(function(k){
     if (_staleTags && k.indexOf('badge') === 0) return;
     if (GEO[k] && typeof GEO[k].x === 'number' && typeof GEO[k].y === 'number') {
       DEF[k] = { x: GEO[k].x, y: GEO[k].y };
@@ -3936,8 +3946,11 @@ function setupDrag(svg, stepId) {
   // Scroll wheel to resize when hovering over draggable
   svg.addEventListener('wheel', function(e){
     var t = e.target.closest('.draggable'); if(!t) return;
-    e.preventDefault();
     var key = t.getAttribute('data-drag');
+    // The boot stickers' flag is always 30mm: nothing to resize, so the
+    // wheel scrolls the page as usual.
+    if (key === 'flag') return;
+    e.preventDefault();
     var delta = e.deltaY > 0 ? -5 : 5;
     if(key.startsWith('badge')){ S.badgeSize=Math.max(50,Math.min(500,S.badgeSize+delta*4)); document.getElementById('badge-size-slider').value=S.badgeSize; document.getElementById('badge-size-val').textContent=S.badgeSize; }
     if(key.startsWith('name')) { S.nameSize=Math.max(40,Math.min(300,S.nameSize+delta*2)); document.getElementById('name-size-slider').value=S.nameSize; document.getElementById('name-size-val').textContent=S.nameSize; }
@@ -8481,6 +8494,32 @@ function applyTagShoeOverlay(stepId){
   });
 }
 
+/**
+ * Where the flag starts, until the customer moves it: its own spot when one
+ * was saved with Save placement, otherwise under the badge sticker — or in
+ * the badge's spot when there is no badge sticker. Worked out from where the
+ * badge STARTS, not where it has been dragged to: the flag used to read the
+ * badge's live position, so moving the badge took the flag with it.
+ */
+function bespokeBootFlagHome(){
+  var d = window.DEF || {};
+  if (d.flag) return { x: d.flag.x, y: d.flag.y };
+  var b = d.badgeL || { x: 550, y: 216 };
+  var picked = (window.S && S.bootPick) || {};
+  return { x: b.x, y: b.y + (picked.badge ? 150 : 0) };
+}
+
+/**
+ * True while the flag is still where it was put for the customer — nobody
+ * has moved it — so it keeps following its home as the badge sticker is
+ * added or taken off. Once moved, it stays where it was put.
+ */
+function bespokeBootFlagFollows(){
+  if (!window.S || !S.pos || !S.pos.flag) return true;
+  var p = S.pos.flag, last = S._bootFlagHome;
+  return !!(last && p.x === last.x && p.y === last.y);
+}
+
 function applyBootStickerOverlay(stepId){
   if (bespokeBaseType() !== 'boot_stickers') return;
   var svg = (typeof previews === 'object' && previews) ? previews[stepId] : null;
@@ -8491,7 +8530,6 @@ function applyBootStickerOverlay(stepId){
   if (!layer) {
     layer = document.createElementNS(ns, 'g');
     layer.setAttribute('id', layerId);
-    layer.setAttribute('pointer-events', 'none');
     svg.appendChild(layer);
   }
   while (layer.firstChild) layer.removeChild(layer.firstChild);
@@ -8500,22 +8538,48 @@ function applyBootStickerOverlay(stepId){
   var url = bespokeBootFlagUrl(st.country, st.shape);
   if (!url) return;
 
+  // The flag has a position of its own, S.pos.flag, and is drawn as a
+  // .draggable like the badge and the text, so setupDrag() moves it by its
+  // data-drag key — no drag code of its own. Left alone, it follows its home.
+  if (bespokeBootFlagFollows()) {
+    var home = bespokeBootFlagHome();
+    S.pos.flag = { x: home.x, y: home.y };
+    S._bootFlagHome = { x: home.x, y: home.y };
+  }
+  var pos = S.pos.flag;
+
   // 30mm across, in the rear view's units.
   var w = Math.round(30 * BESPOKE_BOOT_ZONES.heel.unitsPerMm);
   var h = (st.shape === 'round') ? w : Math.round(w * 0.62);
-  var pos = (window.S && S.pos && S.pos.badgeL) ? S.pos.badgeL : { x: 550, y: 216 };
-  var picked = (window.S && S.bootPick) || {};
-  var cy = pos.y + (picked.badge ? 150 : 0);
+
+  var g = document.createElementNS(ns, 'g');
+  g.setAttribute('class', 'draggable');
+  g.setAttribute('data-drag', 'flag');
+  g.setAttribute('transform', 'translate(' + pos.x + ',' + pos.y + ')');
+  // The same finger-sized hit area as the badge's.
+  var hitW = Math.max(w + 60, 200);
+  var hit  = document.createElementNS(ns, 'rect');
+  hit.setAttribute('x', -hitW / 2);
+  hit.setAttribute('y', -hitW / 2);
+  hit.setAttribute('width',  hitW);
+  hit.setAttribute('height', hitW);
+  hit.setAttribute('fill', 'none');
+  hit.setAttribute('pointer-events', 'all');
+  g.appendChild(hit);
 
   var img = document.createElementNS(ns, 'image');
   // A plain href only — see the tag stencil in applyTagPlates().
   img.setAttribute('href', url);
-  img.setAttribute('x', Math.round(pos.x - w / 2));
-  img.setAttribute('y', Math.round(cy - h / 2));
+  img.setAttribute('x', Math.round(-w / 2));
+  img.setAttribute('y', Math.round(-h / 2));
   img.setAttribute('width', w);
   img.setAttribute('height', h);
   img.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-  layer.appendChild(img);
+  g.appendChild(img);
+  // Selected: the dashed outline, as on the badge. No resize or rotate
+  // handles — the flag is always 30mm across, and it goes on straight.
+  if (S.selected === 'flag') g.appendChild(_makeSelectionOutline(ns, w, h));
+  layer.appendChild(g);
 }
 
 function bespokeBootStickerUI(){
@@ -8578,9 +8642,9 @@ function bespokeBootStickerUI(){
   });
   if (moved && typeof syncAll === 'function') syncAll();
 
-  // The step bar grew by the height of the "change what goes on your
-  // stickers" link, and the screens clear it with a fixed padding, so the
-  // Back / Next row was sliding underneath. Measure it rather than guess.
+  // The step bar grew by the height of the Main menu button, and the
+  // screens clear it with a fixed padding, so the Back / Next row was
+  // sliding underneath. Measure it rather than guess.
   var bar = document.querySelector('.step-bar');
   if (bar && window.innerWidth >= 768) {
     var clear = bar.offsetHeight + 18;
@@ -8704,6 +8768,12 @@ function saveGeometry(statusEl){
     numL:   S.pos.numL,   numR:   S.pos.numR,
     badgeSize: S.badgeSize, nameSize: S.nameSize, numSize: S.numSize
   };
+  // The boot stickers' flag, once it has been put somewhere by hand. Left
+  // where it was put for you, it follows the badge sticker — saving that
+  // spot would pin it there even on a set with no badge.
+  if (S.pos.flag && typeof bespokeBootFlagFollows === 'function' && !bespokeBootFlagFollows()) {
+    payload.flag = S.pos.flag;
+  }
   var fd = new FormData();
   fd.append('action', 'bespoke_save_product_geometry');
   fd.append('product_type', cfg.productType || '');

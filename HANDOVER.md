@@ -680,6 +680,30 @@ designs, missing class/categories, import, re-run, undo). On Windows Git
 Bash, run it with `MSYS_NO_PATHCONV=1` or the `/wordpress/...` mount paths
 get rewritten to `C:/Program Files/Git/...`, and mount a folder, not a
 single file.
+### 6.24 Boot stickers: the flag is a draggable of its own
+
+The flag used to be drawn at the badge's LIVE position (`S.pos.badgeL`,
+150 lower when a badge sticker is picked) on a layer that ignored the
+pointer — so it couldn't be dragged, and dragging the badge carried it
+along. It now has its own key, `S.pos.flag`, and `applyBootStickerOverlay()`
+draws it as a `.draggable` with `data-drag="flag"`, so `setupDrag()` moves
+it like the badge and the text with no drag code of its own (no resize or
+rotate handles: a flag is always 30mm and goes on straight; the wheel
+scrolls the page over it).
+
+Until the customer moves it, it follows `bespokeBootFlagHome()`: a saved
+spot if Save placement has one, otherwise under where the badge STARTS
+(`DEF.badgeL`), or in that spot when there's no badge sticker.
+`S._bootFlagHome` remembers the last home it was put at; once `S.pos.flag`
+differs, it stays where the customer put it. Save placement only stores
+`flag` once it has been moved by hand — saving the followed spot would pin
+it under an empty badge spot on a flag-only set. `flag` is in the merge
+list in customiser.html and the key lists in `customiser-products.php`
+(save) and `customiser-copy.php` (Copy to Live).
+
+The "Change what goes on your stickers" link is now the full-width
+**Main menu** button (`.bcp-main-menu`, inside `#boot-rechoose` in the
+step bar).
 ## 7. Tooling notes (for you, on the new machine)
 
 - **There is no PHP locally.** `tools/` in the repo has what you need — run `npm install`

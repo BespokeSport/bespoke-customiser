@@ -968,7 +968,7 @@ function bespoke_copy_type_label( $type ) {
 /** A saved placement, cleaned to numbers inside the ranges Save placement allows. */
 function bespoke_copy_clean_geometry( $geo ) {
 	$clean = [];
-	foreach ( [ 'badgeL', 'badgeR', 'nameL', 'nameR', 'numL', 'numR' ] as $key ) {
+	foreach ( [ 'badgeL', 'badgeR', 'nameL', 'nameR', 'numL', 'numR', 'flag' ] as $key ) {
 		if ( isset( $geo[ $key ]['x'], $geo[ $key ]['y'] ) ) {
 			$clean[ $key ] = [
 				'x' => max( -300, min( 1500, (float) $geo[ $key ]['x'] ) ),
