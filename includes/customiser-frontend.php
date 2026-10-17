@@ -78,6 +78,29 @@ function bespoke_render_customiser( $atts ) {
     // / Frill option. Without this the customiser shows the parent product's
     // fallback price even though the cart line will charge the variation's
     // price after add-to-cart.
+    // Reopening a design from the basket: "Amend" (?bespoke_edit=<line key>)
+    // or "Duplicate" (?bespoke_copy=<line key>). Only ever from the
+    // customer's OWN basket, and only for this product.
+    $bespoke_restore = null;
+    if ( function_exists( 'WC' ) && WC()->cart ) {
+        foreach ( [ 'bespoke_edit' => 'edit', 'bespoke_copy' => 'copy' ] as $bespoke_param => $bespoke_mode ) {
+            $bespoke_key = isset( $_GET[ $bespoke_param ] ) ? sanitize_key( wp_unslash( $_GET[ $bespoke_param ] ) ) : '';
+            if ( '' === $bespoke_key ) {
+                continue;
+            }
+            $bespoke_line = WC()->cart->get_cart_item( $bespoke_key );
+            if ( $bespoke_line && (int) ( $bespoke_line['product_id'] ?? 0 ) === (int) $product->get_id()
+                 && ! empty( $bespoke_line['bespoke_state'] ) && is_array( $bespoke_line['bespoke_state'] ) ) {
+                $bespoke_restore = [ 'mode' => $bespoke_mode, 'key' => $bespoke_key, 'state' => $bespoke_line['bespoke_state'] ];
+                // A page carrying one customer's design must not be cached for the next.
+                if ( ! defined( 'DONOTCACHEPAGE' ) ) {
+                    define( 'DONOTCACHEPAGE', true );
+                }
+            }
+            break;
+        }
+    }
+
     $bespoke_variations = [];
     if ( $product->is_type( 'variable' ) ) {
         foreach ( $product->get_available_variations() as $bv ) {
@@ -148,6 +171,8 @@ function bespoke_render_customiser( $atts ) {
         canEditGeometry: <?php echo current_user_can( 'manage_options' ) ? 'true' : 'false'; ?>,
         adminAjaxUrl:    '<?php echo esc_js( admin_url( 'admin-ajax.php' ) ); ?>',
         geometryNonce:   '<?php echo esc_js( wp_create_nonce( 'bespoke_save_geometry' ) ); ?>',
+        // A design reopened from the basket (Amend / Duplicate), or null.
+        restore:         <?php echo wp_json_encode( $bespoke_restore, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT ); ?>,
         // Live variation lookup table — used by the JS picker to surface
         // the right price as the customer picks size + thickness etc.
         variations:      <?php echo wp_json_encode( $bespoke_variations ); ?>

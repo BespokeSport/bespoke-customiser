@@ -94,11 +94,110 @@ function bespoke_cart_render_customise_link( $cart_item, $cart_item_key ) {
 		return;
 	}
 
+	// A line added since the design started travelling with it can be
+	// reopened: Amend replaces the line, Duplicate adds another. Older lines
+	// keep the plain link to the product.
+	if ( ! empty( $cart_item['bespoke_state'] ) && is_array( $cart_item['bespoke_state'] ) ) {
+		$amend = add_query_arg( 'bespoke_edit', $cart_item_key, $url );
+		$copy  = add_query_arg( 'bespoke_copy', $cart_item_key, $url );
+		echo '<span class="bs-customise-links">'
+			. '<a class="bs-customise-link" href="' . esc_url( $amend ) . '">' . esc_html__( 'Amend →', 'bespoke-customiser' ) . '</a>'
+			. '<a class="bs-customise-link" href="' . esc_url( $copy ) . '">' . esc_html__( 'Duplicate →', 'bespoke-customiser' ) . '</a>'
+			. '</span>';
+		return;
+	}
+
 	$label = apply_filters( 'bespoke_cart_customise_link_label', __( 'Re-customise →', 'bespoke-customiser' ) );
 
 	echo '<a class="bs-customise-link" href="' . esc_url( $url ) . '">'
 		. esc_html( $label )
 		. '</a>';
+}
+
+/* -------------------------------------------------------------------------
+ * 3b. The design picture opens large.
+ *
+ *    The basket's thumbnails are small. Clicking one opens the design
+ *    preview at full size in a box over the basket — closed with the ×,
+ *    a click outside it, or Esc — rather than following the thumbnail's
+ *    link away to the product page.
+ * --------------------------------------------------------------------- */
+add_action( 'wp_footer', 'bespoke_cart_print_lightbox' );
+function bespoke_cart_print_lightbox() {
+	if ( ! bespoke_cart_is_cart_page() ) {
+		return;
+	}
+	?>
+	<style id="bespoke-cart-lightbox">
+	.bcp-zoom{position:relative;display:inline-block;cursor:zoom-in;}
+	.bcp-zoom::after{content:"";position:absolute;right:4px;bottom:4px;width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,.65) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235DCAA5' stroke-width='2.4'%3E%3Ccircle cx='10.5' cy='10.5' r='6'/%3E%3Cline x1='15' y1='15' x2='20' y2='20'/%3E%3Cline x1='10.5' y1='8' x2='10.5' y2='13'/%3E%3Cline x1='8' y1='10.5' x2='13' y2='10.5'/%3E%3C/svg%3E") center/14px no-repeat;pointer-events:none;}
+	.bs-customise-links{display:inline-flex;flex-wrap:wrap;gap:6px 14px;}
+	.bcp-lightbox{position:fixed;inset:0;z-index:2147483646;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;gap:16px;padding:24px;box-sizing:border-box;cursor:zoom-out;}
+	.bcp-lightbox figure{margin:0;text-align:center;}
+	.bcp-lightbox img{display:block;max-width:min(88vw,760px);max-height:82vh;width:auto;height:auto;background:#fff;border-radius:12px;box-shadow:0 18px 60px rgba(0,0,0,.6);cursor:default;}
+	.bcp-lightbox figcaption{margin-top:8px;color:#ddd;font-size:13px;letter-spacing:.06em;text-transform:uppercase;}
+	.bcp-lightbox-x{position:fixed;top:14px;right:14px;width:44px;height:44px;border-radius:50%;border:none;background:#5DCAA5;color:#08312A;font-size:26px;line-height:44px;font-weight:700;cursor:pointer;}
+	@media (max-width:640px){.bcp-lightbox{flex-direction:column;}.bcp-lightbox img{max-width:92vw;max-height:40vh;}}
+	</style>
+	<script id="bespoke-cart-lightbox-js">
+	(function(){
+		var open = null;
+		function close(){
+			if (!open) return;
+			open.remove();
+			open = null;
+			document.documentElement.style.overflow = '';
+		}
+		document.addEventListener('click', function(e){
+			var z = e.target.closest ? e.target.closest('.bcp-zoom') : null;
+			if (!z) return;
+			// The thumbnail sits inside a link to the product; open the
+			// picture here instead of leaving the basket.
+			e.preventDefault();
+			e.stopPropagation();
+			close();
+			// A double-sided armband shows both faces side by side.
+			var cell  = z.parentNode && z.parentNode.querySelectorAll ? z.parentNode : null;
+			var shots = cell ? cell.querySelectorAll('.bcp-zoom') : [z];
+			if (!shots.length) shots = [z];
+			var box = document.createElement('div');
+			box.className = 'bcp-lightbox';
+			box.setAttribute('role', 'dialog');
+			box.setAttribute('aria-label', 'Your design');
+			Array.prototype.forEach.call(shots, function(s){
+				var fig = document.createElement('figure');
+				var img = document.createElement('img');
+				img.src = s.getAttribute('data-full');
+				img.alt = 'Your design';
+				fig.appendChild(img);
+				var label = s.getAttribute('data-label');
+				if (label) {
+					var cap = document.createElement('figcaption');
+					cap.textContent = label;
+					fig.appendChild(cap);
+				}
+				fig.addEventListener('click', function(ev){ ev.stopPropagation(); });
+				box.appendChild(fig);
+			});
+			var x = document.createElement('button');
+			x.type = 'button';
+			x.className = 'bcp-lightbox-x';
+			x.setAttribute('aria-label', 'Close');
+			x.textContent = '×';
+			x.addEventListener('click', function(ev){ ev.stopPropagation(); close(); });
+			box.appendChild(x);
+			box.addEventListener('click', close);
+			document.body.appendChild(box);
+			document.documentElement.style.overflow = 'hidden';
+			open = box;
+			x.focus();
+		}, true);
+		document.addEventListener('keydown', function(e){
+			if (e.key === 'Escape') close();
+		});
+	})();
+	</script>
+	<?php
 }
 
 /* -------------------------------------------------------------------------

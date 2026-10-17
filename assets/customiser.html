@@ -58,6 +58,8 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
 .nav-row{flex-wrap:wrap;}
 .bcp-buy{flex:1 0 100%;display:flex;align-items:center;gap:10px;margin-bottom:10px;}
 /* Running tags: what they are for, under the buttons — see bespokeTagSportNote(). */
+/* Reopened from the basket: what adding will do — see bespokeRestoreFromBasket(). */
+.bcp-restore-note{flex:1 0 100%;margin:0 0 10px;padding:9px 12px;border:1px solid #5DCAA5;border-radius:10px;background:#0A2A20;color:#BFEBDD;font-size:12px;line-height:1.45;}
 .bcp-tag-note{flex:1 0 100%;display:flex;gap:8px;align-items:flex-start;margin:10px 0 0;font-size:12px;line-height:1.45;color:#9A9A95;}
 .bcp-tag-note svg{flex:none;margin-top:1px;}
 /* When the variation changes, bespokeRefreshPriceDisplay() swaps in
@@ -4123,6 +4125,156 @@ function bespokeStepNumbers(){
     }
   }
   bespokeBuyBarLastStep();
+}
+
+/* ============================================================
+   AMEND AND DUPLICATE, FROM THE BASKET
+   ============================================================
+   Every basket line keeps the design as the customiser held it
+   (bespokeStateForBasket, sent with the add-to-cart). The basket's
+   Amend and Duplicate links reopen the product with
+   ?bespoke_edit= or ?bespoke_copy= and the line's key; the page is
+   handed that design as BespokeConfig.restore, from the customer's
+   own basket only (customiser-frontend.php), and puts it back here.
+   Amend sends the key with the add-to-cart, and the server replaces
+   that line at the quantity it had; Duplicate adds a new line.
+   ============================================================ */
+
+/** The design this page was reopened with from the basket, or null. */
+function bespokeRestoreInfo(){
+  var r = window.BespokeConfig && BespokeConfig.restore;
+  return (r && r.state && typeof r.state === 'object') ? r : null;
+}
+
+/**
+ * The design as plain data, every picture at the address it was uploaded
+ * to (urls maps each blob: or data: address to it). A picture with no
+ * uploaded address is dropped rather than kept as an address that is
+ * already dead. Things that can't be written down — the File objects,
+ * which step is showing — are left out.
+ */
+function bespokeStateForBasket(urls){
+  if (!window.S) return '';
+  if (typeof bespokeIsDoubleSided === 'function' && bespokeIsDoubleSided() && S.faceStore && S.currentFace) {
+    try { S.faceStore[S.currentFace] = bespokeSnapshotFace(); } catch (e) {}
+  }
+  var skip = { step: 1, selected: 1, tagFiles: 1, faceBadgeFiles: 1, faceBadge2Files: 1 };
+  var out = {};
+  Object.keys(S).forEach(function(k){
+    if (skip[k] || typeof S[k] === 'function') return;
+    out[k] = S[k];
+  });
+  var json = '';
+  try {
+    json = JSON.stringify(out, function(key, val){
+      if (typeof val === 'string' && (val.indexOf('blob:') === 0 || val.indexOf('data:') === 0)) {
+        return (urls && urls[val]) || null;
+      }
+      return val;
+    });
+  } catch (e) { return ''; }
+  return json.length > 300000 ? '' : json;
+}
+
+/**
+ * Put a design from the basket back into the customiser, and every
+ * control with it. The shared repaint (the one double-sided faces use)
+ * does most; the rest is what only some products have — split text, the
+ * boot stickers' chooser and flag, the player card, the backdrop and size
+ * buttons.
+ */
+function bespokeRestoreFromBasket(){
+  var r = bespokeRestoreInfo();
+  if (!r || !window.S) return;
+  var st = r.state;
+  Object.keys(st).forEach(function(k){
+    if (k === 'step' || k === 'selected') return;
+    S[k] = st[k];
+  });
+  // Files picked on the original page can't come back; the pictures have,
+  // at their uploaded addresses, and that is all the add-to-cart reads.
+  if (S.tagStore) S.tagFiles = { right: { badge: null, badge2: null }, left: { badge: null, badge2: null } };
+  if (S.faceStore) { S.faceBadgeFiles = { outside: null, inside: null }; S.faceBadge2Files = { outside: null, inside: null }; }
+  if (S.playerPhoto && !S.playerPhoto.url) S.playerPhoto = null;
+
+  // The shared repaint writes the combined text box back into both sides,
+  // so the two sides are put back after it.
+  var keep = { nameL: S.nameL, nameR: S.nameR, numL: S.numL, numR: S.numR };
+  try { if (typeof bespokeSyncFaceTabs === 'function') bespokeSyncFaceTabs(); } catch (e) {}
+  try { bespokeRepaintFaceControls(); } catch (e) {}
+  S.nameL = keep.nameL || ''; S.nameR = keep.nameR || '';
+  S.numL  = keep.numL  || ''; S.numR  = keep.numR  || '';
+  var setVal = function(id, v, countId){
+    var el = document.getElementById(id);
+    if (el) el.value = v || '';
+    var c = countId && document.getElementById(countId);
+    if (c) c.textContent = String(v || '').length;
+  };
+  var showSame = function(kind, same){
+    var tog = document.getElementById(kind + '-tog');
+    if (tog) tog.className = 'tog-track' + (same ? ' on' : '');
+    var a = document.getElementById(kind + '-same-block');
+    var b = document.getElementById(kind + '-split-block');
+    if (a) a.style.display = same ? 'block' : 'none';
+    if (b) b.style.display = same ? 'none' : 'block';
+  };
+  setVal('name-both', S.nameL, 'nbc'); setVal('name-L', S.nameL, 'nLc'); setVal('name-R', S.nameR, 'nRc');
+  setVal('num-both', S.numL);         setVal('num-L', S.numL);          setVal('num-R', S.numR);
+  showSame('name', S.sameName !== false);
+  showSame('num',  S.sameNum  !== false);
+
+  try { if (typeof renderSizes === 'function') renderSizes(); } catch (e) {}
+  try { if (typeof syncBgVariantButtons === 'function') syncBgVariantButtons(); } catch (e) {}
+  try { if (typeof renderAddBackPanel === 'function') renderAddBackPanel(); } catch (e) {}
+
+  // Boot stickers: straight past the chooser to the steps that were picked,
+  // with the flag as it was.
+  if (typeof bespokeBaseType === 'function' && bespokeBaseType() === 'boot_stickers') {
+    var f = (typeof bespokeBootFlagState === 'function') ? bespokeBootFlagState() : null;
+    if (f) {
+      setVal('boot-flag-country', f.country);
+      setVal('boot-flag-request', f.request);
+      try { bespokeBootFlagSync(); } catch (e) {}
+    }
+    try { if (bespokeBootTotal()) bespokeBootChooserNext(); } catch (e) {}
+  }
+
+  // Player cards: photo, flag, position and stats.
+  if (typeof isPlayerCard === 'function' && isPlayerCard()) {
+    if (S.playerPhoto && S.playerPhoto.url) {
+      var th = document.getElementById('player-photo-thumb'); if (th) th.src = S.playerPhoto.url;
+      var fn = document.getElementById('player-photo-fname'); if (fn) fn.textContent = S.playerPhoto.filename || '';
+      var row = document.getElementById('player-photo-row');  if (row) row.style.display = 'flex';
+      var zn  = document.getElementById('player-photo-zone'); if (zn) zn.style.display = 'none';
+    }
+    setVal('player-flag', S.playerFlag);
+    setVal('player-position', S.playerPosition);
+    try { if (typeof _applyPlayerStatLabels === 'function') _applyPlayerStatLabels(); } catch (e) {}
+    (S.playerStats || []).forEach(function(v, i){ setVal('stat-' + (i + 1), v); });
+    try { computePlayerOVR(); } catch (e) {}
+  }
+
+  try { if (typeof bespokeRefreshPriceDisplay === 'function') bespokeRefreshPriceDisplay(); } catch (e) {}
+  try { if (typeof updateDesignLayers === 'function') updateDesignLayers(); } catch (e) {}
+  try { if (typeof syncAll === 'function') syncAll(); } catch (e) {}
+  bespokeRestoreNote();
+}
+
+/** Under the buttons on every step: what adding this design will do. */
+function bespokeRestoreNote(){
+  var r = bespokeRestoreInfo();
+  if (!r) return;
+  var words = (r.mode === 'edit')
+    ? bespokeT('You\'re amending a design in your basket. Adding it replaces the one there.')
+    : bespokeT('This is a copy of a design in your basket. Change what you like, then add it as another.');
+  for (var i = 0; i < 5; i++) {
+    var nav = document.querySelector('#s' + i + ' .nav-row');
+    if (!nav || nav.querySelector('.bcp-restore-note')) continue;
+    var note = document.createElement('p');
+    note.className = 'bcp-restore-note';
+    note.textContent = words;
+    nav.insertBefore(note, nav.firstChild);
+  }
 }
 
 /**
@@ -9222,6 +9374,29 @@ function _bespokeCommitAddToCart(cfg, btn, insideFace) {
       }));
     }
 
+    // The design itself, kept with the basket line so it can be reopened
+    // (Amend / Duplicate). Every picture goes at the address it was just
+    // uploaded to: the page's own blob: addresses die with the page.
+    try {
+      var _urls = {};
+      var _put  = function(local, server){ if (local && server) _urls[local] = server; };
+      _put(S.badgeURL,  badgeData && badgeData.url);
+      _put(S.badge2URL, badge2Data && badge2Data.url);
+      if (insideFace && S.faceStore && S.faceStore.inside) {
+        _put(S.faceStore.inside.badgeURL,  insideFace.badge  && insideFace.badge.url);
+        _put(S.faceStore.inside.badge2URL, insideFace.badge2 && insideFace.badge2.url);
+      }
+      if (tagLeftData && tagLeftData.snap) {
+        _put(tagLeftData.snap.badgeURL,  tagLeftData.badge  && tagLeftData.badge.url);
+        _put(tagLeftData.snap.badge2URL, tagLeftData.badge2 && tagLeftData.badge2.url);
+      }
+      if (S.playerPhoto) _put(S.playerPhoto.url, S.playerPhoto.serverUrl);
+      var _state = bespokeStateForBasket(_urls);
+      if (_state) formData.append('bespoke_state', _state);
+      var _again = bespokeRestoreInfo();
+      if (_again && _again.mode === 'edit' && _again.key) formData.append('bespoke_replace_key', _again.key);
+    } catch (e) {}
+
     // Running tags: whether the pair matches, and the left tag's own
     // arrangement when it does not. The badge fields above are the right
     // tag's.
@@ -9424,6 +9599,7 @@ _bsInit('bootChooser',  function(){ bespokeBootChooserInit(); });
 _bsInit('tagSliders',   function(){ bespokeTagSliderRanges(); });
 _bsInit('badgeSpots',   function(){ if (bespokeBadgeSpotsStartMode() !== 'same') bespokeResetBadgeSpots(S); });
 _bsInit('tagPair',      function(){ bespokeTagInit(); });
+_bsInit('restore',      function(){ bespokeRestoreFromBasket(); });
 _bsInit('bootFlag',     function(){ bespokeBootFlagInit(); });
 _bsInit('addBack',      function(){ renderAddBackPanel(); });
 

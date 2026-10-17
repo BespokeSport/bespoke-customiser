@@ -658,6 +658,23 @@ function bespoke_parse_text_boxes( $boxes ) {
 }
 
 /**
+ * The design as the customiser holds it, kept with the basket line so the
+ * basket can reopen it (Amend / Duplicate). Plain data, read back only into
+ * the same customer's customiser from their own basket, and capped so a
+ * page can't fill the session.
+ *
+ * @return array|null
+ */
+function bespoke_read_basket_state() {
+    $raw = isset( $_POST['bespoke_state'] ) ? (string) wp_unslash( $_POST['bespoke_state'] ) : '';
+    if ( '' === $raw || strlen( $raw ) > 300000 ) {
+        return null;
+    }
+    $state = json_decode( $raw, true );
+    return is_array( $state ) ? $state : null;
+}
+
+/**
  * Boot stickers: which stickers are in the set, and what each is made from.
  *
  * bespoke_boot is one JSON blob: the picks (text / flag / badge), the flag's
@@ -1336,20 +1353,44 @@ function bespoke_handle_add_to_cart() {
     // WooCommerce stores this in the session and carries it through to
     // the order when the customer checks out.
     //
+    // The design itself, so the basket line can be reopened (Amend /
+    // Duplicate). Kept with the line in the session only — never on the
+    // order.
+    $cart_item_data = [ 'bespoke_customisation' => $customisation ];
+    $basket_state   = bespoke_read_basket_state();
+    if ( $basket_state ) {
+        $cart_item_data['bespoke_state'] = $basket_state;
+    }
+
+    // Amend: the line this design replaces — this customer's own, for this
+    // product.
+    $replace  = isset( $_POST['bespoke_replace_key'] ) ? sanitize_key( wp_unslash( $_POST['bespoke_replace_key'] ) ) : '';
+    $old_line = $replace ? WC()->cart->get_cart_item( $replace ) : null;
+    if ( $old_line && (int) ( $old_line['product_id'] ?? 0 ) !== $product_id ) {
+        $old_line = null;
+    }
+
     $cart_item_key = WC()->cart->add_to_cart(
         $product_id,
         1,                // Quantity – always 1 pair
         $variation_id,    // Variation ID – 0 for simple products
         $variation_attrs, // Variation attribute map
-        [
-            'bespoke_customisation' => $customisation,
-        ]
+        $cart_item_data
     );
 
     if ( ! $cart_item_key ) {
         $notices = wc_get_notices( 'error' );
         $message = ! empty( $notices ) ? implode( ' | ', array_column( $notices, 'notice' ) ) : 'add_to_cart returned false — no WC error captured.';
         wp_send_json_error( wp_strip_all_tags( $message ) );
+    }
+
+    // The amended design takes the old line's place, at the quantity it had.
+    if ( $old_line ) {
+        $qty = max( 1, (int) ( $old_line['quantity'] ?? 1 ) );
+        if ( $replace !== $cart_item_key ) {
+            WC()->cart->remove_cart_item( $replace );
+        }
+        WC()->cart->set_quantity( $cart_item_key, $qty );
     }
 
     wp_send_json_success( [

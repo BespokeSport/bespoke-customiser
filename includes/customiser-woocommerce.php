@@ -499,7 +499,7 @@ function bespoke_cart_item_thumbnail( $thumbnail, $cart_item, $cart_item_key ) {
     if ( $inside_url ) {
         $thumb = function( $url, $label ) {
             return sprintf(
-                '<span style="display:block;">'
+                '<span class="bcp-zoom" data-full="' . esc_url( $url ) . '" data-label="' . esc_attr( $label ) . '" style="display:block;">'
                 . '<img src="%s" alt="%s design" style="width:90px;height:90px;object-fit:contain;display:block;background:#fff;border-radius:6px;" />'
                 . '<span style="display:block;font-size:10px;line-height:1.4;text-align:center;opacity:.7;">%s</span>'
                 . '</span>',
@@ -512,8 +512,9 @@ function bespoke_cart_item_thumbnail( $thumbnail, $cart_item, $cart_item_key ) {
             . '</span>';
     }
 
+    // In a wrapper the basket's lightbox opens large (customiser-cart.php).
     return sprintf(
-        '<img src="%s" alt="Your custom design" style="width:100px;height:100px;object-fit:contain;display:block;" />',
+        '<span class="bcp-zoom" data-full="%1$s"><img src="%1$s" alt="Your custom design" style="width:100px;height:100px;object-fit:contain;display:block;" /></span>',
         esc_url( $preview_url )
     );
 }
