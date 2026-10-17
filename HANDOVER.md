@@ -642,6 +642,41 @@ the customiser's built-in 'vanguard' — not a registered design — so it
 paints none; `patchDesigns()` then switches to the first registered design
 and now calls `updateDesignLayers()` to paint it. Unseen where the customer
 picks a design; fatal on a single-design product with no design step.
+### 6.23 Launch moves files, never the database — so the copy tool carries the rest
+
+Live takes orders all day; its database is never replaced (§ the 28 Sept
+warning). Everything else crosses with **Copy to Live**
+(`includes/customiser-copy.php`, export file format 2; format 1 still read):
+
+- **Products already on live** — wording, BEspoke Page fields, customiser
+  type, Rank Math, and *Designs shown*. Never prices, stock, options,
+  variations, images or categories.
+- **Products not on live** — made as **drafts** from `bespoke_copy_product_shape()`:
+  simple/variable, prices, attributes + variations (a shared `pa_` attribute
+  missing on live becomes the product's own; the customiser matches options
+  by their words, so nothing breaks), postage class and categories by slug
+  (made if missing — a new class has no rates, and the notice says so),
+  tags, pictures sideloaded once from the source URL (tagged
+  `_bespoke_copy_source`, so a re-run reuses them). Matching includes
+  drafts, so running the same file twice never makes a product twice.
+- **Designs shown** (`_bespoke_design_allow`) travels by design slug/title —
+  design IDs differ after the WP design import. A list with any name
+  missing is never written: short would offer fewer designs, empty would
+  offer all of them.
+- **Settings** — Product Setup artwork by *file name*, rebuilt at live's
+  `BESPOKE_PRODUCT_ASSETS_URL` and only for files present there (never left
+  pointing at staging); saved placements (cleaned to the Save placement
+  ranges); self-serve product types. Artwork only adds/replaces the files it
+  names for a type.
+- **Undo** restores wording and settings and trashes the drafts it made.
+
+Proved end to end in a throwaway WordPress + WooCommerce 11.2 with
+WordPress Playground (`npx @wp-playground/cli server --blueprint …`, plugin
+mounted, test script mounted beside it — 41 checks: export, renumbered
+designs, missing class/categories, import, re-run, undo). On Windows Git
+Bash, run it with `MSYS_NO_PATHCONV=1` or the `/wordpress/...` mount paths
+get rewritten to `C:/Program Files/Git/...`, and mount a folder, not a
+single file.
 ## 7. Tooling notes (for you, on the new machine)
 
 - **There is no PHP locally.** `tools/` in the repo has what you need — run `npm install`
