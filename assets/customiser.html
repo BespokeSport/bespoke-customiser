@@ -6576,6 +6576,19 @@ function bespokeBandMirror(){
   // A pair of running tags that has stopped matching draws its other tag
   // from its own arrangement instead — see bespokeTagDrawOther().
   if (typeof bespokeTagPair === 'function' && bespokeTagPair() && !bespokeTagsMatch()) return null;
+  // A matching pair: the lower tag is the upper one exactly one plate pitch
+  // down, wherever the badges start. Fixed positions here drifted from the
+  // starting ones as soon as a saved placement moved them (427 / 762
+  // against 420 / 780), and every copy sat that far off its badge.
+  if (typeof bespokeBaseType === 'function' && bespokeBaseType() === 'running_tags') {
+    var pitch = (typeof BESPOKE_TAG_PITCH === 'number') ? BESPOKE_TAG_PITCH : 194;
+    var positions = {};
+    ['badgeL', 'badgeR'].forEach(function(k){
+      var d = (window.DEF || {})[k];
+      if (d) positions[k] = { x: d.x, y: d.y + pitch };
+    });
+    return { scale: 1, positions: positions };
+  }
   return BAND_MIRRORS[bespokeBaseType()] || null;
 }
 function applyZoneConfig(){
