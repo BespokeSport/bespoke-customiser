@@ -505,7 +505,9 @@ HTML,
 // tab between the product grid and the questions. Rank Math counted the page
 // at 350 words with no links out; this takes it past 600 and links to two
 // charities. It leaves the focus keyword alone: the 15 product names in the
-// grid already repeat it plenty. Dates match each tag's own description.
+// grid already repeat it plenty — at 651 words Rank Math still read 17 uses
+// as 2.61%, too dense, hence the last two paragraphs (no keyword) to take it
+// under 2.5%. Dates match each tag's own description.
 $causes = <<<'HTML'
 <h2>Find your cause</h2>
 <p>Every pair starts with a design made for its cause. Choose the one that matters to you, then make it yours with a name, a date or a message.</p>
@@ -526,6 +528,8 @@ $causes = <<<'HTML'
 <li><a href="/product/suicide-prevention-awareness-running-tags/">Suicide Prevention</a>: for World Suicide Prevention Day on 10 September, in memory of someone, or to show you're someone people can talk to.</li>
 </ul>
 <p>Each tag's own page also points you to its cause's main UK charity, such as <a href="https://www.mind.org.uk/" target="_blank" rel="noopener">Mind</a> or the <a href="https://www.stroke.org.uk/" target="_blank" rel="noopener">Stroke Association</a>, if you'd like to find out more or plan a fundraising run of your own.</p>
+<p>Running a race for a charity? Put the event and the date on one tag and a name or a message on the other, and the pair becomes a keepsake of the day.</p>
+<p>Can't see your cause? Design your own pair with our <a href="/product/personalised-running-tags/">personalised tags</a>: pick a pattern and colours, then add the words and badges for any charity, club or person you're running for.</p>
 HTML;
 
 return [
@@ -549,7 +553,9 @@ return [
 		[
 			'slug'            => 'awareness-running-tags',
 			'title'           => 'Awareness Running Tags (page)',
-			'seo_title'       => 'Awareness Running Tags – Personalised Tags for 15 Causes',
+			// "Good" is for Rank Math's sentiment check; the number stays for its
+			// number check.
+			'seo_title'       => 'Awareness Running Tags – Personalised for 15 Good Causes',
 			'seo_description' => 'Awareness running tags for 15 causes, from autism and mental health to Pride and Remembrance. Waterproof aluminium pairs, personalised and made in 3–5 days.',
 			'focus_keyword'   => 'awareness running tags,charity running tags',
 			// The page's own words, for Elementor — shown on the SEO Packs

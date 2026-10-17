@@ -887,8 +887,36 @@ close it, and change the web address with Quick Edit last.
 **Rank Math on the page:** 70/100 after the pack, at 350 words (Rank Math
 counts the grid's product names and prices) with the keyword missing from
 the old web address. The pack's "Causes list" block (Elementor copy, a
-Text Editor's Text tab) adds 315 words and two charity links, and leaves
-the focus keyword alone — the 15 product names already repeat it.
+Text Editor's Text tab) adds the words and two charity links, and leaves
+the focus keyword alone — the 15 product names already repeat it. With the
+first 315 words in and the address fixed it scored **83** (green): 651
+words, the remaining reds being keyword density 2.61% (17 uses, 15 of them
+product names; Rank Math wants ≤ 2.5%), no sentiment word in the title,
+and "use Content AI" (Rank Math's paid add-on — ignored). So the block
+gained two paragraphs without the keyword (381 words in all) and the SEO
+title became "Awareness Running Tags – Personalised for 15 Good Causes"
+("Good" for the sentiment check).
+
+**The range page's grid:** Source **Latest Products**, Include → Term:
+Running Tags and Awareness Running Tags, Order By **Menu Order**, **ASC**.
+It was made with Source "Manual Selection" (no products picked, the same
+terms included), which kept date order whatever Order By said — switching
+the Source fixed it (verified 17 Oct 2026).
+
+**Not in the header menu** (Nick, 17 Oct 2026): the page is reached from
+the shop, through its tile (a copy of the pre-designed armbands tile,
+product 6060, with Page Links To → the page). The footer menus weren't
+asked for.
+
+**Shop strays:** the Remembrance Day armband and the Aston Villa mug were
+added to the shop template's excluded products on staging and live (Nick,
+17 Oct 2026); the Grassroots Football mug stays in the shop on purpose.
+
+**Live sitemap:** with its canonical fixed, the pre-designed armbands page
+(live #6061) was still missing from `page-sitemap.xml` — though the
+sitemap index's page lastmod matched its save time, and the mugs range
+page is listed — so something excludes that one page: first suspect,
+Rank Math → Sitemap Settings → General → Exclude Posts.
 ## 7. Tooling notes (for you, on the new machine)
 
 - **There is no PHP locally.** `tools/` in the repo has what you need — run `npm install`
