@@ -5833,15 +5833,18 @@ function surpriseMe(){
    So the click is stopped first (capture, before anything else sees it),
    the notice shown, and the input clicked again from its button: a click
    the customer made, which a browser needs before it opens a file
-   window. Confirmed once, it isn't shown again on that visit, so a second
-   badge or a change goes straight through.
+   window. It asks every time a badge is uploaded (Nick: "Everytime they
+   upload a badge"): that one click from the button is let through, and
+   the next upload asks again.
    ============================================================ */
 var BESPOKE_BADGE_INPUTS = ['badge-file', 'badge2-file'];
-var _bespokeBadgeNoticeSeen = false;
+var _bespokeBadgeNoticePass = false;
 document.addEventListener('click', function(e){
   var t = e.target;
-  if (_bespokeBadgeNoticeSeen || !t || t.tagName !== 'INPUT' || t.type !== 'file') return;
+  if (!t || t.tagName !== 'INPUT' || t.type !== 'file') return;
   if (BESPOKE_BADGE_INPUTS.indexOf(t.id) === -1) return;
+  // The click from the notice's own button opens the file window.
+  if (_bespokeBadgeNoticePass) { _bespokeBadgeNoticePass = false; return; }
   e.preventDefault();
   e.stopPropagation();
   bespokeBadgeNotice(t);
@@ -5885,9 +5888,10 @@ function bespokeBadgeNotice(input){
     }
   };
   ok.addEventListener('click', function(){
-    _bespokeBadgeNoticeSeen = true;
     close();
+    _bespokeBadgeNoticePass = true;
     input.click();
+    _bespokeBadgeNoticePass = false;
   });
   cancel.addEventListener('click', close);
   box.addEventListener('click', function(e){ if (e.target === box) close(); });

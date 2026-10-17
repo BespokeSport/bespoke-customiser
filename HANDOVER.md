@@ -779,7 +779,8 @@ the click on any input in `BESPOKE_BADGE_INPUTS` (`badge-file`,
 `badge2-file`) — whether it came from the input, a label for it or a
 script — and the notice's "Upload my badge" button clicks the input again
 (a real user click, which browsers need before opening a file window).
-Confirmed once per page visit. **A new badge upload input must be added to
+It asks every time a badge is uploaded: `_bespokeBadgeNoticePass` lets
+just that one click through. **A new badge upload input must be added to
 `BESPOKE_BADGE_INPUTS`**, or it will skip the notice.
 
 ## 7. Tooling notes (for you, on the new machine)
