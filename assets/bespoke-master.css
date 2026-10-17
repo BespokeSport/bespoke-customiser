@@ -330,6 +330,25 @@ body.woocommerce-checkout #place_order:active {
 }
 
 /* --------------------------------------------------------------------------
+   Checkout · the payment box
+   WooCommerce draws the chosen payment method's box light grey, and the
+   dark theme's white text all but vanished on it (Nick, 17 Oct 2026).
+   Everything written in the box is dark ink instead — the test-mode note,
+   "save payment information", each gateway's description. The card
+   fields themselves are WooPayments', drawn in Stripe's own frame where no
+   stylesheet reaches: see bespoke_checkout_card_fields_ink() in
+   customiser-master.php for their labels.
+   -------------------------------------------------------------------------- */
+body.woocommerce-checkout #payment div.payment_box,
+body.woocommerce-checkout #payment div.payment_box *:not(button):not(.button) {
+  color: #0D0D0D !important;
+}
+body.woocommerce-checkout #payment div.payment_box a:not(.button) {
+  color: #0D0D0D !important;
+  text-decoration: underline !important;
+}
+
+/* --------------------------------------------------------------------------
    Checkout · YOUR ORDER review panel
    The review table sat transparent over a light page-section background —
    white text on pale grey, barely readable. Give the panel its own solid

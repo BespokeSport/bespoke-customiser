@@ -258,3 +258,59 @@ function bespoke_security_headers() {
 		header( 'Strict-Transport-Security: max-age=31536000' );
 	}
 }
+
+/* =========================================================================
+ * Checkout · the card fields' labels (WooPayments)
+ * =========================================================================
+ * WooPayments draws the card number, expiry and security code inside
+ * Stripe's own frame, where no stylesheet reaches. It works their colours
+ * out from the page instead, and took the labels' colour from the billing
+ * form's — white, on the dark theme — then drew them on the light payment
+ * box, where they all but vanished (Nick, 17 Oct 2026). The rest of the
+ * box's text is dark ink by stylesheet (bespoke-master.css).
+ *
+ * WooPayments (11.1) announces the colours it has worked out as the
+ * "wcpay_elements_appearance" event, before it uses them: the listener
+ * sets the labels and text to the same dark ink there. It also keeps what
+ * it worked out in the browser (localStorage, "wcpay_appearance_<where>")
+ * and reuses it, so a saved set whose labels aren't dark ink is forgotten
+ * and worked out again — with the listener in place.
+ */
+add_action( 'wp_head', 'bespoke_checkout_card_fields_ink', 5 );
+function bespoke_checkout_card_fields_ink() {
+	if ( ! function_exists( 'is_checkout' ) || ! is_checkout() ) {
+		return;
+	}
+	?>
+	<script id="bespoke-card-fields-ink">
+	(function () {
+		var INK = '#0D0D0D';
+		// The classic checkout's light payment box — the one this site uses.
+		var WHERE = [ 'shortcode_checkout' ];
+		document.addEventListener( 'wcpay_elements_appearance', function ( e ) {
+			var d = e && e.detail;
+			if ( ! d || ! d.appearance || WHERE.indexOf( d.elementsLocation ) === -1 ) {
+				return;
+			}
+			var a = d.appearance;
+			a.variables = a.variables || {};
+			a.variables.colorText = INK;
+			a.rules = a.rules || {};
+			[ '.Label', '.Label--resting', '.Text', '.Text--redirect' ].forEach( function ( k ) {
+				a.rules[ k ] = Object.assign( {}, a.rules[ k ] || {}, { color: INK } );
+			} );
+		} );
+		try {
+			WHERE.forEach( function ( where ) {
+				var key   = 'wcpay_appearance_' + where;
+				var saved = JSON.parse( localStorage.getItem( key ) || 'null' );
+				var label = saved && saved.appearance && saved.appearance.rules && saved.appearance.rules[ '.Label' ];
+				if ( saved && ( ! label || label.color !== INK ) ) {
+					localStorage.removeItem( key );
+				}
+			} );
+		} catch ( err ) {}
+	})();
+	</script>
+	<?php
+}

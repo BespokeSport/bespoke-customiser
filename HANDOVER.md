@@ -726,6 +726,25 @@ buttons), that it may be too long for a smaller boot.
 The "Change what goes on your stickers" link is now the full-width
 **Main menu** button (`.bcp-main-menu`, inside `#boot-rechoose` in the
 step bar).
+### 6.25 The card fields at checkout are WooPayments' — styled through its event
+
+The card number / expiry / security code are drawn by WooPayments (11.1) in
+Stripe's own frame: no stylesheet reaches them. WooPayments works their
+colours out from the page — labels from the billing form's labels (white on
+the dark theme), the box from the payment box (light grey) — so the labels
+vanished. It then keeps that in the BROWSER, in localStorage
+(`wcpay_appearance_<where>`, with a `stylesCacheVersion`), and reuses it, so
+a fix in CSS alone never reaches someone who has visited before.
+
+`bespoke_checkout_card_fields_ink()` (customiser-master.php, wp_head on
+checkout) listens for `wcpay_elements_appearance` — dispatched with the
+freshly worked-out appearance before it is used and cached — and sets
+`.Label`, `.Text` and `colorText` to #0D0D0D; it also forgets a saved
+appearance whose `.Label` is not that ink. The rest of the box (test-mode
+note, "save payment information", other gateways' text) is dark by
+bespoke-master.css. The PayPal "Pay in 30 days" message is PayPal's frame:
+its text colour is a PayPal Payments setting, not ours.
+
 ## 7. Tooling notes (for you, on the new machine)
 
 - **There is no PHP locally.** `tools/` in the repo has what you need — run `npm install`
