@@ -8397,6 +8397,13 @@ function applyTagShoeOverlay(stepId){
   ];
   var strip = function(node){
     if (node.removeAttribute) node.removeAttribute('id');
+    // The customiser's controls — selection box, handles, × — belong on the
+    // plate being edited, not on its copy on the shoe.
+    if (node.querySelectorAll) {
+      Array.prototype.forEach.call(node.querySelectorAll('.bcp-delete-btn, .bcp-selection-outline, .bcp-resize-handle, .bcp-rotate-handle'), function(c){
+        if (c.parentNode) c.parentNode.removeChild(c);
+      });
+    }
     var kids = node.children || [];
     for (var i = 0; i < kids.length; i++) strip(kids[i]);
     return node;

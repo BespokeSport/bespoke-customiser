@@ -1605,6 +1605,60 @@ function bespoke_render_customiser( $atts ) {
                     return Promise.all(tasks);
                 }
 
+                // The customiser's own controls — the selection box, its
+                // handles, the ×. Never part of the design.
+                var CAPTURE_CONTROLS = '.bcp-delete-btn, .bcp-selection-outline, .bcp-resize-handle, .bcp-rotate-handle';
+
+                // Helper: put every web font the design's text uses INTO the
+                // picture. An SVG drawn as an image can't reach the page's
+                // fonts, so without this text in an uploaded font fell back
+                // to a heavy default in the basket preview. Fonts the page
+                // can't read the rules of (another site's stylesheet) are
+                // left as they were.
+                function embedFonts(svgEl){
+                    var used = {};
+                    var clean = function(f){ return String(f || '').trim().replace(/^['"]+|['"]+$/g, '').toLowerCase(); };
+                    Array.prototype.forEach.call(svgEl.querySelectorAll('text, tspan, textPath'), function(t){
+                        String(t.getAttribute('font-family') || '').split(',').forEach(function(f){
+                            var k = clean(f);
+                            if (k) used[k] = true;
+                        });
+                    });
+                    var rules = [];
+                    Array.prototype.forEach.call(document.styleSheets, function(sheet){
+                        var list;
+                        try { list = sheet.cssRules; } catch (e) { return; }
+                        Array.prototype.forEach.call(list || [], function(rule){
+                            if (rule.type !== 5) return; // @font-face
+                            if (!used[clean(rule.style.getPropertyValue('font-family'))]) return;
+                            var m = /url\((['"]?)([^'")]+)\1\)/.exec(rule.style.getPropertyValue('src') || '');
+                            if (m) rules.push({ url: m[2], css: rule.cssText });
+                        });
+                    });
+                    if (!rules.length) return Promise.resolve();
+                    return Promise.all(rules.map(function(r){
+                        return urlToDataURI(r.url)
+                            .then(function(data){ return r.css.split(r.url).join(data); })
+                            .catch(function(){ return ''; });
+                    })).then(function(css){
+                        css = css.filter(Boolean).join('\n');
+                        if (!css) return;
+                        var style = document.createElementNS('http://www.w3.org/2000/svg', 'style');
+                        style.textContent = css;
+                        svgEl.insertBefore(style, svgEl.firstChild);
+                    });
+                }
+
+                // Helper: the colour behind the preview on the page — what
+                // shows through anything see-through in the design.
+                function backdropOf(el){
+                    for (var n = el && el.parentElement; n; n = n.parentElement) {
+                        var c = getComputedStyle(n).backgroundColor;
+                        if (c && c !== 'transparent' && !/rgba\(\s*0\s*,\s*0\s*,\s*0\s*,\s*0\s*\)/.test(c)) return c;
+                    }
+                    return '';
+                }
+
                 window.capturePreviewSVG = function(badgeServerUrl){
                     return new Promise(function(resolve){
                         try {
@@ -1637,6 +1691,15 @@ function bespoke_render_customiser( $atts ) {
                             var clone = svg.cloneNode(true);
                             clone.setAttribute('width',  '800');
                             clone.setAttribute('height', '800');
+                            Array.prototype.forEach.call(clone.querySelectorAll(CAPTURE_CONTROLS), function(n){
+                                if (n.parentNode) n.parentNode.removeChild(n);
+                            });
+                            // A running tag's holes are see-through: draw the picture
+                            // on the backdrop the customer saw them against.
+                            var paper = '#ffffff';
+                            if (typeof window.bespokeBaseType === 'function' && window.bespokeBaseType() === 'running_tags') {
+                                paper = backdropOf(svg) || paper;
+                            }
 
                             if (badgeServerUrl) {
                                 // Only the CLUB badge's images. An armband's
@@ -1673,7 +1736,7 @@ function bespoke_render_customiser( $atts ) {
                             // Inline all external image references BEFORE
                             // serializing — this is the key step that lets
                             // canvas render the SVG fully.
-                            inlineAllImages(clone).then(function(){
+                            Promise.all([ inlineAllImages(clone), embedFonts(clone) ]).then(function(){
                                 var svgStr  = new XMLSerializer().serializeToString(clone);
                                 var svgBlob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
                                 var url     = URL.createObjectURL(svgBlob);
@@ -1685,7 +1748,7 @@ function bespoke_render_customiser( $atts ) {
                                         canvas.width  = 800;
                                         canvas.height = 800;
                                         var ctx = canvas.getContext('2d');
-                                        ctx.fillStyle = '#ffffff';
+                                        ctx.fillStyle = paper;
                                         ctx.fillRect(0, 0, 800, 800);
                                         ctx.drawImage(img, 0, 0, 800, 800);
                                         canvas.toBlob(function(pngBlob){
