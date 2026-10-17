@@ -501,6 +501,33 @@ HTML,
 	'find_out'        => '<p>If you\'re struggling, you don\'t have to cope alone. You can call <a href="https://www.samaritans.org/" target="_blank" rel="noopener">Samaritans</a> free, day or night, on 116 123.</p>',
 ] );
 
+// The range page's list of causes, pasted into a Text Editor widget's Text
+// tab between the product grid and the questions. Rank Math counted the page
+// at 350 words with no links out; this takes it past 600 and links to two
+// charities. It leaves the focus keyword alone: the 15 product names in the
+// grid already repeat it plenty. Dates match each tag's own description.
+$causes = <<<'HTML'
+<h2>Find your cause</h2>
+<p>Every pair starts with a design made for its cause. Choose the one that matters to you, then make it yours with a name, a date or a message.</p>
+<ul>
+<li><a href="/product/alzheimers-awareness-running-tags/">Alzheimer's</a>: for World Alzheimer's Month in September, or for someone you're running to remember.</li>
+<li><a href="/product/autism-awareness-running-tags/">Autism</a>: for World Autism Acceptance Week each spring, or for the autistic people in your life.</li>
+<li><a href="/product/baby-loss-awareness-running-tags/">Baby Loss</a>: for Baby Loss Awareness Week, 9 to 15 October, and for every baby remembered.</li>
+<li><a href="/product/cancer-awareness-running-tags/">Cancer</a>: for World Cancer Day on 4 February, a fundraising race or someone you're running for.</li>
+<li><a href="/product/dementia-awareness-running-tags/">Dementia</a>: for Dementia Action Week in May, or for anyone living with dementia.</li>
+<li><a href="/product/heart-disease-awareness-running-tags/">Heart Disease</a>: for World Heart Day on 29 September, or for someone living with heart disease.</li>
+<li><a href="/product/lgbtq-awareness-running-tags/">LGBTQ+</a>: for LGBT+ History Month in February, Pride Month in June and every run in between.</li>
+<li><a href="/product/mental-health-awareness-running-tags/">Mental Health</a>: for Mental Health Awareness Week in May or World Mental Health Day on 10 October.</li>
+<li><a href="/product/ms-awareness-running-tags/">MS</a>: for World MS Day on 30 May, whether you're running for someone with MS or running with it yourself.</li>
+<li><a href="/product/pride-heart-awareness-running-tags/">Pride Heart</a> and <a href="/product/pride-love-awareness-running-tags/">Pride Love</a>: two designs for Pride runs, parades and club nights all summer.</li>
+<li><a href="/product/racism-awareness-running-tags/">Racism</a>: for Black History Month in October, and to show there's no room for racism in sport.</li>
+<li><a href="/product/remembrance-day-awareness-running-tags/">Remembrance Day</a>: for Armistice Day on 11 November and Remembrance Sunday, the second Sunday of November.</li>
+<li><a href="/product/stroke-awareness-running-tags/">Stroke</a>: for World Stroke Day on 29 October, or for anyone rebuilding their life after a stroke.</li>
+<li><a href="/product/suicide-prevention-awareness-running-tags/">Suicide Prevention</a>: for World Suicide Prevention Day on 10 September, in memory of someone, or to show you're someone people can talk to.</li>
+</ul>
+<p>Each tag's own page also points you to its cause's main UK charity, such as <a href="https://www.mind.org.uk/" target="_blank" rel="noopener">Mind</a> or the <a href="https://www.stroke.org.uk/" target="_blank" rel="noopener">Stroke Association</a>, if you'd like to find out more or plan a fundraising run of your own.</p>
+HTML;
+
 return [
 	'name'       => 'Running tags',
 	'summary'    => 'Personalised Running Tags and the 15 awareness tags: names, web addresses, descriptions, Rank Math, categories, alt text and the BEspoke Page fields. The awareness tags sort after Personalised Running Tags on the Awareness Running Tags page; the shop template leaves them out.',
@@ -533,6 +560,7 @@ return [
 				[ 'Second heading (H2)', 'Choose your cause. Run with purpose.' ],
 				[ 'Button', 'Design your own personalised running tags from scratch – click here' ],
 				[ 'Button link', '/product/personalised-running-tags/' ],
+				[ 'Causes list (a Text Editor widget: paste into its Text tab, between the product grid and the questions)', $causes ],
 				[ 'Questions heading (H2)', 'Awareness running tags: your questions' ],
 				[ 'Question 1 (H3)', 'Are the tags waterproof?' ],
 				[ 'Answer 1', 'Yes. Every tag is aluminium, printed in full colour and fully waterproof, so rain, mud and puddles won\'t touch the print.' ],

@@ -873,9 +873,22 @@ The canonical was a fault on the armbands page itself, on **live** too
 serves the same page, spaces and all) and Rank Math left the page out of
 the sitemap. Clearing that box fixes both. Every other live page and
 product canonicalises to itself (all 88 sitemap addresses and all 20
-pages checked). Do the Elementor edits before applying the pack, and
-reopen Elementor afterwards — to be safe, so an editor opened earlier
-can't save older Rank Math values over the pack's.
+pages checked).
+
+**An Elementor tab can save an old web address back.** Same day: after
+the slug was changed with Quick Edit and the pack applied (it found the
+page, so the slug was right then), a save from Elementor put
+`…-armbands-2` back, along with an older button link and intro — most
+likely a tab opened before the Quick Edit. The pack can't have done it: it
+writes only the three Rank Math meta fields to a page. So close every
+editor tab, make all the Elementor edits in one fresh tab, Update and
+close it, and change the web address with Quick Edit last.
+
+**Rank Math on the page:** 70/100 after the pack, at 350 words (Rank Math
+counts the grid's product names and prices) with the keyword missing from
+the old web address. The pack's "Causes list" block (Elementor copy, a
+Text Editor's Text tab) adds 315 words and two charity links, and leaves
+the focus keyword alone — the 15 product names already repeat it.
 ## 7. Tooling notes (for you, on the new machine)
 
 - **There is no PHP locally.** `tools/` in the repo has what you need — run `npm install`
