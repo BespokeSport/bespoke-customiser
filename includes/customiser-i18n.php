@@ -177,6 +177,12 @@ function bespoke_customiser_ui_strings() {
 		'Made for running, walking and everyday trainers. Not for football, rugby or other team sports — match rules don\'t allow metal on footwear.'
 			=> __( 'Made for running, walking and everyday trainers. Not for football, rugby or other team sports — match rules don\'t allow metal on footwear.', 'bespoke-customiser' ),
 
+		// ── Reopened from the basket (Amend / Duplicate) ──────────────────
+		'You're amending a design in your basket. Adding it replaces the one there.'
+			=> __( 'You're amending a design in your basket. Adding it replaces the one there.', 'bespoke-customiser' ),
+		'This is a copy of a design in your basket. Change what you like, then add it as another.'
+			=> __( 'This is a copy of a design in your basket. Change what you like, then add it as another.', 'bespoke-customiser' ),
+
 		// ── Boot stickers: before anything goes in the basket ─────────────
 		'Choose at least one sticker.'
 			=> __( 'Choose at least one sticker.', 'bespoke-customiser' ),
