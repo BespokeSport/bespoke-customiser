@@ -675,11 +675,20 @@ function bespoke_read_basket_state() {
 }
 
 /**
+ * How tall every boot sticker is made, in mm — the text (on its capitals),
+ * the flag and the badge alike (Nick, 17 Oct 2026). Recorded here rather
+ * than read from the page: like the price, it is what gets made.
+ */
+if ( ! defined( 'BESPOKE_BOOT_STICKER_MM' ) ) {
+    define( 'BESPOKE_BOOT_STICKER_MM', 10 );
+}
+
+/**
  * Boot stickers: which stickers are in the set, and what each is made from.
  *
- * bespoke_boot is one JSON blob: the picks (text / flag / badge), the flag's
- * country, shape, stock and any request, and the sizes in millimetres. The
- * text itself and the badge file travel in the usual fields. The flag
+ * bespoke_boot is one JSON blob: the picks (text / flag / badge) and the
+ * flag's country, shape, stock and any request; the size is recorded here.
+ * The text itself and the badge file travel in the usual fields. The flag
  * picture is looked up here from the country and shape — never a URL from
  * the page — and only if that file is one of the plugin's own flags. Null
  * for every other product.
@@ -726,8 +735,9 @@ function bespoke_parse_boot() {
             'request' => sanitize_textarea_field( mb_substr( (string) ( $f['request'] ?? '' ), 0, 200 ) ),
             'url'     => $flag_url,
         ],
-        'text_height_mm' => round( (float) ( $raw['text_height_mm'] ?? 0 ), 1 ),
-        'badge_width_mm' => (int) round( (float) ( $raw['badge_width_mm'] ?? 0 ) ),
+        // Every sticker. Orders from before 17 Oct 2026 carry
+        // text_height_mm / badge_width_mm instead — see the order screen.
+        'height_mm'      => BESPOKE_BOOT_STICKER_MM,
     ];
 }
 

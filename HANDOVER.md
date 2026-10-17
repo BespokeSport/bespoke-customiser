@@ -680,16 +680,15 @@ designs, missing class/categories, import, re-run, undo). On Windows Git
 Bash, run it with `MSYS_NO_PATHCONV=1` or the `/wordpress/...` mount paths
 get rewritten to `C:/Program Files/Git/...`, and mount a folder, not a
 single file.
-### 6.24 Boot stickers: the flag is a draggable of its own
+### 6.24 Boot stickers: 10mm tall, and the flag is a draggable of its own
 
 The flag used to be drawn at the badge's LIVE position (`S.pos.badgeL`,
 150 lower when a badge sticker is picked) on a layer that ignored the
 pointer — so it couldn't be dragged, and dragging the badge carried it
 along. It now has its own key, `S.pos.flag`, and `applyBootStickerOverlay()`
 draws it as a `.draggable` with `data-drag="flag"`, so `setupDrag()` moves
-it like the badge and the text with no drag code of its own (no resize or
-rotate handles: a flag is always 30mm and goes on straight; the wheel
-scrolls the page over it).
+it like the badge and the text with no drag code of its own, and it turns
+with the same handle (`S.rot.flag`).
 
 Until the customer moves it, it follows `bespokeBootFlagHome()`: a saved
 spot if Save placement has one, otherwise under where the badge STARTS
@@ -700,6 +699,22 @@ differs, it stays where the customer put it. Save placement only stores
 it under an empty badge spot on a flag-only set. `flag` is in the merge
 list in customiser.html and the key lists in `customiser-products.php`
 (save) and `customiser-copy.php` (Copy to Live).
+
+**Every sticker — text, flag and badge — is made 10mm tall** (Nick, 17 Oct
+2026), so nothing on this product is sized by the customer.
+`bespokeBootSizes()` turns 10mm into canvas units in the view each starts
+in — the badge 44 on the rear view (4.37 units/mm), the text a font size of
+48 on the side (3.46, capitals 0.72 of the font size) — and
+`bespokeBootStickerUI()` holds `S` to those, whatever a saved placement or
+basket line says. The size sliders carry `data-boot-hide`;
+`bespokeFixedSizes()` drops the resize corners and makes pinch and the
+wheel do nothing (the page scrolls/zooms as normal). A badge keeps its own
+shape at 10mm tall (`bespokeImageAspect()`, so a wide logo shows wider);
+a rectangle flag is 1.6:1, measured off `assets/flags` (all 208 x 130).
+The order records the size itself — `height_mm` from
+`BESPOKE_BOOT_STICKER_MM` in `bespoke_parse_boot()`, not from the page —
+and the order screen shows "Height: 10mm — every sticker"; orders from
+before carry `text_height_mm` / `badge_width_mm` and still show those.
 
 The "Change what goes on your stickers" link is now the full-width
 **Main menu** button (`.bcp-main-menu`, inside `#boot-rechoose` in the

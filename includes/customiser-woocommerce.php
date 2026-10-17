@@ -1668,16 +1668,22 @@ function bespoke_render_admin_boot_stickers( $d, $item ) {
     $f     = $boot['flag'] ?? [];
 
     $set = [ [ 'Stickers', esc_html( $boot['set'] ?? '—' ) ] ];
+    if ( ! empty( $boot['height_mm'] ) ) {
+        $set[] = [ 'Height', esc_html( $boot['height_mm'] . 'mm — every sticker (text on its capitals)' ) ];
+    }
     if ( function_exists( 'bespoke_format_bg_variant' ) ) {
         $set[] = [ 'Preview shown on', esc_html( bespoke_format_bg_variant( $d ) ) ];
     }
     $sections = [ 'Boot stickers' => $set ];
 
-    if ( ! empty( $picks['text'] ) && ! empty( $boot['text_height_mm'] ) ) {
-        $sections['Text sticker'] = [ [ 'Letter height', esc_html( $boot['text_height_mm'] . 'mm (capitals)' ) ] ];
-    }
-    if ( ! empty( $picks['badge'] ) && ! empty( $boot['badge_width_mm'] ) ) {
-        $sections['Badge sticker'] = [ [ 'Width', esc_html( $boot['badge_width_mm'] . 'mm' ) ] ];
+    // Orders from before every sticker was 10mm tall carry a size each.
+    if ( empty( $boot['height_mm'] ) ) {
+        if ( ! empty( $picks['text'] ) && ! empty( $boot['text_height_mm'] ) ) {
+            $sections['Text sticker'] = [ [ 'Letter height', esc_html( $boot['text_height_mm'] . 'mm (capitals)' ) ] ];
+        }
+        if ( ! empty( $picks['badge'] ) && ! empty( $boot['badge_width_mm'] ) ) {
+            $sections['Badge sticker'] = [ [ 'Width', esc_html( $boot['badge_width_mm'] . 'mm' ) ] ];
+        }
     }
     if ( ! empty( $picks['flag'] ) ) {
         $rows = [];

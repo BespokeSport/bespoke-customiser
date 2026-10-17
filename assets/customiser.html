@@ -38,6 +38,9 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
 #bespoke-customiser-root .bcp-main-menu{display:block !important;width:100% !important;margin:0 !important;background:transparent !important;border:1.5px solid #5DCAA5 !important;border-radius:10px !important;color:#5DCAA5 !important;padding:12px !important;font-family:"Inter", system-ui, sans-serif !important;font-size:14px !important;font-weight:700 !important;letter-spacing:.06em !important;text-transform:uppercase !important;line-height:1.2 !important;cursor:pointer !important;}
 #bespoke-customiser-root .bcp-main-menu:hover{background:#0A2A20 !important;}
 #bespoke-customiser-root .bcp-main-menu:focus-visible{outline:2px solid #5DCAA5;outline-offset:2px;}
+/* Boot stickers are all made 10mm tall, so there is no size to choose —
+   the badge and text size sliders are put away. See bespokeBootSizes(). */
+.bcp-boot [data-boot-hide]{display:none !important;}
 .frame{width:100%;max-width:440px;background:#0D0D0D;border-radius:20px;border:1px solid #2A2A2A;overflow:hidden;}
 .top-bar{background:#161616;border-bottom:1px solid #2A2A2A;padding:13px 18px;display:flex;align-items:center;justify-content:space-between;}
 .brand{font-size:15px;font-weight:700;color:#F5F5F0;letter-spacing:-0.3px;}
@@ -1267,7 +1270,7 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
          renders at a fixed slot defined in PLAYER_CARD_SLOTS.badge),
          so the whole block is hidden via data-pc-hide for that
          product type. Other products keep the slider as normal. -->
-    <div data-pc-hide>
+    <div data-pc-hide data-boot-hide>
       <div class="sec-label" style="margin-top:4px;">Badge size</div>
       <div class="size-row">
         <label>Small</label>
@@ -1319,8 +1322,8 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
     <div class="color-zones">
       <div class="zone-row"><div class="zone-info"><div class="zone-lbl">Colour</div></div><div class="ct" id="ct-name" style="background:#FFFFFF;"><input type="color" value="#FFFFFF" id="cp-name" oninput="debouncedColor('name',this.value)"/></div></div>
     </div>
-    <div class="sec-label" id="label-name-size">Text size</div>
-    <div class="size-row">
+    <div class="sec-label" id="label-name-size" data-boot-hide>Text size</div>
+    <div class="size-row" data-boot-hide>
       <label>Small</label>
       <input type="range" id="name-size-slider" min="40" max="300" value="90" oninput="onNameSize(this.value)">
       <label>Large</label>
@@ -3210,8 +3213,12 @@ function updatePreview(stepId) {
                           S.badge2Mode === 'different' && S.badge2URL)
           ? S.badge2URL : S.badgeURL;
         img.setAttribute('href', _badgeHref);
-        img.setAttribute('x',-hs); img.setAttribute('y',-hs);
-        img.setAttribute('width',S.badgeSize); img.setAttribute('height',S.badgeSize);
+        // Boot stickers: the badge is made 10mm TALL, so the picture keeps
+        // its own shape at that height — a wide logo comes out wider.
+        var _bw = S.badgeSize, _bh = S.badgeSize;
+        if (bespokeFixedSizes()) _bw = Math.round(S.badgeSize * bespokeImageAspect(_badgeHref));
+        img.setAttribute('x', -_bw / 2); img.setAttribute('y', -_bh / 2);
+        img.setAttribute('width', _bw); img.setAttribute('height', _bh);
         img.setAttribute('preserveAspectRatio','xMidYMid meet');
         g.appendChild(img);
         // Per-element delete X (Stage 2). NOT where the Left / Right badge
@@ -3231,12 +3238,15 @@ function updatePreview(stepId) {
         // any transform/rotation. The outline has pointer-events:none
         // so it doesn't intercept drags.
         if (window.S && S.selected === item.key) {
-          g.appendChild(_makeSelectionOutline(ns, S.badgeSize, S.badgeSize));
-          g.appendChild(_makeResizeHandle(ns, item.key, 'nw', -hs, -hs));
-          g.appendChild(_makeResizeHandle(ns, item.key, 'ne',  hs, -hs));
-          g.appendChild(_makeResizeHandle(ns, item.key, 'sw', -hs,  hs));
-          g.appendChild(_makeResizeHandle(ns, item.key, 'se',  hs,  hs));
-          g.appendChild(_makeRotateHandle(ns, item.key, -hs));
+          g.appendChild(_makeSelectionOutline(ns, _bw, _bh));
+          // One fixed size on boot stickers: nothing to resize.
+          if (!bespokeFixedSizes()) {
+            g.appendChild(_makeResizeHandle(ns, item.key, 'nw', -hs, -hs));
+            g.appendChild(_makeResizeHandle(ns, item.key, 'ne',  hs, -hs));
+            g.appendChild(_makeResizeHandle(ns, item.key, 'sw', -hs,  hs));
+            g.appendChild(_makeResizeHandle(ns, item.key, 'se',  hs,  hs));
+          }
+          g.appendChild(_makeRotateHandle(ns, item.key, -_bh / 2));
         }
         bl.appendChild(g);
       });
@@ -3510,10 +3520,13 @@ function updatePreview(stepId) {
         var _selH = Math.max(_lines.length * item.size + item.sw * 2 + 30, 120);
         var _selHw = _selW / 2, _selHh = _selH / 2;
         g.appendChild(_makeSelectionOutline(ns, _selW, _selH));
-        g.appendChild(_makeResizeHandle(ns, item.key, 'nw', -_selHw, -_selHh));
-        g.appendChild(_makeResizeHandle(ns, item.key, 'ne',  _selHw, -_selHh));
-        g.appendChild(_makeResizeHandle(ns, item.key, 'sw', -_selHw,  _selHh));
-        g.appendChild(_makeResizeHandle(ns, item.key, 'se',  _selHw,  _selHh));
+        // One fixed size on boot stickers: nothing to resize.
+        if (!bespokeFixedSizes()) {
+          g.appendChild(_makeResizeHandle(ns, item.key, 'nw', -_selHw, -_selHh));
+          g.appendChild(_makeResizeHandle(ns, item.key, 'ne',  _selHw, -_selHh));
+          g.appendChild(_makeResizeHandle(ns, item.key, 'sw', -_selHw,  _selHh));
+          g.appendChild(_makeResizeHandle(ns, item.key, 'se',  _selHw,  _selHh));
+        }
         g.appendChild(_makeRotateHandle(ns, item.key, -_selHh));
       }
       tl.appendChild(g);
@@ -3856,7 +3869,9 @@ function setupDrag(svg, stepId) {
       startSVG = svgPt(e.touches[0].clientX, e.touches[0].clientY);
       startPos = {x:S.pos[dragging].x, y:S.pos[dragging].y};
     } else if(e.touches.length===2) {
-      // Pinch to resize badge/text
+      // Pinch to resize badge/text — not on boot stickers, which are all
+      // one size; the page is left to zoom as it normally would.
+      if (bespokeFixedSizes()) return;
       e.preventDefault();
       var dx = e.touches[0].clientX - e.touches[1].clientX;
       var dy = e.touches[0].clientY - e.touches[1].clientY;
@@ -3947,9 +3962,9 @@ function setupDrag(svg, stepId) {
   svg.addEventListener('wheel', function(e){
     var t = e.target.closest('.draggable'); if(!t) return;
     var key = t.getAttribute('data-drag');
-    // The boot stickers' flag is always 30mm: nothing to resize, so the
-    // wheel scrolls the page as usual.
-    if (key === 'flag') return;
+    // Boot stickers are all one size (10mm tall): nothing to resize, so
+    // the wheel scrolls the page as usual.
+    if (bespokeFixedSizes()) return;
     e.preventDefault();
     var delta = e.deltaY > 0 ? -5 : 5;
     if(key.startsWith('badge')){ S.badgeSize=Math.max(50,Math.min(500,S.badgeSize+delta*4)); document.getElementById('badge-size-slider').value=S.badgeSize; document.getElementById('badge-size-val').textContent=S.badgeSize; }
@@ -6169,17 +6184,18 @@ function bespokeTagOnShoeTransform(side){
 }
 
 /* ============================================================
-   BOOT STICKERS — THE TWO PLACEMENTS
+   BOOT STICKERS — SIZES ON THE PREVIEW
    ============================================================
-   The size buttons carry the placement AND the width together:
-   "20mm / Rear heel", "30mm / Rear heel", "48mm / Side, under heel".
-   Everything below is geometry measured off the product render rather
-   than guessed. Two things make it unusual:
+   Every sticker — text, flag and badge — is made 10mm tall (Nick, 17 Oct
+   2026), so nothing on this product is sized by the customer. The preview
+   draws each one 10mm tall against the boot, from geometry measured off the
+   product render rather than guessed. Two things make it unusual:
 
    1. The render shows the boot TWICE, from behind and from the side, and
-      the rear view sits closer to the camera. A 30mm sticker is therefore
-      a different number of canvas units in each view, so the scale is per
-      zone and not per product.
+      the rear view sits closer to the camera. 10mm is therefore a
+      different number of canvas units in each view, so the scale is per
+      view and not per product: the badge and the flag start on the rear
+      view and are drawn at its scale, the text starts on the side.
    2. Nothing here decides where the sticker is really applied. The pair is
       posted out and the customer sticks them on. These positions exist so
       the preview shows the right size against the right part of the boot.
@@ -6192,94 +6208,56 @@ var BESPOKE_BOOT_ZONES = {
   side: { cx: 219, cy: 785, unitsPerMm: 3.46 }
 };
 
-// Vinyl below 6mm will not weed cleanly, and 10mm is as tall as anything
-// gets — both are printing limits, not design choices.
-var BESPOKE_BOOT_MIN_MM = 6;
-var BESPOKE_BOOT_MAX_MM = 10;
+// How tall every sticker is made, in mm. The server records the same on
+// the order (bespoke_parse_boot).
+var BESPOKE_BOOT_STICKER_MM = 10;
 
-// A condensed capital is about 0.55 of its height wide. Used to work out
-// how tall the text can be before it runs past the sticker.
-var BESPOKE_BOOT_CHAR_RATIO = 0.55;
+// A capital is about 0.72 of its font size, so 10mm capitals on the side
+// view are a font size of 48.
+var BESPOKE_BOOT_CAP_RATIO = 0.72;
 
-/**
- * Which zone a size button means, and how wide it is.
- * Reads the button the customer picked: the label carries the width
- * ("30mm") and line 1 carries the placement ("Rear heel" / "Side, under
- * heel"). Falls back to the width if the wording is changed to something
- * that no longer says "side" — anything 40mm or wider can only be the side.
- */
-function bespokeBootZone(size) {
-  size = size || {};
-  var widthMm = parseFloat(String(size.label || '').replace(/[^0-9.]/g, '')) || 0;
-  var says = String(size.line1 || '') + ' ' + String(size.line2 || '');
-  var side = /side|ankle/i.test(says);
-  var heel = /heel|rear|back/i.test(says);
-  // Nothing recognisable in the wording: fall back to the width. Only the
-  // side panel is long enough for 40mm or more.
-  if (!side && !heel) { side = widthMm >= 40; heel = !side; }
-  var spots = [];
-  if (heel) spots.push(BESPOKE_BOOT_ZONES.heel);
-  if (side) spots.push(BESPOKE_BOOT_ZONES.side);
-  var first = spots[0];
+// A rectangle flag is 1.6 times as wide as it is tall — measured off the
+// pictures in assets/flags, every one 208 x 130. The round ones are square.
+var BESPOKE_BOOT_FLAG_RATIO = 208 / 130;
+
+/** The badge and text sizes that make a sticker 10mm tall, in canvas units. */
+function bespokeBootSizes(){
   return {
-    key:        (side && heel) ? 'both' : (side ? 'side' : 'heel'),
-    widthMm:    widthMm || (side ? 48 : 30),
-    spots:      spots,
-    // The first spot, for callers that only draw one. 'both' leads with the
-    // heel because that is the tighter of the two: if it looks right there
-    // it looks right on the side.
-    cx:         first.cx,
-    cy:         first.cy,
-    unitsPerMm: first.unitsPerMm
+    badgeSize: Math.round(BESPOKE_BOOT_STICKER_MM * BESPOKE_BOOT_ZONES.heel.unitsPerMm),
+    nameSize:  Math.round(BESPOKE_BOOT_STICKER_MM * BESPOKE_BOOT_ZONES.side.unitsPerMm / BESPOKE_BOOT_CAP_RATIO)
   };
 }
 
 /**
- * What may go on a sticker of a given width.
- *
- * There is deliberately no placement rule here any more. The size buttons
- * offer 20mm and 30mm for either the rear heel or the side, so a width no
- * longer picks a spot for the customer — and it never really could, because
- * the pair is posted out and stuck on at home. What remains is physical: a
- * flag or a badge needs enough width to still read, and text has to fit,
- * which bespokeBootTextFit() decides on its own.
+ * True where every element is one fixed size — the boot stickers — so
+ * nothing is resized on the preview: no corner handles, pinch or wheel.
  */
-function bespokeBootAllows(zone, element) {
-  var mm = (zone && zone.widthMm) || 0;
-  // A flag below 15mm is a coloured smudge rather than a flag.
-  if (element === 'flag') { return mm >= 15; }
-  return element === 'text' || element === 'badge' || element === 'number';
+function bespokeFixedSizes(){
+  return typeof bespokeBaseType === 'function' && bespokeBaseType() === 'boot_stickers';
 }
 
 /**
- * How tall a piece of text can be printed in a zone, and whether it fits.
- * Text starts at 10mm and shrinks only as far as 6mm; past that there is no
- * more room, and the customiser stops taking characters rather than
- * printing something the vinyl cutter will lose.
- *
- * @return {{heightMm:number, widthMm:number, fits:boolean, maxChars:number}}
+ * A picture's width over its height, once it has loaded — 1 until then. A
+ * boot sticker's badge is made 10mm TALL, so a wide logo comes out wider
+ * than 10mm, and the preview needs the picture's own shape to show it so.
  */
-function bespokeBootTextFit(text, zone) {
-  var chars = String(text == null ? '' : text).replace(/\s+/g, ' ').trim().length;
-  var room  = zone.widthMm;
-  if (!chars) {
-    return { heightMm: BESPOKE_BOOT_MAX_MM, widthMm: 0, fits: true, maxChars: Math.floor(room / (BESPOKE_BOOT_MIN_MM * BESPOKE_BOOT_CHAR_RATIO)) };
+var _bespokeAspects = {};
+function bespokeImageAspect(url){
+  if (!url) return 1;
+  var known = _bespokeAspects[url];
+  if (typeof known === 'number') return known;
+  if (known !== null) {
+    _bespokeAspects[url] = null; // loading
+    var im = new Image();
+    im.onload = function(){
+      var r = (im.naturalWidth > 0 && im.naturalHeight > 0) ? im.naturalWidth / im.naturalHeight : 1;
+      _bespokeAspects[url] = r;
+      if (r !== 1 && typeof syncAll === 'function') syncAll();
+    };
+    im.onerror = function(){ _bespokeAspects[url] = 1; };
+    im.src = url;
   }
-  var ideal  = room / (chars * BESPOKE_BOOT_CHAR_RATIO);
-  var height = Math.min(BESPOKE_BOOT_MAX_MM, ideal);
-  var fits   = true;
-  if (height < BESPOKE_BOOT_MIN_MM) { height = BESPOKE_BOOT_MIN_MM; fits = false; }
-  return {
-    heightMm: Math.round(height * 10) / 10,
-    widthMm:  Math.round(chars * height * BESPOKE_BOOT_CHAR_RATIO * 10) / 10,
-    fits:     fits,
-    maxChars: Math.floor(room / (BESPOKE_BOOT_MIN_MM * BESPOKE_BOOT_CHAR_RATIO))
-  };
-}
-
-/** Millimetres to canvas units, in the zone the sticker sits in. */
-function bespokeBootUnits(mm, zone) {
-  return Math.round(mm * zone.unitsPerMm);
+  return 1;
 }
 
 /* ============================================================
@@ -8548,14 +8526,19 @@ function applyBootStickerOverlay(stepId){
   }
   var pos = S.pos.flag;
 
-  // 30mm across, in the rear view's units.
-  var w = Math.round(30 * BESPOKE_BOOT_ZONES.heel.unitsPerMm);
-  var h = (st.shape === 'round') ? w : Math.round(w * 0.62);
+  // 10mm tall, in the rear view's units. The shape on show is the one asked
+  // for, or the one held when that has to be ordered in (see
+  // bespokeBootFlagUrl): a round flag is as wide as it is tall, a
+  // rectangle 1.6 times as wide.
+  var round = bespokeBootFlagStocked(st.country, st.shape) ? (st.shape === 'round') : (st.shape !== 'round');
+  var h = Math.round(BESPOKE_BOOT_STICKER_MM * BESPOKE_BOOT_ZONES.heel.unitsPerMm);
+  var w = round ? h : Math.round(h * BESPOKE_BOOT_FLAG_RATIO);
+  var rot = (S.rot && S.rot.flag) || 0;
 
   var g = document.createElementNS(ns, 'g');
   g.setAttribute('class', 'draggable');
   g.setAttribute('data-drag', 'flag');
-  g.setAttribute('transform', 'translate(' + pos.x + ',' + pos.y + ')');
+  g.setAttribute('transform', 'translate(' + pos.x + ',' + pos.y + ')' + (rot ? ' rotate(' + rot + ')' : ''));
   // The same finger-sized hit area as the badge's.
   var hitW = Math.max(w + 60, 200);
   var hit  = document.createElementNS(ns, 'rect');
@@ -8576,9 +8559,12 @@ function applyBootStickerOverlay(stepId){
   img.setAttribute('height', h);
   img.setAttribute('preserveAspectRatio', 'xMidYMid meet');
   g.appendChild(img);
-  // Selected: the dashed outline, as on the badge. No resize or rotate
-  // handles — the flag is always 30mm across, and it goes on straight.
-  if (S.selected === 'flag') g.appendChild(_makeSelectionOutline(ns, w, h));
+  // Selected: the dashed outline and the turn handle, as on the badge. No
+  // resize handles — every sticker is 10mm tall.
+  if (S.selected === 'flag') {
+    g.appendChild(_makeSelectionOutline(ns, w, h));
+    g.appendChild(_makeRotateHandle(ns, 'flag', -h / 2));
+  }
   layer.appendChild(g);
 }
 
@@ -8606,41 +8592,18 @@ function bespokeBootStickerUI(){
     variantRow.style.marginTop = '18px';
   }
 
-  // Sliders held to what is actually sold. A badge is 20mm to 30mm across
-  // and text prints 6mm to 10mm tall, so the sliders run between those and
-  // no further — an open-ended slider invites someone to design something
-  // that cannot be made. In canvas units at the measured scales: the rear
-  // view runs 4.37 units per mm, the side 3.46, and a capital is about 0.72
-  // of its font size.
-  var ranges = {
-    'badge-size-slider': [87, 131],
-    'name-size-slider':  [29, 48],
-    'num-size-slider':   [29, 48]
-  };
-  // The design is held to the range as well as the slider: moving only the
-  // slider left a saved starting size (text at 51 against a ceiling of 48)
-  // in the preview and on the order.
-  var field = { 'badge-size-slider': 'badgeSize', 'name-size-slider': 'nameSize', 'num-size-slider': 'numSize' };
-  var label = { 'badge-size-slider': 'badge-size-val', 'name-size-slider': 'name-size-val', 'num-size-slider': 'num-size-val' };
-  var moved = false;
-  Object.keys(ranges).forEach(function(id){
-    var el = document.getElementById(id);
-    if (!el) return;
-    el.min = ranges[id][0];
-    el.max = ranges[id][1];
-    var v = parseFloat(el.value);
-    if (v < ranges[id][0]) { el.value = ranges[id][0]; }
-    if (v > ranges[id][1]) { el.value = ranges[id][1]; }
-    var key = field[id];
-    if (window.S && key && typeof S[key] === 'number') {
-      var held = Math.max(ranges[id][0], Math.min(ranges[id][1], S[key]));
-      if (held !== S[key]) { S[key] = held; moved = true; }
-      el.value = S[key];
-      var lab = document.getElementById(label[id]);
-      if (lab) lab.textContent = S[key];
-    }
+  // Every sticker is made 10mm tall, so there is nothing to size: the size
+  // sliders are put away (data-boot-hide) and the design is held at 10mm —
+  // here as well as at the start, because a saved placement or a basket
+  // line can bring an older size with it (a placement saved at 127 / 51).
+  var fixed = bespokeBootSizes(), moved = false;
+  Object.keys(fixed).forEach(function(k){
+    if (window.S && S[k] !== fixed[k]) { S[k] = fixed[k]; moved = true; }
   });
-  if (moved && typeof syncAll === 'function') syncAll();
+  if (moved) {
+    if (typeof bespokeSyncSizeSliders === 'function') bespokeSyncSizeSliders();
+    if (typeof syncAll === 'function') syncAll();
+  }
 
   // The step bar grew by the height of the Main menu button, and the
   // screens clear it with a fixed padding, so the Back / Next row was
@@ -9441,20 +9404,15 @@ function _bespokeCommitAddToCart(cfg, btn, insideFace) {
     formData.append('bespoke_badge2_swap',
       (S.badgeSwap && (S.badge2Mode || 'same') !== 'same') ? '1' : '0');
 
-    // Boot stickers: the set, the flag and the sizes in millimetres. The
-    // server reads the set from these picks and charges that set's
-    // variation, so the price is never taken from the page.
+    // Boot stickers: the set and the flag. The server reads the set from
+    // these picks and charges that set's variation, so the price is never
+    // taken from the page — and it records the size itself, every sticker
+    // being made 10mm tall.
     if (typeof bespokeBaseType === 'function' && bespokeBaseType() === 'boot_stickers') {
       var _bp = bespokeBootPicked();
       var _bf = bespokeBootFlagState();
       formData.append('bespoke_boot', JSON.stringify({
         picks: { text: !!_bp.text, flag: !!_bp.flag, badge: !!_bp.badge },
-        // A capital is about 0.72 of the font size; the text sits on the
-        // side view, the badge on the rear view.
-        // Held to what is sold, whatever the design says: text 6-10mm, a
-        // badge 20-30mm.
-        text_height_mm: Math.max(BESPOKE_BOOT_MIN_MM, Math.min(BESPOKE_BOOT_MAX_MM, Math.round(S.nameSize * 0.72 / BESPOKE_BOOT_ZONES.side.unitsPerMm * 10) / 10)),
-        badge_width_mm: Math.max(20, Math.min(30, Math.round(S.badgeSize / BESPOKE_BOOT_ZONES.heel.unitsPerMm))),
         flag: {
           country: _bf.country || '',
           shape:   _bf.shape || 'round',
