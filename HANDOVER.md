@@ -1099,9 +1099,10 @@ the work instead of Nick, and launch day becomes:
 7. **Holding page: off.**
 8. A test order and refund; the outside comparison of every product and page.
 
-Still by hand on the day: the backup, the plugin upload, and (until built
-into the tool) the three option changes from the runbook — shin pads made
-simple at £20, the pennant's option names, the armband length labels.
+Still by hand on the day: the backup and the plugin upload. The three option
+changes from the runbook (shin pads made simple at £20, the pennant's option
+names, the armband length labels) are in the tool since 19 Oct — see
+"Options" below.
 
 **As built** — `includes/customiser-launch.php`, Designs → Launch
 (`edit.php?post_type=bespoke_design&page=bespoke-launch`, admins only):
@@ -1137,6 +1138,33 @@ simple at £20, the pennant's option names, the armband length labels.
   and wp-admin are untouched. Admins can see it with `?bespoke_holding=preview`.
   Facebook `BEspokeSportUK`, Instagram `bespokesportuk`, the site logo.
 
+- **Options** (built 19 Oct, Nick: yes): Copy to Live never touches options,
+  prices or variations, so a separate step brings an existing product's
+  option lists in line with staging's, before its wording. Two shapes only:
+  *variable here, simple on staging* (shin pads) — made simple at staging's
+  price; WooCommerce would force-delete the variations on the type change
+  (`WC_Post_Data::product_type_changed`), so
+  `woocommerce_delete_variations_on_product_type_change` is turned off for
+  the save and the variations go to the bin instead (same IDs back on
+  Undo; old orders keep pointing at them); and *variable on both* (pennant,
+  armbands) — the lists are replaced with staging's and each variation is
+  pointed at its new words, keeping its ID and price. Words are matched
+  exactly, then by `BESPOKE_LAUNCH_RENAMED_OPTIONS` (Frilled → With Frill,
+  Non Frilled → No Frill), then by the leading size ("24cm …"). Anything
+  without a single answer — a value with no match, a list only one side
+  has, an option staging sells that live hasn't got, two options becoming
+  one — is shown in red with no tick box, for doing by hand. Undo stores
+  each variation's `attribute_*` meta **before** the parent's lists change
+  (WooCommerce reads a variation's choices through the parent's lists, so
+  afterwards the old ones read as blank — caught by the test). Prices are
+  never changed. The pennant moves from live's shared `pa_pennant-type`
+  to its own "Pennant Type", as on staging; the shared attribute and its
+  terms are left alone. Option-list differences checked against live's
+  Store API on 19 Oct: exactly shin pads, pennant, and the Length lists on
+  remembrance, Black History Month and referee armbands.
+  `bespoke_copy_make_attributes()` (customiser-copy.php) is shared by this
+  and Copy to Live's product making.
+
 **Tested** on a throwaway WordPress (WooCommerce 11.2, Elementor 4.3, PHP
 8.3) standing in for both sites — artwork served from a second address,
 the new things removed and renumbered on "live", older copies of the
@@ -1156,7 +1184,7 @@ found, so on an empty live each namesake would have been written over the
 first one made — and a draft "Apex" could have taken over the real one.
 Fixed: the file carries published designs only, and the launch finds
 designs with `bespoke_launch_find_design()` (slug only). The test now
-covers namesakes and a draft (82 checks pass). That real file's preview,
+covers namesakes and a draft (104 checks pass with the options step). That real file's preview,
 built on the test site: 2.9s, 260 steps, nothing written.
 
 **What the preview will untick on live** (pages compared by REST

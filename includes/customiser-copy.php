@@ -735,6 +735,69 @@ function bespoke_copy_picture( $ref, $post_id, &$warnings ) {
 }
 
 /**
+ * A product's option lists as they would be here, from an export entry —
+ * used to make a product, and by the launch to bring an existing product's
+ * options in line with staging's.
+ *
+ * Returns [ WC_Product_Attribute[], $keymap ]. $keymap carries each staging
+ * option list to its key here, and each of its values to the value a
+ * variation is stored under.
+ *
+ * @param  array    $shape    The entry's 'create' part.
+ * @param  string[] $warnings Anything worth saying, in words.
+ * @return array
+ */
+function bespoke_copy_make_attributes( $shape, &$warnings ) {
+	$attrs  = [];
+	$keymap = [];
+	foreach ( (array) ( $shape['attributes'] ?? [] ) as $a ) {
+		$label = sanitize_text_field( (string) ( $a['label'] ?? '' ) );
+		if ( '' === $label ) {
+			continue;
+		}
+		$obj    = new WC_Product_Attribute();
+		$tax    = (string) ( $a['taxonomy'] ?? '' );
+		$names  = array_values( array_map( 'sanitize_text_field', array_map( 'strval', (array) ( $a['options'] ?? [] ) ) ) );
+		$slugs  = array_values( array_map( 'strval', (array) ( $a['slugs'] ?? [] ) ) );
+		$values = [];
+		if ( '' !== $tax && taxonomy_exists( $tax ) && function_exists( 'wc_attribute_taxonomy_id_by_name' ) ) {
+			$term_ids = [];
+			foreach ( $slugs as $i => $slug ) {
+				$tid = bespoke_copy_term( $tax, $slug, $names[ $i ] ?? $slug );
+				if ( $tid ) {
+					$term_ids[] = $tid;
+				}
+				$values[ $slug ] = sanitize_title( $slug );
+			}
+			$obj->set_id( wc_attribute_taxonomy_id_by_name( $tax ) );
+			$obj->set_name( $tax );
+			$obj->set_options( $term_ids );
+			$keymap[ (string) ( $a['key'] ?? $tax ) ] = [ 'key' => $tax, 'values' => $values ];
+		} else {
+			if ( '' !== $tax ) {
+				$warnings[] = 'the "' . $label . '" options are a shared WooCommerce attribute that is not on this site, so they were made as this product\'s own.';
+				foreach ( $slugs as $i => $slug ) {
+					$values[ $slug ] = $names[ $i ] ?? $slug;
+				}
+			} else {
+				foreach ( $names as $n ) {
+					$values[ $n ] = $n;
+				}
+			}
+			$obj->set_id( 0 );
+			$obj->set_name( $label );
+			$obj->set_options( $names );
+			$keymap[ (string) ( $a['key'] ?? sanitize_title( $label ) ) ] = [ 'key' => sanitize_title( $label ), 'values' => $values ];
+		}
+		$obj->set_visible( ! empty( $a['visible'] ) );
+		$obj->set_variation( ! empty( $a['variation'] ) );
+		$obj->set_position( (int) ( $a['position'] ?? 0 ) );
+		$attrs[] = $obj;
+	}
+	return [ $attrs, $keymap ];
+}
+
+/**
  * Make a product from an export entry, as a DRAFT.
  *
  * Simple and variable products only — every product this shop sells through
@@ -819,54 +882,7 @@ function bespoke_copy_create_product( $entry, &$warnings ) {
 			$p->set_tag_ids( $tag_ids );
 		}
 
-		// Options. $keymap carries each staging option list to its key here,
-		// and each of its values to the value a variation is stored under.
-		$attrs  = [];
-		$keymap = [];
-		foreach ( (array) ( $shape['attributes'] ?? [] ) as $a ) {
-			$label = sanitize_text_field( (string) ( $a['label'] ?? '' ) );
-			if ( '' === $label ) {
-				continue;
-			}
-			$obj    = new WC_Product_Attribute();
-			$tax    = (string) ( $a['taxonomy'] ?? '' );
-			$names  = array_values( array_map( 'sanitize_text_field', array_map( 'strval', (array) ( $a['options'] ?? [] ) ) ) );
-			$slugs  = array_values( array_map( 'strval', (array) ( $a['slugs'] ?? [] ) ) );
-			$values = [];
-			if ( '' !== $tax && taxonomy_exists( $tax ) && function_exists( 'wc_attribute_taxonomy_id_by_name' ) ) {
-				$term_ids = [];
-				foreach ( $slugs as $i => $slug ) {
-					$tid = bespoke_copy_term( $tax, $slug, $names[ $i ] ?? $slug );
-					if ( $tid ) {
-						$term_ids[] = $tid;
-					}
-					$values[ $slug ] = sanitize_title( $slug );
-				}
-				$obj->set_id( wc_attribute_taxonomy_id_by_name( $tax ) );
-				$obj->set_name( $tax );
-				$obj->set_options( $term_ids );
-				$keymap[ (string) ( $a['key'] ?? $tax ) ] = [ 'key' => $tax, 'values' => $values ];
-			} else {
-				if ( '' !== $tax ) {
-					$warnings[] = 'the "' . $label . '" options are a shared WooCommerce attribute that is not on this site, so they were made as this product\'s own.';
-					foreach ( $slugs as $i => $slug ) {
-						$values[ $slug ] = $names[ $i ] ?? $slug;
-					}
-				} else {
-					foreach ( $names as $n ) {
-						$values[ $n ] = $n;
-					}
-				}
-				$obj->set_id( 0 );
-				$obj->set_name( $label );
-				$obj->set_options( $names );
-				$keymap[ (string) ( $a['key'] ?? sanitize_title( $label ) ) ] = [ 'key' => sanitize_title( $label ), 'values' => $values ];
-			}
-			$obj->set_visible( ! empty( $a['visible'] ) );
-			$obj->set_variation( ! empty( $a['variation'] ) );
-			$obj->set_position( (int) ( $a['position'] ?? 0 ) );
-			$attrs[] = $obj;
-		}
+		list( $attrs, $keymap ) = bespoke_copy_make_attributes( $shape, $warnings );
 		if ( $attrs ) {
 			$p->set_attributes( $attrs );
 		}

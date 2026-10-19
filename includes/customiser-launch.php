@@ -879,11 +879,18 @@ function bespoke_launch_plan( $file ) {
 	// 5. Products: made as drafts, then the ones already here.
 	$plan = bespoke_copy_plan( bespoke_launch_copy_file( $file ) );
 	$new  = [];
+	$opts = [];
 	$upd  = [];
 	foreach ( $plan as $i => $row ) {
 		if ( $row['creatable'] ) {
 			$new[] = [ 'pick' => 'create:' . $i, 'label' => $row['name'], 'note' => 'made as a draft: ' . bespoke_copy_describe_shape( $row['entry']['create'] ) ];
 			continue;
+		}
+		$op = $row['matched'] ? bespoke_launch_options_plan( $row['entry'], $row['id'] ) : null;
+		if ( $op ) {
+			$opts[] = $op['error']
+				? [ 'pick' => 'options:' . $i, 'label' => $row['name'], 'note' => 'Left for doing by hand: ' . $op['error'] . '.', 'blocked' => true ]
+				: [ 'pick' => 'options:' . $i, 'label' => $row['name'], 'note' => $op['note'] ];
 		}
 		if ( ! $row['matched'] || ! bespoke_copy_writable( $row['changes'] ) ) {
 			continue;
@@ -904,6 +911,9 @@ function bespoke_launch_plan( $file ) {
 	}
 	if ( $new ) {
 		$sections[] = [ 'key' => 'create', 'title' => 'New products (made as drafts — nobody sees them until Publish)', 'rows' => $new ];
+	}
+	if ( $opts ) {
+		$sections[] = [ 'key' => 'options', 'title' => 'Products already here: options, as on staging', 'rows' => $opts ];
 	}
 	if ( $upd ) {
 		$sections[] = [ 'key' => 'products', 'title' => 'Products already here: wording, customiser setup and SEO', 'rows' => $upd ];
@@ -987,6 +997,322 @@ function bespoke_launch_copy_file( $file ) {
 	return $copy;
 }
 
+/* =========================================================================
+   OPTIONS
+   Copy to Live never touches a product's options, prices or variations, so
+   the products whose options were changed on staging (shin pads made one
+   product, the pennant's option names, the armband Length labels — the
+   runbook's three changes, 13–25 Sep 2026) are brought in line here. Prices
+   stay as they are here; a product that would need a new option or a
+   price is shown and left for doing by hand.
+   ========================================================================= */
+
+/**
+ * Options renamed on staging, old name → new, by option list (Nick, 13 and
+ * 21 Sep 2026: the customiser's frill switch only works with these names).
+ */
+const BESPOKE_LAUNCH_RENAMED_OPTIONS = [
+	'pennant type' => [ 'frilled' => 'With Frill', 'non frilled' => 'No Frill' ],
+];
+
+/** Text compared loosely: case, spaces and HTML entities don't count. */
+function bespoke_launch_norm( $s ) {
+	return strtolower( trim( preg_replace( '/\s+/u', ' ', html_entity_decode( (string) $s, ENT_QUOTES | ENT_HTML5, 'UTF-8' ) ) ) );
+}
+
+/** A product's option lists, label → options, for comparing. */
+function bespoke_launch_option_lists( $shape ) {
+	$out = [];
+	foreach ( (array) ( $shape['attributes'] ?? [] ) as $a ) {
+		$out[ bespoke_launch_norm( $a['label'] ?? '' ) ] = array_map( 'bespoke_launch_norm', (array) ( $a['options'] ?? [] ) );
+	}
+	ksort( $out );
+	return $out;
+}
+
+/**
+ * One of staging's option lists as it would be stored here, without making
+ * anything: its key here, and each option name → the value a variation
+ * holds. Matches bespoke_copy_make_attributes().
+ */
+function bespoke_launch_option_target( $a ) {
+	$tax    = (string) ( $a['taxonomy'] ?? '' );
+	$names  = array_values( array_map( 'sanitize_text_field', array_map( 'strval', (array) ( $a['options'] ?? [] ) ) ) );
+	$slugs  = array_values( array_map( 'strval', (array) ( $a['slugs'] ?? [] ) ) );
+	// 'stored': option name → value here; 'values': staging's value → value here.
+	$stored = [];
+	$values = [];
+	if ( '' !== $tax && taxonomy_exists( $tax ) && function_exists( 'wc_attribute_taxonomy_id_by_name' ) ) {
+		foreach ( $names as $i => $n ) {
+			$slug                = $slugs[ $i ] ?? $n;
+			$stored[ $n ]        = sanitize_title( $slug );
+			$values[ $slug ]     = sanitize_title( $slug );
+		}
+		return [ 'key' => $tax, 'stored' => $stored, 'values' => $values ];
+	}
+	foreach ( $names as $i => $n ) {
+		$stored[ $n ]                                  = $n;
+		$values[ '' !== $tax ? ( $slugs[ $i ] ?? $n ) : $n ] = $n;
+	}
+	return [ 'key' => sanitize_title( sanitize_text_field( (string) ( $a['label'] ?? '' ) ) ), 'stored' => $stored, 'values' => $values ];
+}
+
+/**
+ * Which of staging's options an option here becomes: the same words; a
+ * rename Nick made; or, for sizes, the one option with the same leading
+ * measurement ("24cm (approx U14-U16)" → "24cm Band (U11–U15)"). Null when
+ * there is no single answer.
+ */
+function bespoke_launch_match_option( $name, $options, $list ) {
+	$n = bespoke_launch_norm( $name );
+	foreach ( $options as $o ) {
+		if ( bespoke_launch_norm( $o ) === $n ) {
+			return $o;
+		}
+	}
+	$renamed = BESPOKE_LAUNCH_RENAMED_OPTIONS[ bespoke_launch_norm( $list ) ][ $n ] ?? null;
+	if ( null !== $renamed ) {
+		foreach ( $options as $o ) {
+			if ( bespoke_launch_norm( $o ) === bespoke_launch_norm( $renamed ) ) {
+				return $o;
+			}
+		}
+	}
+	if ( preg_match( '/^(\d+(?:\.\d+)?)\s*cm\b/i', $n, $m ) ) {
+		$hits = [];
+		foreach ( $options as $o ) {
+			if ( preg_match( '/^(\d+(?:\.\d+)?)\s*cm\b/i', bespoke_launch_norm( $o ), $mo ) && $mo[1] === $m[1] ) {
+				$hits[] = $o;
+			}
+		}
+		if ( 1 === count( $hits ) ) {
+			return $hits[0];
+		}
+	}
+	return null;
+}
+
+/** "£12.00" */
+function bespoke_launch_money( $v ) {
+	return '£' . number_format( (float) $v, 2 );
+}
+
+/**
+ * How this product's options here would change to match staging's, or null
+ * when they already match.
+ *
+ * @return array|null [ 'kind' => 'to_simple'|'relabel', 'note' => words,
+ *                      'error' => why it's left for doing by hand, or '',
+ *                      'vars' => [ variation ID => its options here after ] ]
+ */
+function bespoke_launch_options_plan( $entry, $id ) {
+	$want = is_array( $entry['create'] ?? null ) ? $entry['create'] : null;
+	$p    = ( $want && function_exists( 'wc_get_product' ) ) ? wc_get_product( $id ) : null;
+	if ( ! $p ) {
+		return null;
+	}
+	$have = bespoke_copy_product_shape( $id );
+	if ( (string) ( $want['type'] ?? '' ) === $p->get_type() && bespoke_launch_option_lists( $want ) === bespoke_launch_option_lists( $have ) ) {
+		return null;
+	}
+	$lists = function ( $shape ) {
+		$bits = [];
+		foreach ( (array) ( $shape['attributes'] ?? [] ) as $a ) {
+			$bits[] = ( $a['label'] ?? '' ) . ': ' . implode( ' | ', (array) ( $a['options'] ?? [] ) );
+		}
+		return $bits ? implode( '; ', $bits ) : 'no options';
+	};
+	$plan = [ 'kind' => '', 'note' => '', 'error' => '', 'vars' => [] ];
+
+	// Options here, one product on staging (shin pads: the size is picked in
+	// the customiser). The old options go to the bin, so Undo brings them back.
+	if ( 'simple' === ( $want['type'] ?? '' ) && $p->is_type( 'variable' ) ) {
+		$price  = '' !== (string) ( $want['sale_price'] ?? '' ) ? $want['sale_price'] : ( $want['regular_price'] ?? '' );
+		$prices = [];
+		foreach ( $p->get_children() as $vid ) {
+			$v = wc_get_product( $vid );
+			if ( $v ) {
+				$prices[] = (float) $v->get_price( 'edit' );
+			}
+		}
+		$plan['kind'] = 'to_simple';
+		if ( '' === (string) $price ) {
+			$plan['error'] = 'staging has no price for it';
+			return $plan;
+		}
+		$same          = $prices && min( $prices ) === (float) $price && max( $prices ) === (float) $price;
+		$plan['note']  = $lists( $have ) . ' → one product at ' . bespoke_launch_money( $price )
+			. ( $same ? ', as now' : ( $prices ? ' (its options here are ' . bespoke_launch_money( min( $prices ) ) . ( max( $prices ) > min( $prices ) ? '–' . bespoke_launch_money( max( $prices ) ) : '' ) . ')' : '' ) )
+			. '. Its ' . count( $prices ) . ' old options go to the bin, so Undo brings them back.';
+		return $plan;
+	}
+
+	if ( ! ( 'variable' === ( $want['type'] ?? '' ) && $p->is_type( 'variable' ) ) ) {
+		$plan['error'] = 'it is ' . $p->get_type() . ' here and ' . ( $want['type'] ?? '?' ) . ' on staging — change it by hand';
+		return $plan;
+	}
+
+	// Both have options: reword the lists, and point each option here at its
+	// new words. Prices stay as they are.
+	$plan['kind'] = 'relabel';
+	$here         = []; // list name → [ key here, stored value → option name ]
+	foreach ( $p->get_attributes( 'edit' ) as $key => $attr ) {
+		if ( ! is_a( $attr, 'WC_Product_Attribute' ) ) {
+			continue;
+		}
+		$label = $attr->get_name();
+		if ( $attr->is_taxonomy() ) {
+			// Its name as WooCommerce lists it ("Pennant Type"), read straight
+			// from the attribute list rather than relying on it being registered.
+			$labels = wc_get_attribute_taxonomy_labels();
+			$label  = $labels[ wc_attribute_taxonomy_slug( $label ) ] ?? wc_attribute_label( $label );
+		}
+		$names = [];
+		if ( $attr->is_taxonomy() ) {
+			foreach ( (array) $attr->get_terms() as $t ) {
+				$names[ $t->slug ] = $t->name;
+			}
+		} else {
+			foreach ( (array) $attr->get_options() as $o ) {
+				$names[ (string) $o ]             = (string) $o;
+				$names[ sanitize_title( $o ) ] = (string) $o;
+			}
+		}
+		$here[ bespoke_launch_norm( $label ) ] = [ 'key' => (string) $key, 'names' => $names, 'label' => $label, 'variation' => $attr->get_variation(), 'options' => array_values( array_unique( $names ) ) ];
+	}
+	$wanted = [];
+	foreach ( (array) ( $want['attributes'] ?? [] ) as $a ) {
+		$wanted[ bespoke_launch_norm( $a['label'] ?? '' ) ] = [ 'a' => $a ] + bespoke_launch_option_target( $a );
+	}
+	foreach ( $here as $name => $h ) {
+		if ( $h['variation'] && ( ! isset( $wanted[ $name ] ) || empty( $wanted[ $name ]['a']['variation'] ) ) ) {
+			$plan['error'] = 'its "' . $h['label'] . '" options are not on staging — change it by hand';
+			return $plan;
+		}
+	}
+	$notes = [];
+	foreach ( $wanted as $name => $w ) {
+		$a = $w['a'];
+		$h = $here[ $name ] ?? null;
+		if ( ! $h ) {
+			if ( ! empty( $a['variation'] ) ) {
+				$plan['error'] = 'staging has "' . $a['label'] . '" options that it hasn\'t got here — change it by hand';
+				return $plan;
+			}
+			$notes[] = $a['label'] . ' added';
+			continue;
+		}
+		if ( bespoke_launch_option_lists( [ 'attributes' => [ $a ] ] ) === bespoke_launch_option_lists( [ 'attributes' => [ [ 'label' => $a['label'], 'options' => $h['options'] ] ] ] ) ) {
+			continue;
+		}
+		$pairs = [];
+		foreach ( $h['options'] as $old ) {
+			$new = bespoke_launch_match_option( $old, array_keys( $w['stored'] ), $a['label'] );
+			if ( null !== $new && bespoke_launch_norm( $new ) !== bespoke_launch_norm( $old ) ) {
+				$pairs[] = '"' . $old . '" → "' . $new . '"';
+			}
+		}
+		$notes[] = $a['label'] . ': ' . ( $pairs ? count( $pairs ) . ' reworded, ' . implode( ', ', array_slice( $pairs, 0, 2 ) ) . ( count( $pairs ) > 2 ? ' and ' . ( count( $pairs ) - 2 ) . ' more' : '' ) : $lists( [ 'attributes' => [ $a ] ] ) );
+	}
+	foreach ( $here as $name => $h ) {
+		if ( ! isset( $wanted[ $name ] ) ) {
+			$notes[] = $h['label'] . ' goes';
+		}
+	}
+
+	// Each option here, with its new words.
+	$seen   = [];
+	$prices = [];
+	foreach ( $p->get_children() as $vid ) {
+		$v = wc_get_product( $vid );
+		if ( ! $v ) {
+			continue;
+		}
+		$old = (array) $v->get_attributes( 'edit' );
+		$new = [];
+		foreach ( $wanted as $name => $w ) {
+			if ( empty( $w['a']['variation'] ) ) {
+				continue;
+			}
+			$h   = $here[ $name ];
+			$raw = (string) ( $old[ $h['key'] ] ?? '' );
+			if ( '' === $raw ) {
+				$new[ $w['key'] ] = ''; // "any"
+				continue;
+			}
+			$label = $h['names'][ $raw ] ?? $raw;
+			$to    = bespoke_launch_match_option( $label, array_keys( $w['stored'] ), $w['a']['label'] );
+			if ( null === $to ) {
+				$plan['error'] = '"' . $label . '" has no match in staging\'s ' . $w['a']['label'] . ' options — change it by hand';
+				return $plan;
+			}
+			$new[ $w['key'] ] = $w['stored'][ $to ];
+		}
+		ksort( $new );
+		$sig = wp_json_encode( $new );
+		if ( isset( $seen[ $sig ] ) ) {
+			$plan['error'] = 'two of its options would become the same — change it by hand';
+			return $plan;
+		}
+		$seen[ $sig ]         = true;
+		$plan['vars'][ $vid ] = $new;
+		$prices[]             = implode( ' ', array_filter( array_map( function ( $k ) use ( $new, $wanted ) {
+			foreach ( $wanted as $w ) {
+				if ( $w['key'] === $k && '' !== $new[ $k ] ) {
+					return (string) array_search( $new[ $k ], $w['stored'], true );
+				}
+			}
+			return '';
+		}, array_keys( $new ) ) ) ) . ' ' . bespoke_launch_money( $v->get_price( 'edit' ) );
+	}
+
+	// Every option staging sells must be here once this is done.
+	foreach ( (array) ( $want['variations'] ?? [] ) as $vd ) {
+		$combo = [];
+		foreach ( $wanted as $w ) {
+			if ( empty( $w['a']['variation'] ) ) {
+				continue;
+			}
+			$val = (string) ( ( (array) ( $vd['attributes'] ?? [] ) )[ $w['a']['key'] ?? '' ] ?? '' );
+			$combo[ $w['key'] ] = '' === $val ? '' : (string) ( $w['values'][ $val ] ?? $val );
+		}
+		ksort( $combo );
+		if ( ! isset( $seen[ wp_json_encode( $combo ) ] ) ) {
+			$plan['error'] = 'staging sells an option it hasn\'t got here (' . implode( ', ', array_filter( $combo ) ) . ') — add it by hand';
+			return $plan;
+		}
+	}
+	$plan['note'] = implode( '; ', $notes ) . '. Prices stay as they are' . ( count( $prices ) <= 3 ? ' (' . implode( ', ', array_map( 'trim', $prices ) ) . ')' : '' ) . '.';
+	return $plan;
+}
+
+/** A product's option lists, as plain data that can be stored and put back. */
+function bespoke_launch_attr_data( $p ) {
+	$out = [];
+	foreach ( $p->get_attributes( 'edit' ) as $attr ) {
+		if ( is_a( $attr, 'WC_Product_Attribute' ) ) {
+			$out[] = $attr->get_data();
+		}
+	}
+	return $out;
+}
+
+/** …and back into WooCommerce's objects. */
+function bespoke_launch_attrs_from_data( $rows ) {
+	$out = [];
+	foreach ( (array) $rows as $d ) {
+		$a = new WC_Product_Attribute();
+		$a->set_id( (int) ( $d['id'] ?? 0 ) );
+		$a->set_name( (string) ( $d['name'] ?? '' ) );
+		$a->set_options( (array) ( $d['options'] ?? [] ) );
+		$a->set_position( (int) ( $d['position'] ?? 0 ) );
+		$a->set_visible( ! empty( $d['visible'] ) );
+		$a->set_variation( ! empty( $d['variation'] ) );
+		$out[] = $a;
+	}
+	return $out;
+}
+
 /** Fancy Product Designer's plugin file here, or ''. */
 function bespoke_launch_fpd_plugin() {
 	if ( ! function_exists( 'get_plugins' ) ) {
@@ -1046,6 +1372,13 @@ function bespoke_launch_jobs( $file, $picks ) {
 		if ( 0 === strpos( $p, 'create:' ) ) {
 			$i      = (int) substr( $p, 7 );
 			$jobs[] = [ 'kind' => 'create', 'args' => [ $i ], 'label' => 'New product: ' . ( $products[ $i ]['name'] ?? $i ) ];
+		}
+	}
+	// Options before wording: the setup then lands on a product in its final shape.
+	foreach ( array_keys( $picks ) as $p ) {
+		if ( 0 === strpos( $p, 'options:' ) ) {
+			$i      = (int) substr( $p, 8 );
+			$jobs[] = [ 'kind' => 'options', 'args' => [ $i ], 'label' => 'Options: ' . ( $products[ $i ]['name'] ?? $i ) ];
 		}
 	}
 	$update = [];
@@ -1221,6 +1554,78 @@ function bespoke_launch_run_job( $job, $file ) {
 				}
 			}
 			return [ 'message' => 'made as a draft' . ( $warnings ? ' (' . implode( '; ', $warnings ) . ')' : '' ), 'undo' => [ 'made' => [ (int) $id ] ], 'made' => [ 'products' => [ (int) $id ] ] ];
+
+		case 'options':
+			$plan = bespoke_copy_plan( bespoke_launch_copy_file( $file ) );
+			$row  = $plan[ (int) $job['args'][0] ] ?? null;
+			if ( ! $row || ! $row['matched'] ) {
+				throw new Exception( 'that product is not here.' );
+			}
+			$id = (int) $row['id'];
+			$op = bespoke_launch_options_plan( $row['entry'], $id );
+			if ( ! $op ) {
+				return [ 'message' => 'already as on staging', 'undo' => [] ];
+			}
+			if ( $op['error'] ) {
+				throw new Exception( $op['error'] . '.' );
+			}
+			$want     = $row['entry']['create'];
+			$p        = wc_get_product( $id );
+			$warnings = [];
+			list( $attrs ) = bespoke_copy_make_attributes( $want, $warnings );
+
+			if ( 'to_simple' === $op['kind'] ) {
+				$before = [ 'kind' => 'to_simple', 'attrs' => bespoke_launch_attr_data( $p ), 'children' => [] ];
+				foreach ( $p->get_children() as $vid ) {
+					$before['children'][ (int) $vid ] = get_post_status( $vid );
+				}
+				// WooCommerce deletes the options for good when a product stops
+				// having them; to the bin instead, so Undo can bring them back.
+				add_filter( 'woocommerce_delete_variations_on_product_type_change', '__return_false' );
+				try {
+					delete_post_meta( $id, '_price' ); // one per option; the save writes the one price
+					$s = new WC_Product_Simple( $id );
+					$s->set_attributes( $attrs );
+					$s->set_regular_price( wc_format_decimal( (string) ( $want['regular_price'] ?? '' ) ) );
+					$s->set_sale_price( wc_format_decimal( (string) ( $want['sale_price'] ?? '' ) ) );
+					$s->save();
+				} finally {
+					remove_filter( 'woocommerce_delete_variations_on_product_type_change', '__return_false' );
+				}
+				foreach ( array_keys( $before['children'] ) as $vid ) {
+					$v = wc_get_product( $vid );
+					if ( $v ) {
+						$v->delete( false );
+					}
+				}
+				wc_delete_product_transients( $id );
+				return [ 'message' => 'now one product at ' . bespoke_launch_money( $s->get_price( 'edit' ) ) . '; ' . count( $before['children'] ) . ' old option(s) in the bin', 'undo' => [ $id => $before ] ];
+			}
+
+			// Each option's choices straight from the database, before the
+			// product's lists change: WooCommerce reads them through the
+			// product's lists, so afterwards the old ones read as blank.
+			$before = [ 'kind' => 'relabel', 'attrs' => bespoke_launch_attr_data( $p ), 'vars' => [] ];
+			foreach ( array_keys( $op['vars'] ) as $vid ) {
+				$before['vars'][ (int) $vid ] = [];
+				foreach ( get_post_meta( $vid ) as $k => $vals ) {
+					if ( 0 === strpos( $k, 'attribute_' ) ) {
+						$before['vars'][ (int) $vid ][ substr( $k, 10 ) ] = (string) $vals[0];
+					}
+				}
+			}
+			$p->set_attributes( $attrs );
+			$p->save();
+			foreach ( $op['vars'] as $vid => $new ) {
+				$v = wc_get_product( $vid );
+				if ( $v ) {
+					$v->set_attributes( $new );
+					$v->save();
+				}
+			}
+			WC_Product_Variable::sync( $id );
+			wc_delete_product_transients( $id );
+			return [ 'message' => 'options reworded' . ( $warnings ? ' (' . implode( ' ', $warnings ) . ')' : '' ), 'undo' => [ $id => $before ] ];
 
 		case 'products':
 			$copy = bespoke_launch_copy_file( $file );
@@ -1459,6 +1864,43 @@ function bespoke_launch_undo_job( $job ) {
 				if ( 'product' === get_post_type( $id ) ) {
 					wp_trash_post( $id );
 				}
+			}
+			break;
+		case 'options':
+			foreach ( $u as $id => $b ) {
+				$id = (int) $id;
+				if ( 'to_simple' === ( $b['kind'] ?? '' ) ) {
+					// The old options first, so the product finds them when it saves.
+					foreach ( (array) $b['children'] as $vid => $status ) {
+						if ( 'trash' === get_post_status( $vid ) ) {
+							wp_untrash_post( (int) $vid );
+						}
+						wp_update_post( [ 'ID' => (int) $vid, 'post_status' => $status ] );
+					}
+					wc_delete_product_transients( $id );
+					$p = new WC_Product_Variable( $id );
+					$p->set_attributes( bespoke_launch_attrs_from_data( $b['attrs'] ) );
+					$p->set_regular_price( '' );
+					$p->set_sale_price( '' );
+					$p->save();
+				} else {
+					$p = wc_get_product( $id );
+					if ( ! $p ) {
+						continue;
+					}
+					$p->set_attributes( bespoke_launch_attrs_from_data( $b['attrs'] ) );
+					$p->save();
+					foreach ( (array) ( $b['vars'] ?? [] ) as $vid => $attrs ) {
+						$v = wc_get_product( (int) $vid );
+						if ( $v ) {
+							$v->set_attributes( (array) $attrs );
+							$v->save();
+						}
+					}
+				}
+				wc_delete_product_transients( $id );
+				WC_Product_Variable::sync( $id );
+				wc_delete_product_transients( $id );
 			}
 			break;
 		case 'products':
@@ -1822,9 +2264,13 @@ function bespoke_launch_render_plan( $file ) {
 					<tbody>
 					<?php foreach ( $s['rows'] as $r ) : ?>
 						<tr>
-							<td style="width:28px;"><input type="checkbox" class="bespoke-launch-pick" data-section="<?php echo esc_attr( $s['key'] ); ?>" name="pick[]" value="<?php echo esc_attr( $r['pick'] ); ?>" <?php checked( empty( $r['unticked'] ) ); ?>></td>
+							<?php if ( ! empty( $r['blocked'] ) ) : ?>
+								<td style="width:28px;">—</td>
+							<?php else : ?>
+								<td style="width:28px;"><input type="checkbox" class="bespoke-launch-pick" data-section="<?php echo esc_attr( $s['key'] ); ?>" name="pick[]" value="<?php echo esc_attr( $r['pick'] ); ?>" <?php checked( empty( $r['unticked'] ) ); ?>></td>
+							<?php endif; ?>
 							<td style="width:34%;"><?php echo esc_html( $r['label'] ); ?></td>
-							<td style="color:#555;"><?php echo esc_html( $r['note'] ?? '' ); ?></td>
+							<td style="color:<?php echo ! empty( $r['blocked'] ) ? '#b32d2e' : '#555'; ?>;"><?php echo esc_html( $r['note'] ?? '' ); ?></td>
 						</tr>
 					<?php endforeach; ?>
 					</tbody>
