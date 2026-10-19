@@ -1146,6 +1146,33 @@ thing through the screen: holding page on (503 to visitors on home, shop
 and a product; robots.txt and REST 200), Start → 18 steps → Publish →
 Undo → holding page off (200 again).
 
+**Designs are matched by web address only — never by name.** Nick's first
+real launch file (19 Oct, 106 products, 541 files / 77MB, 12 fonts, 272
+designs, 23 Elementor docs) showed 52 design names shared by two to four
+designs (four "Apex": `apex`, `apex-2`, `apex-4`, `apex-6`, one per
+product; "Bolt" is `apex-3`), plus five unnamed drafts. Copy to Live's
+`bespoke_copy_find_design()` falls back to the title when the slug isn't
+found, so on an empty live each namesake would have been written over the
+first one made — and a draft "Apex" could have taken over the real one.
+Fixed: the file carries published designs only, and the launch finds
+designs with `bespoke_launch_find_design()` (slug only). The test now
+covers namesakes and a draft (82 checks pass). That real file's preview,
+built on the test site: 2.9s, 260 steps, nothing written.
+
+**What the preview will untick on live** (pages compared by REST
+`modified_gmt`, 19 Oct): only Pre-Designed Custom Captains Armbands, edited
+on live 17 Oct (its canonical fix) — leave it. The homepage (staging 5 Sep,
+live 13 Feb) and every product are newer on staging, so they're ticked.
+
+**Every product compared** (launch file vs live's Store API, 19 Oct): type,
+price range and options match on all 88 shared products except the three
+known ones — shin pads (variable S/M/L on live, simple £20 on staging),
+the pennant (live's global `pa_pennant-type` Frilled / Non Frilled, staging's
+custom "Pennant Type" With Frill / No Frill), and the Length labels on
+remembrance, Black History Month and referee armbands (variations there
+are "any length", so only the labels change) — and the glass trophy price,
+which keeps live's £13–23 (Nick, 13 Sep).
+
 **Before launch day, on staging:** bin Nick's Elementor "Holding page"
 (superseded by the plugin's) so it doesn't travel in the file, and check
 Elementor's own Maintenance Mode is Disabled.

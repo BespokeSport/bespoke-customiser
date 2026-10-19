@@ -317,9 +317,11 @@ function bespoke_launch_read_files() {
 
 /** The design library: each design by web address, its meta, and its picker thumbnail as a picture to fetch. */
 function bespoke_launch_read_designs() {
+	// Published only: customers never see the rest, and a draft has no web
+	// address to be matched by (staging had five, leftover copies).
 	$ids = get_posts( [
 		'post_type'        => 'bespoke_design',
-		'post_status'      => [ 'publish', 'draft', 'pending', 'private' ],
+		'post_status'      => 'publish',
 		'numberposts'      => -1,
 		'orderby'          => 'menu_order title',
 		'order'            => 'ASC',
@@ -587,12 +589,26 @@ function bespoke_launch_design_target( $d, $from ) {
 	return $meta;
 }
 
+/**
+ * The design here with this web address, or 0.
+ *
+ * By address only, never by name (as Copy to Live falls back to): staging
+ * has 52 names shared by two to four designs (four "Apex", one per
+ * product), so matching a name would write each one over the first made.
+ */
+function bespoke_launch_find_design( $slug ) {
+	return bespoke_launch_find_post( 'bespoke_design', $slug );
+}
+
 /** Designs to make or change here. */
 function bespoke_launch_plan_designs( $file ) {
 	$from = bespoke_launch_from( $file );
 	$rows = [];
 	foreach ( (array) ( $file['designs'] ?? [] ) as $i => $d ) {
-		$id   = bespoke_copy_find_design( [ 'slug' => $d['slug'] ?? '', 'name' => $d['title'] ?? '' ] );
+		if ( '' === (string) ( $d['slug'] ?? '' ) ) {
+			continue; // a draft, from a file made before drafts were left out
+		}
+		$id   = bespoke_launch_find_design( $d['slug'] );
 		$want = bespoke_launch_design_target( $d, $from );
 		if ( $id ) {
 			$have = [];
@@ -1133,10 +1149,10 @@ function bespoke_launch_run_job( $job, $file ) {
 			$warnings = [];
 			foreach ( (array) $job['args'] as $i ) {
 				$d = $file['designs'][ $i ] ?? null;
-				if ( ! is_array( $d ) ) {
+				if ( ! is_array( $d ) || '' === (string) ( $d['slug'] ?? '' ) ) {
 					continue;
 				}
-				$id   = bespoke_copy_find_design( [ 'slug' => $d['slug'] ?? '', 'name' => $d['title'] ?? '' ] );
+				$id   = bespoke_launch_find_design( $d['slug'] );
 				$meta = bespoke_launch_design_target( $d, $from );
 				if ( ! $id ) {
 					$id = wp_insert_post( [
