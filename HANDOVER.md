@@ -990,8 +990,16 @@ sentiment word in the title); with a Royal Mail link and the title
 Professional League 77→82, Mental Health 77→82, Love is Love 79→82,
 Women's Day 76→81, Football vs Homophobia 78→81, Made for this Game
 78→81, World Cancer Day 79→84, Double Sided 79→86; Holocaust Memorial
-Day 74→78 and Pride Captains 77→80 still orange (their Rank Math panels
-asked for). Note that Rank Math's URL-length check counts the whole
+Day 74→78 and Pride Captains 77→80 still orange. Their panels: every
+product fails "Reviews are disabled on this Product" (product reviews are
+off — live's product pages show only Description and Additional
+information tabs; asked Nick whether to turn them on) and "Use Content
+AI" (paid add-on); Holocaust also had no power word in its title (fixed:
+"… – A Powerful Tribute"; products get no number or sentiment check);
+Pride's density read 2.93% from 11 matches where the phrase appears 6
+times — Rank Math counts every focus keyword saved, and the list screen
+shows only the first — so the pack sets its focus keyword to the one
+phrase. Note that Rank Math's URL-length check counts the whole
 address (the range page read "The URL is 56 characters long" for
 `https://staging2.bespokesport.uk/awareness-running-tags/`), and its
 limit is 75 characters: a product slug of 34–42 characters fails on
