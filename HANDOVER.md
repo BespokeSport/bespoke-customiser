@@ -1067,6 +1067,42 @@ pages with their real lastmod; posts and products unchanged. The empty
 leftover `/grip-socks-wash-acre/` (title only, beside the real
 `/grip-socks-washing-care/`) is now a draft. If that snippet is ever
 removed, new and edited pages stop reaching the sitemap again.
+### 6.29 One-file launch (planned 19 Oct 2026)
+
+Nick, 19 Oct 2026, after seeing the launch checklist: "I would like it as
+simple and quick and easy as possible" — and no rehearsal site (no room on
+SiteGround for another copy). Copying staging's database over live stays
+out (it would lose live's orders, customers, the pages made on live since
+the copy, and live's payment and Meta connections). So the launch tool does
+the work instead of Nick, and launch day becomes:
+
+1. Back up live (SiteGround).
+2. Upload the plugin zip (Plugins → Add New → Upload) and activate it.
+   Live has no copy of the plugin today (its files 404 there).
+3. Designs → Launch → **Holding page: on.** Built into the plugin — Nick's
+   wording and look, 503 + Retry-After for everyone not logged in, admin,
+   REST, AJAX, cron and payment webhooks untouched — so it is there the
+   moment the plugin is, and needs no Elementor template on live.
+4. Upload the launch file made on staging (Designs → Launch → Make the
+   launch file), read the preview, click Apply. A progress bar works through
+   it in small steps (no time-outs), in this order:
+   files (design artwork, product assets, fonts — fetched from staging),
+   fonts list, customiser settings, the design library (addresses and
+   thumbnails remapped), products (existing ones updated; new ones made as
+   drafts), Elementor pages and templates (homepage, header with its
+   conditions, Awareness Running Tags page, shop template — image, product
+   and category IDs remapped by web address), the SEO packs, reviews on,
+   the four dropped products to the bin, Fancy Product Designer off,
+   caches cleared. Every step keeps what it replaced; Undo puts it back.
+5. Look round the real site while logged in (visitors see the holding page).
+6. **Publish** — the new products, page and tile go live together.
+7. **Holding page: off.**
+8. A test order and refund; the outside comparison of every product and page.
+
+Still by hand on the day: the backup, the plugin upload, and (until built
+into the tool) the three option changes from the runbook — shin pads made
+simple at £20, the pennant's option names, the armband length labels.
+
 ## 7. Tooling notes (for you, on the new machine)
 
 - **There is no PHP locally.** `tools/` in the repo has what you need — run `npm install`
