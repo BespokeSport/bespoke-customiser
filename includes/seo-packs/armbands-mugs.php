@@ -88,7 +88,10 @@ $products[] = [
 <p>Add your team's name, your club logo or a short message, and your Holocaust Memorial Day captain armband becomes a tribute that's yours alone.</p>
 HTML
 	),
-	'seo_title'       => 'Holocaust Memorial Day Captain Armband – 27 January',
+	// Rank Math (17 Oct): 78, the title lacking a power word. Products get no
+	// number or sentiment check, so the date gives way. (Its address is 80
+	// characters on staging, past the 75 limit; 71 on live, so that passes.)
+	'seo_title'       => 'Holocaust Memorial Day Captain Armband – A Powerful Tribute',
 	'seo_description' => 'Holocaust Memorial Day captain armband to mark 27 January on the pitch. Add your team name or logo; 6 lengths, 5cm or 8cm bands, made in the UK.',
 ];
 
@@ -168,7 +171,7 @@ $products[] = [
 </ul>
 <p>Whether you're playing in a local league or a national tournament, the Pride Captains Armband helps you lead with confidence and show your values with pride.</p>
 <h2>A pride captains armband for every match</h2>
-<p>Pride Month is every June, and many clubs also join Stonewall's Rainbow Laces campaign to show that LGBTQ+ players and fans are welcome in sport. A pride captains armband on your captain's arm says the same thing every week of the season, not just on awareness days.</p>
+<p>Pride Month is every June, and many clubs also join Stonewall's Rainbow Laces campaign to show that LGBTQ+ players and fans are welcome in sport. Wearing one on your captain's arm says the same thing every week of the season, not just on awareness days.</p>
 <p>Find out more about Rainbow Laces from <a href="https://www.stonewall.org.uk/" target="_blank" rel="noopener">Stonewall</a>.</p>
 <p>Looking for something more personal? Check out our <a href="/product/personalised-captains-armbands/">Fully Personalised Captains Armband</a> and create your own custom design.</p>
 HTML
@@ -177,6 +180,13 @@ HTML
 		'<p>See the full range of <a href="/pre-designed-custom-captains-armbands/">pre-designed captain\'s armbands</a>.</p>'
 	),
 	'seo_title'       => 'Pride Captains Armband – Rainbow Armband, 6 Sizes',
+	// Rank Math (17 Oct): 80, keyword density 2.93% — "the focus keyword and
+	// combination appear 11 times", where the phrase itself appears 6 times
+	// (5 in the description, 1 in the short one). The other 5 can only be
+	// further keywords saved with it, which Rank Math counts too; the list
+	// screen shows the first alone. One keyword, and one use fewer, brings
+	// it to about 1.3%. The review screen shows any keywords this drops.
+	'focus_keyword'   => 'pride captains armband',
 	'seo_description' => 'Pride captains armband in bold rainbow colours, celebrating equality and inclusion on the pitch. 6 lengths, 5cm or 8cm bands, made in the UK.',
 ];
 
