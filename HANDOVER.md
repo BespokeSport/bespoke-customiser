@@ -1201,6 +1201,42 @@ remembrance, Black History Month and referee armbands (variations there
 are "any length", so only the labels change) — and the glass trophy price,
 which keeps live's £13–23 (Nick, 13 Sep).
 
+**Dress rehearsal with the real file (19 Oct, file `bespoke-launch-2026-10-19-1541`).**
+Nick's real launch file, run in full on the throwaway site — files and
+pictures fetched from the real staging (read-only), 311 steps in all, about
+45 minutes there (each request boots PHP in WebAssembly; a real server is
+far quicker). All 541 files, 12 fonts, 267 designs, 103 products, the
+options step and every page and template went through. What it found,
+all fixed and covered by the test (104 checks):
+- **The Gallery page fetched 129 pictures inside one step and ran past the
+  300-second limit.** Pictures now come in their own "Pictures for …"
+  steps, three at a time, before the page (`bespoke_launch_el_pictures()`).
+  On live most pictures are already in the Media Library at the same path
+  (shared history), so few are fetched.
+- **Fetched pictures land in this month's folder**, so the preview didn't
+  recognise them afterwards and showed finished pages as still changing.
+  Pictures are now also found by where they came from
+  (`bespoke_launch_copied_picture()`, the `BESPOKE_COPY_SOURCE` meta). The
+  test's picture now sits in an older month folder so this can't hide again.
+- **The SEO packs ran last and put pack wording back over later staging
+  tweaks** (a focus keyword's spacing, an apostrophe). They now run before
+  the wording and pages, and each pack step gives the products it touched
+  staging's latest wording again — only fields the pack backs up, so its
+  Undo still restores them. Packs still matter: they carry product names,
+  categories and picture alt text, which Copy to Live doesn't.
+- **A step that dies** (time limit, dropped connection) is retried by the
+  screen up to three times, 5 seconds apart. One step at a time: the
+  `bespoke_launch_busy` option (released at shutdown, 330 s at most) makes
+  the screen wait if the server is still on the last step. New products and
+  pages carry `_bespoke_launch_made` = the run's start time (pages via
+  `meta_input`, products via `woocommerce_new_product`), so a retry finishes
+  its own half-made page, or bins and remakes its half-made product, and
+  never mistakes something from an earlier launch for its own. Files
+  already fetched are skipped; a kept original is never overwritten.
+  Tested on screen by killing the step straight after it made its first
+  page: the run carried on by itself, finished that page, Publish published
+  it, Undo binned it.
+
 **Before launch day, on staging:** bin Nick's Elementor "Holding page"
 (superseded by the plugin's) so it doesn't travel in the file, and check
 Elementor's own Maintenance Mode is Disabled.

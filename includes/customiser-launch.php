@@ -654,6 +654,54 @@ function bespoke_launch_el_target( $doc, $from, $fetch = false, &$warnings = [],
 	return [ 'data' => $data, 'settings' => $settings ];
 }
 
+/**
+ * The pictures an Elementor document needs fetched from the other site:
+ * [ [ 'url' => …, 'alt' => … ], … ]. Fetched a few at a time before the
+ * document itself, so a page full of new pictures (the gallery) never runs
+ * into the server's time limit — found in the rehearsal, 19 Oct 2026.
+ */
+function bespoke_launch_el_pictures( $doc, $from ) {
+	$base = trailingslashit( (string) ( $from['uploads'] ?? '' ) );
+	$up   = bespoke_launch_uploads();
+	$out  = [];
+	$walk = function ( $value ) use ( &$walk, &$out, $base, $up ) {
+		if ( ! is_array( $value ) ) {
+			return;
+		}
+		if ( isset( $value['url'] ) && array_key_exists( 'id', $value ) && is_string( $value['url'] ) && '' !== $base && 0 === strpos( $value['url'], $base ) && ! isset( $out[ $value['url'] ] ) ) {
+			$rel = substr( $value['url'], strlen( $base ) );
+			$had = ( file_exists( $up['dir'] . $rel ) && attachment_url_to_postid( $up['url'] . $rel ) ) || bespoke_launch_copied_picture( $value['url'] );
+			if ( ! $had ) {
+				$out[ $value['url'] ] = [ 'url' => $value['url'], 'alt' => (string) ( $value['alt'] ?? '' ) ];
+			}
+		}
+		foreach ( $value as $v ) {
+			$walk( $v );
+		}
+	};
+	$walk( (array) ( $doc['data'] ?? [] ) );
+	$walk( (array) ( $doc['settings'] ?? [] ) );
+	return array_values( $out );
+}
+
+/**
+ * The copy of one of the other site's pictures already fetched into this
+ * Media Library (by Copy to Live, or a launch run before), or 0. Fetched
+ * pictures land in this month's folder, so they're found by where they
+ * came from, not by their path.
+ */
+function bespoke_launch_copied_picture( $url ) {
+	$had = get_posts( [
+		'post_type'   => 'attachment',
+		'post_status' => 'inherit',
+		'numberposts' => 1,
+		'fields'      => 'ids',
+		'meta_key'    => BESPOKE_COPY_SOURCE,   // phpcs:ignore WordPress.DB.SlowDBQuery
+		'meta_value'  => esc_url_raw( $url ),   // phpcs:ignore WordPress.DB.SlowDBQuery
+	] );
+	return $had ? (int) $had[0] : 0;
+}
+
 /** One image control, pointed at this site. */
 function bespoke_launch_el_image( $img, $from, $fetch, &$warnings, $post_id, &$cache ) {
 	$url  = (string) $img['url'];
@@ -668,6 +716,12 @@ function bespoke_launch_el_image( $img, $from, $fetch, &$warnings, $post_id, &$c
 	$rel      = substr( $url, strlen( $base ) );
 	$here_url = $up['url'] . $rel;
 	$att      = file_exists( $up['dir'] . $rel ) ? attachment_url_to_postid( $here_url ) : 0;
+	if ( ! $att ) {
+		$att = bespoke_launch_copied_picture( $url );
+		if ( $att ) {
+			$here_url = (string) wp_get_attachment_url( $att );
+		}
+	}
 	if ( ! $att && $fetch ) {
 		$att = bespoke_copy_picture( [ 'url' => $url, 'alt' => (string) ( $img['alt'] ?? '' ), 'title' => '' ], $post_id, $warnings );
 		if ( $att ) {
@@ -915,6 +969,21 @@ function bespoke_launch_plan( $file ) {
 	if ( $opts ) {
 		$sections[] = [ 'key' => 'options', 'title' => 'Products already here: options, as on staging', 'rows' => $opts ];
 	}
+
+	// 7. SEO packs — before the wording and pages, not after: they set the
+	// product names, categories and picture alt text the wording copy doesn't
+	// carry, and staging's latest wording and SEO then go on top. Run last,
+	// they put back pack wording over later tweaks made on staging (the
+	// rehearsal, 19 Oct 2026: a focus keyword and an apostrophe).
+	$rows = [];
+	if ( function_exists( 'bespoke_seo_packs' ) ) {
+		foreach ( bespoke_seo_packs() as $key => $pack ) {
+			$rows[] = [ 'pick' => 'pack:' . $key, 'label' => $pack['name'] ?? $key, 'note' => 'product names, categories and picture alt text; staging\'s latest wording goes on top' ];
+		}
+	}
+	if ( $rows ) {
+		$sections[] = [ 'key' => 'packs', 'title' => 'SEO packs', 'rows' => $rows ];
+	}
 	if ( $upd ) {
 		$sections[] = [ 'key' => 'products', 'title' => 'Products already here: wording, customiser setup and SEO', 'rows' => $upd ];
 	}
@@ -932,17 +1001,6 @@ function bespoke_launch_plan( $file ) {
 	}
 	if ( $rows ) {
 		$sections[] = [ 'key' => 'elementor', 'title' => 'Pages and templates', 'rows' => $rows ];
-	}
-
-	// 7. SEO packs.
-	$rows = [];
-	if ( function_exists( 'bespoke_seo_packs' ) ) {
-		foreach ( bespoke_seo_packs() as $key => $pack ) {
-			$rows[] = [ 'pick' => 'pack:' . $key, 'label' => $pack['name'] ?? $key, 'note' => 'applied after the products and pages are here' ];
-		}
-	}
-	if ( $rows ) {
-		$sections[] = [ 'key' => 'packs', 'title' => 'SEO packs', 'rows' => $rows ];
 	}
 
 	// 8. Reviews.
@@ -1381,6 +1439,12 @@ function bespoke_launch_jobs( $file, $picks ) {
 			$jobs[] = [ 'kind' => 'options', 'args' => [ $i ], 'label' => 'Options: ' . ( $products[ $i ]['name'] ?? $i ) ];
 		}
 	}
+	// SEO packs before the wording and pages, so staging's latest goes on top.
+	foreach ( array_keys( $picks ) as $p ) {
+		if ( 0 === strpos( $p, 'pack:' ) ) {
+			$jobs[] = [ 'kind' => 'pack', 'args' => [ substr( $p, 5 ) ], 'label' => 'SEO pack: ' . substr( $p, 5 ) ];
+		}
+	}
 	$update = [];
 	foreach ( array_keys( $picks ) as $p ) {
 		if ( 0 === strpos( $p, 'product:' ) ) {
@@ -1396,18 +1460,18 @@ function bespoke_launch_jobs( $file, $picks ) {
 	$any  = false;
 	foreach ( array_keys( $picks ) as $p ) {
 		if ( 0 === strpos( $p, 'doc:' ) ) {
-			$i      = (int) substr( $p, 4 );
-			$jobs[] = [ 'kind' => 'doc', 'args' => [ $i ], 'label' => bespoke_launch_el_label( $docs[ $i ] ?? [] ) ];
+			$i     = (int) substr( $p, 4 );
+			$label = bespoke_launch_el_label( $docs[ $i ] ?? [] );
+			$pics  = bespoke_launch_el_pictures( $docs[ $i ] ?? [], bespoke_launch_from( $file ) );
+			foreach ( array_chunk( $pics, 3 ) as $n => $chunk ) {
+				$jobs[] = [ 'kind' => 'pictures', 'args' => $chunk, 'label' => 'Pictures for ' . $label . ': ' . ( $n * 3 + 1 ) . '–' . ( $n * 3 + count( $chunk ) ) . ' of ' . count( $pics ) ];
+			}
+			$jobs[] = [ 'kind' => 'doc', 'args' => [ $i ], 'label' => $label ];
 			$any    = true;
 		}
 	}
 	if ( $any ) {
 		$jobs[] = [ 'kind' => 'doc_finish', 'args' => [], 'label' => 'Elementor: where templates show, and fresh styles' ];
-	}
-	foreach ( array_keys( $picks ) as $p ) {
-		if ( 0 === strpos( $p, 'pack:' ) ) {
-			$jobs[] = [ 'kind' => 'pack', 'args' => [ substr( $p, 5 ) ], 'label' => 'SEO pack: ' . substr( $p, 5 ) ];
-		}
 	}
 	foreach ( [ 'reviews' => 'Reviews', 'bin' => 'Dropped products to the bin', 'fpd' => 'Fancy Product Designer off', 'caches' => 'Caches cleared' ] as $key => $label ) {
 		if ( isset( $picks[ $key ] ) ) {
@@ -1446,9 +1510,15 @@ function bespoke_launch_run_job( $job, $file ) {
 				}
 				$dest = $up['dir'] . $rel;
 				wp_mkdir_p( dirname( $dest ) );
+				if ( file_exists( $dest ) && md5_file( $dest ) === (string) $f['md5'] ) {
+					continue; // already here (a step tried again after a time-out)
+				}
 				if ( file_exists( $dest ) ) {
-					// Kept beside it, so Undo can put it back.
-					rename( $dest, $dest . '.before-launch' );
+					// Kept beside it, so Undo can put it back — never over a
+					// copy already kept.
+					if ( ! file_exists( $dest . '.before-launch' ) ) {
+						rename( $dest, $dest . '.before-launch' );
+					}
 					$moved[] = $rel;
 				} else {
 					$made[] = $rel;
@@ -1531,10 +1601,23 @@ function bespoke_launch_run_job( $job, $file ) {
 				throw new Exception( 'that product is no longer in the file.' );
 			}
 			if ( $row['matched'] ) {
-				return [ 'message' => 'already here — left as it is', 'undo' => [] ];
+				if ( ! bespoke_launch_made_by_this_run( $row['id'] ) || 'draft' !== get_post_status( $row['id'] ) ) {
+					return [ 'message' => 'already here — left as it is', 'undo' => [] ];
+				}
+				// Half made by this run when its step timed out: start it again.
+				// (A binned post's web address gets "__trashed", so the new one keeps it.)
+				wp_trash_post( $row['id'] );
 			}
 			$warnings = [];
-			$id       = bespoke_copy_create_product( $row['entry'], $warnings );
+			$mark     = function ( $pid ) {
+				bespoke_launch_mark_made( $pid );
+			};
+			add_action( 'woocommerce_new_product', $mark );
+			try {
+				$id = bespoke_copy_create_product( $row['entry'], $warnings );
+			} finally {
+				remove_action( 'woocommerce_new_product', $mark );
+			}
 			if ( is_wp_error( $id ) ) {
 				throw new Exception( $id->get_error_message() );
 			}
@@ -1649,6 +1732,19 @@ function bespoke_launch_run_job( $job, $file ) {
 			}
 			return [ 'message' => count( $done ) . ' product(s) updated', 'undo' => [ 'products' => $done ] ];
 
+		case 'pictures':
+			// Into the Media Library, remembered by where they came from, so
+			// the page's own step finds them here. Kept on Undo, like any
+			// picture a page brought in.
+			$warnings = [];
+			$got      = 0;
+			foreach ( (array) $job['args'] as $ref ) {
+				if ( bespoke_copy_picture( [ 'url' => (string) ( $ref['url'] ?? '' ), 'alt' => (string) ( $ref['alt'] ?? '' ), 'title' => '' ], 0, $warnings ) ) {
+					$got++;
+				}
+			}
+			return [ 'message' => $got . ' picture(s) fetched' . ( $warnings ? ' (' . implode( ' ', $warnings ) . ')' : '' ), 'undo' => [] ];
+
 		case 'doc':
 			return bespoke_launch_apply_doc( $file['elementor'][ (int) $job['args'][0] ] ?? null, $from );
 
@@ -1666,7 +1762,22 @@ function bespoke_launch_run_job( $job, $file ) {
 			if ( is_string( $result ) ) {
 				throw new Exception( $result );
 			}
-			return [ 'message' => intval( $result ) . ' post(s) changed', 'undo' => [ 'run' => get_option( BESPOKE_SEO_RUN ), 'before' => $before ] ];
+			$run = get_option( BESPOKE_SEO_RUN );
+			// Staging's latest wording back on top of the pack's, for the
+			// products it touched — only fields the pack keeps a backup of,
+			// so its Undo still puts them back.
+			$own   = [ 'post_content', 'post_excerpt', '_bespoke_eyebrow', '_bespoke_subtitle', '_bespoke_price_suffix', '_bespoke_at_a_glance', 'rank_math_title', 'rank_math_description', 'rank_math_focus_keyword' ];
+			$ids   = array_map( 'intval', (array) ( $run['ids'] ?? [] ) );
+			$fresh = 0;
+			foreach ( bespoke_copy_plan( bespoke_launch_copy_file( $file ) ) as $row ) {
+				if ( $row['matched'] && in_array( (int) $row['id'], $ids, true ) ) {
+					$keys = array_values( array_intersect( bespoke_copy_writable( $row['changes'] ), $own ) );
+					if ( $keys && bespoke_copy_apply_product( $row['id'], $row['entry'], $keys ) ) {
+						$fresh++;
+					}
+				}
+			}
+			return [ 'message' => intval( $result ) . ' post(s) changed' . ( $fresh ? ', ' . $fresh . ' then given staging\'s latest wording' : '' ), 'undo' => [ 'run' => $run, 'before' => $before ] ];
 
 		case 'reviews':
 			global $wpdb;
@@ -1733,7 +1844,13 @@ function bespoke_launch_apply_doc( $doc, $from ) {
 	$warnings = [];
 	$undo     = [];
 	$made     = [];
-	if ( ! $id ) {
+	if ( $id && bespoke_launch_made_by_this_run( $id ) ) {
+		// Made by this run in a step that timed out: finish it, as new.
+		$undo['made'] = (int) $id;
+		if ( 'page' === $type ) {
+			$made['pages'] = [ (int) $id ];
+		}
+	} elseif ( ! $id ) {
 		// Pages wait as drafts for Publish; templates must be published to
 		// work (the holding page is up while this runs).
 		$id = wp_insert_post( [
@@ -1742,6 +1859,8 @@ function bespoke_launch_apply_doc( $doc, $from ) {
 			'post_name'    => sanitize_title( (string) ( $doc['slug'] ?? '' ) ),
 			'post_status'  => 'page' === $type ? 'draft' : 'publish',
 			'post_content' => wp_kses_post( bespoke_launch_swap_urls( (string) ( $doc['content'] ?? '' ), $from ) ),
+			// Marked as it's made, so a time-out straight after can't leave it unmarked.
+			'meta_input'   => '' !== bespoke_launch_run_id() ? [ BESPOKE_LAUNCH_MADE => bespoke_launch_run_id() ] : [],
 		], true );
 		if ( is_wp_error( $id ) ) {
 			throw new Exception( $id->get_error_message() );
@@ -1995,6 +2114,32 @@ function bespoke_launch_undo_job( $job ) {
 	}
 }
 
+/**
+ * New products and pages carry the run that made them, so a step that timed
+ * out halfway (the screen tries it again) can tell its own half-made post
+ * from one that was already here — and never mistakes one made by an
+ * earlier launch for its own.
+ */
+const BESPOKE_LAUNCH_MADE = '_bespoke_launch_made';
+
+/** The current run's mark: when it started, or '' outside a run. */
+function bespoke_launch_run_id() {
+	$run = get_option( BESPOKE_LAUNCH_RUN );
+	return is_array( $run ) && ! empty( $run['started'] ) ? (string) $run['started'] : '';
+}
+
+function bespoke_launch_mark_made( $id ) {
+	$run = bespoke_launch_run_id();
+	if ( '' !== $run ) {
+		update_post_meta( (int) $id, BESPOKE_LAUNCH_MADE, $run );
+	}
+}
+
+function bespoke_launch_made_by_this_run( $id ) {
+	$run = bespoke_launch_run_id();
+	return '' !== $run && get_post_meta( (int) $id, BESPOKE_LAUNCH_MADE, true ) === $run;
+}
+
 /** Publish what the run made: the new products and pages, together. */
 function bespoke_launch_publish() {
 	$run = get_option( BESPOKE_LAUNCH_RUN );
@@ -2042,6 +2187,19 @@ add_action( 'wp_ajax_bespoke_launch_step', function () {
 	if ( ! is_array( $run ) || ! is_array( $file ) ) {
 		wp_send_json_error( [ 'message' => 'There is no launch waiting. Upload the file again.' ] );
 	}
+	// One step at a time. A step the screen gave up waiting for can still be
+	// running on the server (the connection drops before PHP stops): the
+	// screen waits for it rather than starting the same step twice. Released
+	// when the request ends, even by a time-out.
+	$busy = (int) get_option( 'bespoke_launch_busy', 0 );
+	if ( $busy && time() - $busy < 330 ) {
+		wp_send_json_error( [ 'busy' => true, 'message' => 'Still finishing the last step — waiting for it.' ] );
+	}
+	update_option( 'bespoke_launch_busy', time(), false );
+	register_shutdown_function( function () {
+		delete_option( 'bespoke_launch_busy' );
+	} );
+
 	$undoing = ! empty( $_POST['undo'] ); // phpcs:ignore WordPress.Security.NonceVerification
 	$jobs    = (array) $run['jobs'];
 
@@ -2364,7 +2522,8 @@ function bespoke_launch_render_run( $run ) {
 			log.appendChild(li);
 			log.scrollTop = log.scrollHeight;
 		}
-		function step(undo) {
+		function step(undo, tries) {
+			tries = tries || 0;
 			var body = new FormData();
 			body.append('action', 'bespoke_launch_step');
 			body.append('_ajax_nonce', nonce);
@@ -2372,7 +2531,13 @@ function bespoke_launch_render_run( $run ) {
 			fetch(ajax, { method: 'POST', body: body, credentials: 'same-origin' })
 				.then(function (r) { return r.json(); })
 				.then(function (r) {
+					tries = 0;
 					var d = r.data || {};
+					if (!r.success && d.busy) {
+						status.textContent = d.message;
+						setTimeout(function () { step(undo, 0); }, 15000);
+						return;
+					}
 					if (!r.success) { say(d.message || 'Something went wrong.', true); status.textContent = 'Stopped. Fix what it says, then reload this page and press Carry on.'; return; }
 					say(d.message);
 					if (undo) {
@@ -2385,7 +2550,16 @@ function bespoke_launch_render_run( $run ) {
 					if (d.finished) { location.reload(); return; }
 					step(undo);
 				})
-				.catch(function () { say('The connection dropped. Reload this page and press Carry on.', true); });
+				.catch(function () {
+					// A step that ran past the server's time limit, or a dropped
+					// connection: each step picks up where it stopped, so try again.
+					if (tries < 3) {
+						say('That step took too long — trying it again (' + (tries + 1) + ' of 3)…');
+						setTimeout(function () { step(undo, tries + 1); }, 5000);
+						return;
+					}
+					say('The connection keeps dropping. Reload this page and press Carry on.', true);
+				});
 		}
 		var go = document.getElementById('bespoke-launch-go');
 		if (go) { go.addEventListener('click', function () { go.disabled = true; step(false); }); }
