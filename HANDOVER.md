@@ -1004,8 +1004,13 @@ its remaining staging-only miss is the 80-character address — 71 on
 live). Nick (19 Oct 2026): yes to product reviews, as long as each is
 approved first — WooCommerce "Enable product reviews" (verified owners
 only, star ratings on), WordPress Discussion "Comment must be manually
-approved", and every product's Comments set to Allow by bulk edit;
-staging first to see the Reviews tab in his design, then live. Note that Rank Math's URL-length check counts the whole
+approved", and every product's Comments set to Allow by bulk edit
+(Products → 200 per page → select all → Bulk actions → **Bulk edit** →
+Comments: Allow → Update; 113 products take a minute or two). Both are
+needed: with only the WooCommerce setting on, no product showed the tab.
+Done on staging 19 Oct 2026 — the Reviews tab checked from outside on ten
+products across armbands, mugs, tags, boot stickers and grip socks. Live
+next, once Nick has seen the tab in his design. Note that Rank Math's URL-length check counts the whole
 address (the range page read "The URL is 56 characters long" for
 `https://staging2.bespokesport.uk/awareness-running-tags/`), and its
 limit is 75 characters: a product slug of 34–42 characters fails on
