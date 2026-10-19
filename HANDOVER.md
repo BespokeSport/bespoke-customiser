@@ -879,6 +879,24 @@ learned on staging, 17 Oct 2026):
    shop doesn't list the awareness tags, and `page-sitemap.xml` has the
    page; in Elementor, Rank Math should read 90.
 
+**Launch holding page (Nick, 19 Oct 2026).** During the visible part of
+launch the shop shows a holding page: Elementor → Tools → Maintenance
+Mode, mode **Maintenance** (503 + `Retry-After: 600`, so Google treats it
+as temporary), Who Can Access **Logged In**, template **Holding page**
+(Saved Templates, page 7414 on staging): "We're updating our shop", with
+links to facebook.com/BEspokeSportUK and instagram.com/bespokesportuk for
+orders meanwhile. **The template must use Page Layout "Elementor
+Canvas".** Without it, checked from outside: the holding page sat inside
+the Theme Builder header (6607) and Astra's post meta ("By BEspoke",
+"Previous Template"), the shop rendered its own archive template (1882)
+with products, and products on the single product template (1284 —
+shin pads, captains armbands, grip socks) said "Product not found". With
+Canvas every page tested (home, gallery, shop, all product kinds,
+categories, range page, cart) serves only the holding page, 503. My
+Account stays reachable (200), which is harmless. Templates live in each
+database: export it from staging and import it on live before launch day,
+and keep Maintenance Mode disabled until the switch-over.
+
 **Duplicating a page copies its web address and its Rank Math fields.**
 Nick made the range page by duplicating the pre-designed armbands page, so
 on staging it came out at `/pre-designed-custom-captains-armbands-2/` with
