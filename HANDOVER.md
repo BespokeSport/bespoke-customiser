@@ -1067,7 +1067,7 @@ pages with their real lastmod; posts and products unchanged. The empty
 leftover `/grip-socks-wash-acre/` (title only, beside the real
 `/grip-socks-washing-care/`) is now a draft. If that snippet is ever
 removed, new and edited pages stop reaching the sitemap again.
-### 6.29 One-file launch (planned 19 Oct 2026)
+### 6.29 One-file launch (built and tested 19 Oct 2026)
 
 Nick, 19 Oct 2026, after seeing the launch checklist: "I would like it as
 simple and quick and easy as possible" — and no rehearsal site (no room on
@@ -1102,6 +1102,53 @@ the work instead of Nick, and launch day becomes:
 Still by hand on the day: the backup, the plugin upload, and (until built
 into the tool) the three option changes from the runbook — shin pads made
 simple at £20, the pennant's option names, the armband length labels.
+
+**As built** — `includes/customiser-launch.php`, Designs → Launch
+(`edit.php?post_type=bespoke_design&page=bespoke-launch`, admins only):
+
+- **The file** (`kind: bespoke-launch`, `format: 1`, `site`, `uploads`):
+  `copy` (the Copy to Live product list, every published product, plus
+  `_links_to`, `_links_to_target`, `rank_math_robots`, and the settings),
+  `files` (path, size, md5 of everything in the three upload folders —
+  listed, not packed), `fonts`, `designs` (slug-keyed, `_bespoke_*` meta,
+  thumbnail as a picture reference), `elementor` (every published page and
+  `elementor_library` post with `_elementor_data`, plus the kit: data, page
+  settings, conditions, library type, page template, Rank Math title /
+  description / focus keyword / robots — **never the canonical** — and
+  `refs` naming each product, page, template and category ID by slug),
+  `reviews`. A file made on the same site is refused.
+- **Uploading writes nothing** but the waiting file (option
+  `bespoke_launch_file`, autoload off). The preview lists every row by
+  section; rows where live's copy was edited after staging's are unticked.
+  New things the run will make are planned as `to-come:<slug>` so a template
+  pointing at them is still listed.
+- **The run** (option `bespoke_launch_run`) is a list of small jobs, one
+  per admin-ajax request: files in eights, fonts, settings, designs in
+  fives, each new product, products in tens, each Elementor doc, then
+  Elementor's conditions cache and CSS, each SEO pack, reviews, the bin, FPD
+  off, caches. Each job stores what it replaced; Undo runs them backwards.
+  A failed job stops the run with its message; **Carry on** retries from it.
+  New products and pages are made as drafts; templates are published (they
+  only show where their conditions say). **Publish** publishes the drafts
+  the run made, once.
+- **Holding page** (option `bespoke_launch_holding`): `template_redirect`
+  at priority 0, 503 + `Retry-After: 3600`, no-cache; anyone who can
+  `edit_posts` sees the real site; robots.txt, feeds, REST, admin-ajax, cron
+  and wp-admin are untouched. Admins can see it with `?bespoke_holding=preview`.
+  Facebook `BEspokeSportUK`, Instagram `bespokesportuk`, the site logo.
+
+**Tested** on a throwaway WordPress (WooCommerce 11.2, Elementor 4.3, PHP
+8.3) standing in for both sites — artwork served from a second address,
+the new things removed and renumbered on "live", older copies of the
+rest: 76 checks pass (plan, run, publish, every picture, ID and template
+condition remapped, undo back to exactly what was there). Then the whole
+thing through the screen: holding page on (503 to visitors on home, shop
+and a product; robots.txt and REST 200), Start → 18 steps → Publish →
+Undo → holding page off (200 again).
+
+**Before launch day, on staging:** bin Nick's Elementor "Holding page"
+(superseded by the plugin's) so it doesn't travel in the file, and check
+Elementor's own Maintenance Mode is Disabled.
 
 ## 7. Tooling notes (for you, on the new machine)
 

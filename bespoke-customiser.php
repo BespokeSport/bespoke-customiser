@@ -49,6 +49,7 @@ add_action( 'plugins_loaded', function() {
         'customiser-product-page.php',  // per-product PDP content (eyebrow / sizing / etc.)
         'customiser-copy.php',          // move product wording + customiser setup staging → live
         'customiser-seo-pack.php',      // apply a group of products' names, wording and SEO in one go
+        'customiser-launch.php',        // launch day: holding page, and staging → live in one file
         'customiser-design-import.php', // bulk-create designs from a folder of PNGs
         'customiser-global-fonts.php',  // force-load Anton (independent of Elementor / theme)
         'customiser-shop.php',          // Shop / category archive styling + "Customise →" button copy
