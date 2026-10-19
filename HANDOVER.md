@@ -999,7 +999,13 @@ AI" (paid add-on); Holocaust also had no power word in its title (fixed:
 Pride's density read 2.93% from 11 matches where the phrase appears 6
 times — Rank Math counts every focus keyword saved, and the list screen
 shows only the first — so the pack sets its focus keyword to the one
-phrase. Note that Rank Math's URL-length check counts the whole
+phrase. Result: **Pride 87**, **Holocaust 79** (the power word counted;
+its remaining staging-only miss is the 80-character address — 71 on
+live). Nick (19 Oct 2026): yes to product reviews, as long as each is
+approved first — WooCommerce "Enable product reviews" (verified owners
+only, star ratings on), WordPress Discussion "Comment must be manually
+approved", and every product's Comments set to Allow by bulk edit;
+staging first to see the Reviews tab in his design, then live. Note that Rank Math's URL-length check counts the whole
 address (the range page read "The URL is 56 characters long" for
 `https://staging2.bespokesport.uk/awareness-running-tags/`), and its
 limit is 75 characters: a product slug of 34–42 characters fails on
