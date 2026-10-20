@@ -1237,6 +1237,34 @@ all fixed and covered by the test (104 checks):
   page: the run carried on by itself, finished that page, Publish published
   it, Undo binned it.
 
+**Prep found on 20 Oct (launch moved to the week of 26 Oct — Nick away the
+weekend before).** Compared from outside what the launch does NOT carry:
+- **Versions:** live has auto-updated past staging — Elementor 4.3.4 (staging
+  4.2.4), Astra 4.14.1 (4.13.11), WooCommerce 11.2.1 (11.1.0), Smush,
+  products filter, consent API. Update staging to match and recheck before
+  launch (Astra Pro stays unlicensed on staging). The rehearsal ran on
+  Elementor 4.3.5 / WooCommerce 11.2.1, so the data side is fine.
+- **The homepage carries an old four-box section** (shin pads, armbands,
+  sleeves, water bottles, each "Explore Now"); the bottles box links to
+  `/product/personalised-bottles/`, which the launch bins → a dead button
+  on live. It's the only broken link in any travelling page (all 23 docs'
+  links checked on staging). Fix it on staging (home is #1193 on both).
+- **Postage class "letter"** ("Letter") is used by all 17 new products
+  (running tags, boot stickers) and by no product live has. Shipping
+  classes and their zone costs live in each database; if live lacks it,
+  the launch makes it with no costs. Set it up on live beforehand
+  (invisible: nothing uses it until launch).
+- Menus match (live's footer adds Cookie Policy (UK), from Complianz,
+  which only live runs — it stays). Live's only Custom Code output is the
+  FPD Inside/Outside Button Fix script; with FPD off it finds nothing and
+  returns, so switching it off can wait until after launch.
+- **The plugin zip** (`git -c core.autocrlf=false archive --prefix=bespoke-customiser/
+  HEAD bespoke-customiser.php includes assets templates`, 27.6MB, 542 files)
+  matches what staging serves file for file (only two comment lines in
+  `bespoke-brand-base.css` differ). Not pre-installed on live: WordPress
+  offers "Activate" straight after upload, and activating early restyles
+  live with no holding page.
+
 **Before launch day, on staging:** bin Nick's Elementor "Holding page"
 (superseded by the plugin's) so it doesn't travel in the file, and check
 Elementor's own Maintenance Mode is Disabled.
