@@ -1347,6 +1347,19 @@ live yet); no script-blocking CSP (would break the inline customiser — a
 files are never cleaned up; Google Fonts (Anton) sends visitors' IPs to
 Google — self-host or mention in the privacy notice.
 
+**Verified on staging after Nick's upload (27 Oct):** the product page carries
+the new cleaner; the Ice design (SVG base + PNG patterns) draws; a PNG badge
+uploads; an SVG badge with onload, a javascript: xlink link and a `<set>` was
+stored with all three gone and its drawing kept; an HTML-wrapped "preview"
+was refused; `x.php.png` / `.phtml` under the upload folders → 403 (the
+`.htaccess` is live; SVGs get no CSP header because nginx serves static
+files — expected, the cleaning is the real control). Snippet #26 isn't on
+live at all and is in the bin on staging (binned snippets don't run).
+Staging now matches live's versions except Astra Pro (unlicensed). Both run
+PHP 8.2.35 (Ultrafast PHP: staging inherits the main site's PHP and its
+variables). SiteGround support couldn't confirm `session.upload_progress`;
+Nick sets it in Site Tools → Devs → PHP Manager → PHP Variables.
+
 PHP "php2shell" (CVE-2026-109618/-109619, patched 21 Oct in 8.2.35/8.3.36/
 8.4.27/8.5.12): SiteGround mitigated before release and patched all servers
 the same day, no customer action. CVE-2026-115560 (23 Oct, unpatched,
