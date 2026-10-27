@@ -446,19 +446,71 @@ function bespoke_render_customiser( $atts ) {
             }
 
             // ── SVG fetch helper (with caching) ───────────────────────────────
+            // Artwork comes from this site only: a design's layer address is
+            // just a saved field, and whatever it returns is drawn into the page.
             function fetchSvgText(url){
                 if (svgCache[url]) return Promise.resolve(svgCache[url]);
+                var here = false;
+                try { here = new URL(url, location.href).origin === location.origin; } catch (e) {}
+                if (!here) return Promise.resolve('');
                 return fetch(url).then(function(r){ return r.text(); }).then(function(txt){
                     svgCache[url] = txt;
                     return txt;
                 });
             }
 
-            // Returns a parsed <svg> element, or null on parse failure.
+            // ── Keep only drawing ─────────────────────────────────────────────
+            // Design artwork is copied straight into the page, so it gets the
+            // same allow-list as the server's bespoke_sanitise_svg(): an SVG
+            // carrying script (from an upload, a bulk import or the launch)
+            // would otherwise run for every shopper who opens the product.
+            var SVG_SAFE = {};
+            ('svg g defs symbol use title desc style path rect circle ellipse line polyline polygon text tspan textpath image ' +
+             'lineargradient radialgradient stop clippath mask pattern marker filter feblend fecolormatrix fecomponenttransfer ' +
+             'fecomposite feconvolvematrix fediffuselighting fedisplacementmap fedistantlight fedropshadow feflood fefunca ' +
+             'fefuncb fefuncg fefuncr fegaussianblur femerge femergenode femorphology feoffset fepointlight fespecularlighting ' +
+             'fespotlight fetile feturbulence').split(' ').forEach(function(t){ SVG_SAFE[t] = 1; });
+            var SVG_ATTR_NS = { '': 1, 'http://www.w3.org/1999/xlink': 1, 'http://www.w3.org/2000/xmlns/': 1 };
+            function svgUrlSafe(v){
+                var raw  = String(v || '').trim().replace(/^['"]|['"]$/g, '');
+                var flat = raw.replace(/[\x00-\x20]+/g, '').toLowerCase();
+                if (!flat || flat.charAt(0) === '#') return true;
+                if (/^data:(image\/(png|jpe?g|gif|webp)|font\/|application\/(font|x-font))/.test(flat)) return true;
+                try { return new URL(raw, location.href).origin === location.origin; } catch (e) { return false; }
+            }
+            function svgCleanCss(css){
+                return String(css)
+                    .replace(/@import\b[^;]*;?/gi, '')
+                    .replace(/expression\s*\(|-moz-binding|behavior\s*:/gi, '')
+                    .replace(/url\(\s*([^)]*)\)/gi, function(m, u){ return svgUrlSafe(u) ? m : 'none'; });
+            }
+            function sanitiseSvgEl(root){
+                Array.prototype.slice.call(root.querySelectorAll('*')).forEach(function(el){
+                    var foreign = el.namespaceURI && el.namespaceURI !== NS;
+                    if ((foreign || !SVG_SAFE[el.localName.toLowerCase()]) && el.parentNode) el.parentNode.removeChild(el);
+                });
+                [root].concat(Array.prototype.slice.call(root.querySelectorAll('*'))).forEach(function(el){
+                    Array.prototype.slice.call(el.attributes).forEach(function(a){
+                        var name = a.localName.toLowerCase();
+                        var flat = a.value.replace(/[\x00-\x20]+/g, '').toLowerCase();
+                        var drop = !SVG_ATTR_NS[a.namespaceURI || ''] || name.indexOf('on') === 0 || name === 'src' ||
+                                   /(java|vb)script:|data:text\/html/.test(flat) || (name === 'href' && !svgUrlSafe(a.value));
+                        if (!drop && name === 'style') a.value = svgCleanCss(a.value);
+                        else if (!drop && flat.indexOf('url(') !== -1 && svgCleanCss(a.value) !== a.value) drop = true;
+                        if (drop) el.removeAttributeNode(a);
+                    });
+                    if (el.localName.toLowerCase() === 'style') el.textContent = svgCleanCss(el.textContent);
+                });
+                return root;
+            }
+
+            // Returns a parsed, cleaned <svg> element, or null on parse failure.
             function parseSvg(svgText){
                 var doc = new DOMParser().parseFromString(svgText, 'image/svg+xml');
-                if (doc.documentElement.nodeName.toLowerCase() === 'parsererror') return null;
-                return doc.documentElement;
+                var root = doc.documentElement;
+                if (!root || root.nodeName.toLowerCase() === 'parsererror') return null;
+                if (root.localName.toLowerCase() !== 'svg') return null;
+                return sanitiseSvgEl(root);
             }
 
             // Detect whether an SVG has embedded raster (PNG/JPG) image data.

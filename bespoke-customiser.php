@@ -106,34 +106,51 @@ add_action( 'plugins_loaded', function() {
  * Apache syntax and do nothing on nginx or LiteSpeed, which is the second
  * reason not to depend on them alone.
  */
-add_action( 'init', function() {
-    if ( ! defined( 'BESPOKE_UPLOAD_DIR' ) ) return;
-    if ( ! file_exists( BESPOKE_UPLOAD_DIR ) ) {
-        wp_mkdir_p( BESPOKE_UPLOAD_DIR );
+/**
+ * Protect every folder the plugin writes into: the customers' badges and
+ * previews, design artwork, product artwork and fonts.
+ *
+ * Rewritten whenever the file is missing or older than this version — the
+ * other three folders used to get theirs only when the folder was first made,
+ * so a folder uploaded by hand had none (security review, 27 Oct 2026). The
+ * rules now also catch "x.php.png", and send SVGs with a sandbox, so even a
+ * hostile SVG opened straight from its address can't run script in the
+ * site's origin. Headers sit in IfModule so a server without mod_headers
+ * ignores them rather than erroring. Apache rules: on nginx-only serving
+ * they do nothing, which is why the uploads themselves are cleaned too.
+ */
+function bespoke_protect_upload_dirs() {
+    $up   = wp_upload_dir();
+    $base = trailingslashit( $up['basedir'] );
+    $rules = "# bespoke-protect 2\n"
+        . "Options -Indexes\n"
+        . "<FilesMatch \"\\.(php[0-9]?|phtml|phar|pl|py|cgi|sh)(\\.|$)\">\n"
+        . "    Require all denied\n"
+        . "</FilesMatch>\n"
+        . "<IfModule mod_headers.c>\n"
+        . "    Header set X-Content-Type-Options \"nosniff\"\n"
+        . "    <FilesMatch \"\\.svg$\">\n"
+        . "        Header set Content-Security-Policy \"sandbox\"\n"
+        . "    </FilesMatch>\n"
+        . "</IfModule>\n";
+    foreach ( [ BESPOKE_UPLOAD_DIR, $base . 'bespoke-designs/', $base . 'bespoke-product-assets/', $base . 'bespoke-fonts/' ] as $dir ) {
+        if ( BESPOKE_UPLOAD_DIR === $dir && ! file_exists( $dir ) ) {
+            wp_mkdir_p( $dir );
+        }
+        if ( ! is_dir( $dir ) ) {
+            continue; // made, with its protection, the first time it's needed
+        }
+        $ht = $dir . '.htaccess';
+        if ( ! file_exists( $ht ) || 0 !== strpos( (string) @file_get_contents( $ht, false, null, 0, 20 ), '# bespoke-protect 2' ) ) {
+            @file_put_contents( $ht, $rules );
+        }
     }
-    $ht = BESPOKE_UPLOAD_DIR . '.htaccess';
-    if ( file_exists( BESPOKE_UPLOAD_DIR ) && ! file_exists( $ht ) ) {
-        @file_put_contents( $ht,
-            "Options -Indexes\n" .
-            "<FilesMatch \"\\.(php|phtml|phar|pl|py|cgi|sh)$\">\n" .
-            "    Require all denied\n" .
-            "</FilesMatch>\n"
-        );
+}
+add_action( 'init', function() {
+    if ( defined( 'BESPOKE_UPLOAD_DIR' ) ) {
+        bespoke_protect_upload_dirs();
     }
 } );
 
-// Create badge upload directory on activation
-register_activation_hook( __FILE__, function() {
-    if ( ! file_exists( BESPOKE_UPLOAD_DIR ) ) {
-        wp_mkdir_p( BESPOKE_UPLOAD_DIR );
-        // Block directory listing AND deny execution of any
-        // server-side script extensions ever written here — defence in
-        // depth so a future upload bug can't plant a runnable .php.
-        file_put_contents( BESPOKE_UPLOAD_DIR . '.htaccess',
-            "Options -Indexes\n" .
-            "<FilesMatch \"\\.(php|phtml|phar|pl|py|cgi|sh)\$\">\n" .
-            "    Require all denied\n" .
-            "</FilesMatch>\n"
-        );
-    }
-});
+// Create the badge folder, protected, on activation.
+register_activation_hook( __FILE__, 'bespoke_protect_upload_dirs' );

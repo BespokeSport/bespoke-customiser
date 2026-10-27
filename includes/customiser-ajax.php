@@ -118,18 +118,30 @@ function bespoke_collect_pattern_gradients() {
    ========================================================================= */
 
 /**
- * Strip everything dangerous out of an SVG string and return a safe
- * version (or empty string when the input cannot be parsed). Removes
- *   - <script>, <foreignObject>, <iframe>, <embed>, <object>, <link>
- *   - every on* event-handler attribute
- *   - any href / xlink:href starting with javascript: / data:text/html
- *   - DOCTYPE declarations (blocks XXE + entity-bomb DoS)
- * Built around DOMDocument with LIBXML_NONET so external entities never
- * resolve, matching defence-in-depth recommendations from the security
- * audit (Task #6).
+ * Make an SVG safe to store and serve from this site, or return '' when it
+ * can't be.
+ *
+ * It KEEPS ONLY WHAT IS KNOWN TO BE SAFE (an allow-list) rather than
+ * removing what is known to be dangerous. The block-list this replaced let
+ * script through five ways (security review, 27 Oct 2026): a namespaced
+ * xlink:href that removeAttribute() never removed, a tab hidden inside
+ * "javascript:", <set>/<animate> rewriting a link, an <?xml-stylesheet?>
+ * instruction, and an HTML page wrapped round an <svg>. Anonymous visitors
+ * upload here (badges, previews), and an SVG opened from the order screen
+ * runs in the site's own origin, so this has to hold against a hostile file.
+ *
+ *   - the document must be an <svg>; no DOCTYPE, so no external entities
+ *   - elements: drawing, text, gradients, clipping, masks, patterns, filters
+ *     and styles — nothing that runs script, links, animates or embeds
+ *     another document
+ *   - attributes: any name except event handlers, in no namespace or the
+ *     xlink one; links may only point inside the file (#id), at an embedded
+ *     picture or font (data:), or at this site's own uploads
+ *   - CSS (style attributes and <style>): no @import, url() as for links
+ *   - comments and processing instructions dropped
  *
  * @param string $svg Raw SVG markup.
- * @return string     Sanitised SVG markup, or '' if unrecoverable.
+ * @return string     Safe SVG markup, or '' if it can't be made safe.
  */
 function bespoke_sanitise_svg( $svg ) {
     if ( ! is_string( $svg ) || $svg === '' ) return '';
@@ -139,44 +151,100 @@ function bespoke_sanitise_svg( $svg ) {
         return '';
     }
     libxml_use_internal_errors( true );
-    $doc = new DOMDocument();
+    $doc    = new DOMDocument();
     $loaded = $doc->loadXML( $svg, LIBXML_NONET | LIBXML_NOERROR | LIBXML_NOWARNING );
     libxml_clear_errors();
     libxml_use_internal_errors( false );
-    if ( ! $loaded ) return '';
+    if ( ! $loaded || ! $doc->documentElement ) return '';
 
-    $banned_tags  = [ 'script', 'foreignObject', 'iframe', 'embed', 'object', 'link', 'meta', 'base' ];
-    $bad_url_pref = [ 'javascript:', 'data:text/html', 'data:application/javascript', 'vbscript:' ];
+    $svg_ns   = 'http://www.w3.org/2000/svg';
+    $xlink_ns = 'http://www.w3.org/1999/xlink';
+    $root     = $doc->documentElement;
+    if ( strtolower( $root->localName ) !== 'svg' || ! in_array( (string) $root->namespaceURI, [ '', $svg_ns ], true ) ) {
+        return ''; // an HTML page (or anything else) with an <svg> somewhere inside
+    }
+
+    static $allowed = null;
+    if ( $allowed === null ) {
+        $allowed = array_flip( [
+            'svg', 'g', 'defs', 'symbol', 'use', 'title', 'desc', 'style',
+            'path', 'rect', 'circle', 'ellipse', 'line', 'polyline', 'polygon',
+            'text', 'tspan', 'textpath', 'image',
+            'lineargradient', 'radialgradient', 'stop', 'clippath', 'mask', 'pattern', 'marker',
+            'filter', 'feblend', 'fecolormatrix', 'fecomponenttransfer', 'fecomposite',
+            'feconvolvematrix', 'fediffuselighting', 'fedisplacementmap', 'fedistantlight',
+            'fedropshadow', 'feflood', 'fefunca', 'fefuncb', 'fefuncg', 'fefuncr',
+            'fegaussianblur', 'femerge', 'femergenode', 'femorphology', 'feoffset',
+            'fepointlight', 'fespecularlighting', 'fespotlight', 'fetile', 'feturbulence',
+        ] );
+    }
 
     $xpath = new DOMXPath( $doc );
-    // Drop banned tags wholesale.
-    foreach ( $banned_tags as $tag ) {
-        $nodes = $xpath->query( '//*[local-name()="' . $tag . '"]' );
-        for ( $i = $nodes->length - 1; $i >= 0; $i-- ) {
-            $n = $nodes->item( $i );
-            if ( $n && $n->parentNode ) $n->parentNode->removeChild( $n );
+
+    // Comments, and processing instructions (an xml-stylesheet one runs XSLT).
+    foreach ( iterator_to_array( $xpath->query( '//comment() | //processing-instruction()' ) ) as $n ) {
+        if ( $n->parentNode ) $n->parentNode->removeChild( $n );
+    }
+
+    // Elements not on the list go, with everything inside them.
+    foreach ( iterator_to_array( $xpath->query( '//*' ) ) as $el ) {
+        $ns_ok = in_array( (string) $el->namespaceURI, [ '', $svg_ns ], true );
+        if ( ( ! $ns_ok || ! isset( $allowed[ strtolower( $el->localName ) ] ) ) && $el->parentNode ) {
+            $el->parentNode->removeChild( $el );
         }
     }
-    // Walk every element, strip dangerous attributes.
-    $elements = $xpath->query( '//*' );
-    foreach ( $elements as $el ) {
-        $to_remove = [];
-        foreach ( $el->attributes as $attr ) {
-            $name  = strtolower( $attr->name );
+
+    foreach ( iterator_to_array( $xpath->query( '//*' ) ) as $el ) {
+        foreach ( iterator_to_array( $el->attributes, false ) as $attr ) {
+            $ns    = (string) $attr->namespaceURI;
+            $local = strtolower( $attr->localName );
             $value = (string) $attr->value;
-            if ( strpos( $name, 'on' ) === 0 ) { $to_remove[] = $attr->name; continue; }
-            if ( in_array( $name, [ 'href', 'xlink:href', 'action', 'formaction', 'src' ], true ) ) {
-                $v = strtolower( trim( $value ) );
-                foreach ( $bad_url_pref as $bad ) {
-                    if ( strpos( $v, $bad ) === 0 ) { $to_remove[] = $attr->name; break; }
-                }
+            $flat  = bespoke_svg_flatten( $value );
+            $drop  = ! in_array( $ns, [ '', $xlink_ns ], true )            // xml:base, other namespaces' event handlers
+                || strpos( $local, 'on' ) === 0                             // event handlers
+                || in_array( $local, [ 'src', 'action', 'formaction' ], true )
+                || preg_match( '/(java|vb)script:|data:text\/html/', $flat )
+                || ( $local === 'href' && ! bespoke_svg_url_ok( $value ) );
+            if ( ! $drop && $local === 'style' ) {
+                $attr->value = bespoke_svg_clean_css( $value );
+            } elseif ( ! $drop && strpos( $flat, 'url(' ) !== false && bespoke_svg_clean_css( $value ) !== $value ) {
+                $drop = true; // fill="url(…)" and friends pointing off-site
+            }
+            if ( $drop ) {
+                $el->removeAttributeNode( $attr );
             }
         }
-        foreach ( $to_remove as $attr_name ) {
-            $el->removeAttribute( $attr_name );
+        if ( strtolower( $el->localName ) === 'style' ) {
+            $el->textContent = bespoke_svg_clean_css( $el->textContent );
         }
     }
+
     return $doc->saveXML() ?: '';
+}
+
+/**
+ * A value as a browser reads a URL scheme: lower case, with the tabs,
+ * newlines and spaces it ignores taken out ("java	script:" is javascript:).
+ */
+function bespoke_svg_flatten( $value ) {
+    return strtolower( preg_replace( '/[\x00-\x20]+/', '', html_entity_decode( (string) $value, ENT_QUOTES | ENT_HTML5, 'UTF-8' ) ) );
+}
+
+/** May an SVG link or url() point here? Only inside the file, at embedded data, or at this site's uploads. */
+function bespoke_svg_url_ok( $url ) {
+    $flat = bespoke_svg_flatten( trim( (string) $url, " \t\n\r\"'" ) );
+    if ( $flat === '' || $flat[0] === '#' ) return true;
+    if ( preg_match( '#^data:(image/(png|jpe?g|gif|webp)|font/|application/(font|x-font))#', $flat ) ) return true;
+    return bespoke_is_local_upload_url( trim( (string) $url, " \t\n\r\"'" ) );
+}
+
+/** CSS with @import removed and every url() that isn't allowed replaced with none. */
+function bespoke_svg_clean_css( $css ) {
+    $css = preg_replace( '/@import\b[^;]*;?/i', '', (string) $css );
+    $css = preg_replace( '/expression\s*\(|-moz-binding|behavior\s*:/i', '', $css );
+    return preg_replace_callback( '/url\(\s*([^)]*)\)/i', function ( $m ) {
+        return bespoke_svg_url_ok( $m[1] ) ? $m[0] : 'none';
+    }, $css );
 }
 
 /**
@@ -241,6 +309,26 @@ function bespoke_upload_rate_limited() {
     // to close only once the caller stops.
     set_transient( $key, $count + 1, 10 * MINUTE_IN_SECONDS );
     return false;
+}
+
+/**
+ * A ceiling on what anonymous uploads may add to the disk in a day, across
+ * every visitor. The per-address limit above can't tell visitors apart
+ * behind some proxies, and a full disk takes the whole shop down (security
+ * review, 27 Oct 2026). A badge is typically well under 1 MB and a preview
+ * smaller still, so 1 GB a day is only ever met by a flood.
+ *
+ * @param int $bytes Size of the upload about to be stored.
+ * @return bool False once today's allowance is used up.
+ */
+function bespoke_upload_budget_spend( $bytes ) {
+    $key  = 'bespoke_ul_bytes_' . gmdate( 'Ymd' );
+    $used = (int) get_transient( $key );
+    if ( $used + (int) $bytes > GB_IN_BYTES ) {
+        return false;
+    }
+    set_transient( $key, $used + (int) $bytes, DAY_IN_SECONDS );
+    return true;
 }
 
 /**
@@ -314,6 +402,9 @@ function bespoke_handle_badge_upload() {
     $max_bytes = 5 * 1024 * 1024;
     if ( $file['size'] > $max_bytes ) {
         wp_send_json_error( 'File too large. Maximum badge size is 5 MB.' );
+    }
+    if ( ! bespoke_upload_budget_spend( (int) $file['size'] ) ) {
+        wp_send_json_error( 'Uploads are paused for today. Please contact us and we\'ll sort your order.' );
     }
 
     // ── MIME type validation (check actual file content, not just extension) ─
@@ -435,6 +526,9 @@ function bespoke_handle_preview_upload() {
     }
     if ( ! is_uploaded_file( $file['tmp_name'] ) ) {
         wp_send_json_error( 'Invalid upload.' );
+    }
+    if ( ! bespoke_upload_budget_spend( (int) $file['size'] ) ) {
+        wp_send_json_error( 'Uploads are paused for today. Please contact us and we\'ll sort your order.' );
     }
 
     // Read the raw content
@@ -990,6 +1084,11 @@ function bespoke_handle_add_to_cart() {
 
     // ── Security ─────────────────────────────────────────────────────────────
     check_ajax_referer( 'bespoke_add_to_cart', 'nonce' );
+
+    // Closed while the launch's holding page is up (staff excepted).
+    if ( function_exists( 'bespoke_launch_shop_closed' ) && bespoke_launch_shop_closed() ) {
+        wp_send_json_error( 'We\'re updating our shop. Please try again shortly.' );
+    }
 
     /* ── Per-IP rate limit ──────────────────────────────────────────────────
      * Anonymous endpoint, so a naïve attacker could flood the session and

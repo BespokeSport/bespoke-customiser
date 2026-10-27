@@ -1269,6 +1269,94 @@ weekend before).** Compared from outside what the launch does NOT carry:
 (superseded by the plugin's) so it doesn't travel in the file, and check
 Elementor's own Maintenance Mode is Disabled.
 
+### 6.30 Security review before launch (27 Oct 2026)
+
+Nick asked for a full check of what goes live. Three read-only reviews
+(customer-facing PHP; admin tools; customiser.html JS + site-wide modules),
+then every finding verified here before fixing. Fixed and tested:
+
+- **HIGH — SVG cleaning was a block-list and leaked.** `bespoke_sanitise_svg()`
+  (customiser-ajax.php) let script through five ways, confirmed by running it:
+  namespaced `xlink:href="javascript:"` (removeAttribute never removed it), a
+  tab/newline inside "javascript:", `<set>`/`<animate>` rewriting a link,
+  `<?xml-stylesheet?>`, and an HTML page wrapped round an `<svg>`. Both
+  anonymous upload endpoints (badge, preview) use it, and the order screen
+  links to the stored .svg, so an admin clicking it ran the attacker's script
+  in the site origin. Now an **allow-list**: root must be `<svg>`; only
+  drawing/text/gradient/clip/mask/pattern/filter/style elements; attributes
+  in no namespace or xlink only, no `on*`; links and CSS `url()` only to `#id`,
+  `data:image|font`, or this site's uploads (`bespoke_svg_url_ok`); no
+  `@import`; comments and PIs dropped. Tested: 23 attack vectors blocked, all
+  29 SVGs on staging come through with **no element or attribute removed**
+  (`scratchpad/wp-test/www/svg-test.php`, `svg-attrs.php`).
+- **MEDIUM — design artwork was inlined unfiltered.** The customiser fetches a
+  design layer's SVG and clones it into the page (customiser-frontend.php
+  `fetchSvgText`/`parseSvg`). Now: same-origin URLs only, and the parsed SVG
+  goes through a JS copy of the same allow-list (`sanitiseSvgEl`). Tested in a
+  browser: attacks blocked, 29 real files unchanged. `www.` and http both 301
+  to `https://bespokesport.uk`, so same-origin holds on live.
+- **Designs: admins only.** `bespoke_design` was `capability_type => 'post'`
+  (any Author could publish one); its caps now map to `manage_options`, the
+  reorder AJAX too. The save handler keeps `_bespoke_svg_url` / layer
+  `file_url` only if they're this site's uploads. The edit screen renumbers
+  layers (`array_values`) — keys from a crafted file were echoed unescaped.
+- **Bulk Import never cleaned SVGs** (passed the path, ignored the result).
+  Fixed; an SVG that can't be made safe is deleted with a message.
+- **Upload folders:** `bespoke_protect_upload_dirs()` (main file) writes a
+  versioned `.htaccess` ("# bespoke-protect 2") into all four plugin folders
+  whenever it's missing or old — the three non-badge ones only got one on
+  creation. Blocks `x.php.png` style names, adds `nosniff`, and sends SVGs
+  with `Content-Security-Policy: sandbox` (inside IfModule mod_headers).
+- **Launch file trust.** It's only accepted from `bespoke_launch_sources()`
+  (filter; default staging2 → its uploads URL) — checked on upload and again
+  in the files step. Files are fetched with `wp_safe_remote_get`, capped at
+  their declared size; SVGs are cleaned before writing, with `came`/`kept`
+  md5s kept in option `bespoke_launch_svg_md5` so a second look still finds
+  them "already here" (`bespoke_launch_have_file`). `bespoke_launch_safe_path`
+  rejects hidden files and any script-like extension in any segment.
+  `el_match` only matches pages and templates. Design meta: only the plugin's
+  seven keys, each cleaned as the design screen does (start text keeps its
+  line breaks — 12 awareness tags are two-line; checked all 267 real designs
+  come through identical). New products: pictures only from staging's
+  uploads; `_links_to` only to this site.
+- **Holding page now closes the shop to non-staff** — Store API writes
+  (`rest_pre_dispatch`, `/wc/store*` non-GET), classic checkout, add-to-cart
+  validation and the customiser's own add-to-cart. Reads stay open.
+- **Disk:** a site-wide 1 GB/day ceiling on anonymous uploads
+  (`bespoke_upload_budget_spend`), on top of the per-address limit.
+- **Backslashes:** `_elementor_page_settings` (launch, and its Undo) and Copy
+  to Live's product writes weren't slashed, so `\f101` in CSS lost its
+  backslash. Fixed.
+- **Debug snippet:** `snippets/snippet-26-read-files-ajax-ACTIVE.php` (Code
+  Snippets #26, untitled) returns plugin source to ANY logged-in user — and
+  WooCommerce lets anyone register. Removed from the repo and the export;
+  **Nick must delete #26 in Snippets on staging and live** (it isn't plugin
+  code, so the zip doesn't touch it).
+
+Checked and fine: every admin handler has capability + nonce; prices are
+never taken from the browser (variation matched server-side; the band-width
+"label vs variant" note is harmless — label, recorded variation and price
+agree); customer text is escaped everywhere it's shown; no unserialize of
+input; flag lookup has no traversal; launch options/reviews limited to named
+keys.
+
+Left for later (Low): translated wording inserted with innerHTML in a few
+customiser.html labels (admin/translator-controlled; TranslatePress isn't on
+live yet); no script-blocking CSP (would break the inline customiser — a
+`frame-ancestors`/`object-src` one is safe if wanted); orphan badge/preview
+files are never cleaned up; Google Fonts (Anton) sends visitors' IPs to
+Google — self-host or mention in the privacy notice.
+
+PHP "php2shell" (CVE-2026-109618/-109619, patched 21 Oct in 8.2.35/8.3.36/
+8.4.27/8.5.12): SiteGround mitigated before release and patched all servers
+the same day, no customer action. CVE-2026-115560 (23 Oct, unpatched,
+"unusual configurations"): mitigation `session.upload_progress.enabled=0`;
+the plugin uses no PHP sessions, so it's safe to set — Nick asked SiteGround.
+Staging's WooCommerce 11.1.0 has CVE-2026-106608 (shop-manager privilege
+escalation, fixed 11.2.0): update staging. Staging holds a copy of live's
+customer accounts — protect or delete it after launch (not before: live
+fetches files from it).
+
 ## 7. Tooling notes (for you, on the new machine)
 
 - **There is no PHP locally.** `tools/` in the repo has what you need — run `npm install`

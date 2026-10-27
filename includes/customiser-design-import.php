@@ -159,8 +159,15 @@ function bespoke_import_store( $tmp_name, $original ) {
 	if ( ! bespoke_import_move( $tmp_name, $dest ) ) {
 		return new WP_Error( 'move', 'Could not save ' . esc_html( $original ) );
 	}
-	if ( $ext === 'svg' && function_exists( 'bespoke_sanitise_svg' ) ) {
-		bespoke_sanitise_svg( $dest );
+	if ( $ext === 'svg' ) {
+		// The cleaner takes the SVG's text and hands back the safe version;
+		// this used to pass it the file's path and ignore the answer, so
+		// imported SVGs were stored exactly as uploaded.
+		$clean = function_exists( 'bespoke_sanitise_svg' ) ? bespoke_sanitise_svg( (string) file_get_contents( $dest ) ) : ''; // phpcs:ignore WordPress.WP.AlternativeFunctions
+		if ( '' === $clean || false === file_put_contents( $dest, $clean ) ) { // phpcs:ignore WordPress.WP.AlternativeFunctions
+			wp_delete_file( $dest );
+			return new WP_Error( 'svg', esc_html( $original ) . ' could not be made safe as an SVG — export it again, or use a PNG.' );
+		}
 	}
 	return trailingslashit( BESPOKE_DESIGNS_URL ) . rawurlencode( $try );
 }

@@ -96,7 +96,16 @@ function bespoke_register_design_post_type() {
         'supports'        => [ 'title' ],
         'menu_icon'       => 'dashicons-art',
         'menu_position'   => 56,
+        // Admins only. As plain 'post' any Author could publish a design, and
+        // a design's artwork is drawn into every product page that offers it
+        // (security review, 27 Oct 2026).
         'capability_type' => 'post',
+        'capabilities'    => array_fill_keys( [
+            'edit_posts', 'edit_others_posts', 'edit_published_posts', 'edit_private_posts',
+            'publish_posts', 'read_private_posts', 'create_posts',
+            'delete_posts', 'delete_others_posts', 'delete_published_posts', 'delete_private_posts',
+        ], 'manage_options' ),
+        'map_meta_cap'    => true,
     ] );
 }
 
@@ -712,7 +721,7 @@ function bespoke_design_layers_cb( $post ) {
             </tr>
         </thead>
         <tbody id="bespoke-layers-body">
-            <?php foreach ( $layers as $i => $layer ) :
+            <?php foreach ( array_values( (array) $layers ) as $i => $layer ) : // numbered 0, 1, 2… whatever the saved keys
                 $n         = $i + 1;
                 $file_url  = $layer['file_url']      ?? '';
                 $file_name = $layer['file_filename'] ?? '';
@@ -1091,8 +1100,11 @@ function bespoke_design_save_meta( $post_id, $post ) {
     );
 
     // ── SVG URL ───────────────────────────────────────────────────────────────
+    // Artwork addresses must be this site's own uploads: the customiser draws
+    // whatever they return into the product page.
+    $svg_url = esc_url_raw( $_POST['bespoke_svg_url'] ?? '' );
     update_post_meta( $post_id, '_bespoke_svg_url',
-        esc_url_raw( $_POST['bespoke_svg_url'] ?? '' )
+        bespoke_is_local_upload_url( $svg_url ) ? $svg_url : ''
     );
 
     // ── Colour layers ─────────────────────────────────────────────────────────
@@ -1102,6 +1114,7 @@ function bespoke_design_save_meta( $post_id, $post ) {
         $label    = sanitize_text_field( $layer['label']         ?? '' );
         $default  = sanitize_hex_color(  $layer['default']       ?? '#000000' );
         $file_url = esc_url_raw(         $layer['file_url']      ?? '' );
+        $file_url = bespoke_is_local_upload_url( $file_url ) ? $file_url : '';
         $file_fn  = sanitize_file_name(  $layer['file_filename'] ?? '' );
         // The "Customer editable" checkbox ships with a paired hidden input
         // (value="0") so that an unchecked box still posts a value. PHP keeps
@@ -1439,7 +1452,7 @@ add_action( 'admin_footer-edit.php', function() {
  * sequence stays human-friendly with gaps for future inserts.
  */
 add_action( 'wp_ajax_bespoke_reorder_designs', function() {
-    if ( ! current_user_can( 'edit_posts' ) ) {
+    if ( ! current_user_can( 'manage_options' ) ) {
         wp_send_json_error( 'Not authorised', 403 );
     }
     if ( ! check_ajax_referer( 'bespoke_reorder_designs', '_nonce', false ) ) {

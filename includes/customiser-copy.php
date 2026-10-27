@@ -413,14 +413,14 @@ function bespoke_copy_apply_product( $id, $entry, $only ) {
 			$post[ $key ]   = wp_kses_post( (string) $incoming );
 		} else {
 			$backup[ $key ] = get_post_meta( $id, $key, true );
-			update_post_meta( $id, $key, bespoke_copy_clean( $incoming ) );
+			update_post_meta( $id, $key, wp_slash( bespoke_copy_clean( $incoming ) ) ); // slashed: WordPress strips one level
 		}
 		$written[] = $key;
 	}
 
 	if ( $post ) {
 		$post['ID'] = $id;
-		wp_update_post( $post );
+		wp_update_post( wp_slash( $post ) );
 	}
 	if ( $written ) {
 		update_post_meta( $id, BESPOKE_COPY_BACKUP, [
@@ -480,12 +480,12 @@ function bespoke_copy_undo_product( $id ) {
 		if ( 'post' === $fields[ $key ]['where'] ) {
 			$post[ $key ] = $old;
 		} else {
-			update_post_meta( $id, $key, $old );
+			update_post_meta( $id, $key, wp_slash( $old ) );
 		}
 	}
 	if ( $post ) {
 		$post['ID'] = $id;
-		wp_update_post( $post );
+		wp_update_post( wp_slash( $post ) );
 	}
 	delete_post_meta( $id, BESPOKE_COPY_BACKUP );
 	return true;

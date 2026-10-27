@@ -119,6 +119,35 @@ add_action( 'template_redirect', function () {
 	exit;
 }, 0 );
 
+/**
+ * No orders while the holding page is up, except from staff. The page only
+ * covers page views; the shop's API (the block basket and checkout), the
+ * classic checkout and add-to-basket requests never pass through it
+ * (security review, 27 Oct 2026) — and products are half changed while the
+ * launch runs.
+ */
+function bespoke_launch_shop_closed() {
+	return bespoke_launch_holding_on() && ! ( is_user_logged_in() && current_user_can( 'edit_posts' ) );
+}
+add_filter( 'rest_pre_dispatch', function ( $result, $server, $request ) {
+	if ( null === $result && 'GET' !== $request->get_method() && 0 === strpos( (string) $request->get_route(), '/wc/store' ) && bespoke_launch_shop_closed() ) {
+		return new WP_Error( 'bespoke_holding', 'We\'re updating our shop. Please try again shortly.', [ 'status' => 503 ] );
+	}
+	return $result;
+}, 10, 3 );
+add_action( 'woocommerce_checkout_process', function () {
+	if ( bespoke_launch_shop_closed() ) {
+		wc_add_notice( 'We\'re updating our shop. Please try again shortly.', 'error' );
+	}
+} );
+add_filter( 'woocommerce_add_to_cart_validation', function ( $ok ) {
+	if ( $ok && bespoke_launch_shop_closed() ) {
+		wc_add_notice( 'We\'re updating our shop. Please try again shortly.', 'error' );
+		return false;
+	}
+	return $ok;
+}, 0 );
+
 /** Show anyone logged in that the holding page is up. */
 add_action( 'admin_bar_menu', function ( $bar ) {
 	if ( ! bespoke_launch_holding_on() || ! current_user_can( 'edit_posts' ) ) {
@@ -281,7 +310,36 @@ function bespoke_launch_safe_path( $rel ) {
 	if ( ! in_array( $top, BESPOKE_LAUNCH_DIRS, true ) ) {
 		return false;
 	}
+	// No hidden files, and nothing that's a script by any of its extensions
+	// ("x.php.png"): Apache can run those whatever the last one says.
+	foreach ( explode( '/', $rel ) as $part ) {
+		if ( '' === $part || '.' === $part[0] || preg_match( '/\.(php[0-9]?|phtml|phar|pl|py|cgi|sh|htaccess)(\.|$)/i', $part ) ) {
+			return false;
+		}
+	}
 	return in_array( strtolower( pathinfo( $rel, PATHINFO_EXTENSION ) ), BESPOKE_LAUNCH_EXT, true );
+}
+
+/**
+ * Where a launch file may come from: site address → its uploads address.
+ *
+ * Live fetches files and pictures from the address the file names, and
+ * writes what it's given, so it only accepts staging's (security review,
+ * 27 Oct 2026): a tampered file can't point it at another server, or at
+ * anything inside SiteGround's network.
+ */
+function bespoke_launch_sources() {
+	return (array) apply_filters( 'bespoke_launch_sources', [
+		'https://staging2.bespokesport.uk' => 'https://staging2.bespokesport.uk/wp-content/uploads/',
+	] );
+}
+
+/** Does this file come from one of those places? */
+function bespoke_launch_source_ok( $file ) {
+	$site    = untrailingslashit( (string) ( $file['site'] ?? '' ) );
+	$uploads = trailingslashit( (string) ( $file['uploads'] ?? '' ) );
+	$sources = bespoke_launch_sources();
+	return '' !== $site && isset( $sources[ $site ] ) && trailingslashit( (string) $sources[ $site ] ) === $uploads;
 }
 
 /* =========================================================================
@@ -550,12 +608,29 @@ function bespoke_launch_plan_files( $file ) {
 			continue;
 		}
 		$here = $up['dir'] . $rel;
-		if ( file_exists( $here ) && md5_file( $here ) === (string) ( $f['md5'] ?? '' ) ) {
+		if ( bespoke_launch_have_file( $rel, (string) ( $f['md5'] ?? '' ) ) ) {
 			continue;
 		}
 		$need[] = [ 'path' => $rel, 'md5' => (string) ( $f['md5'] ?? '' ), 'size' => (int) ( $f['size'] ?? 0 ), 'had' => file_exists( $here ) ];
 	}
 	return $need;
+}
+
+/**
+ * Is staging's version of this file already here? Byte for byte — or, for
+ * an SVG, the cleaned copy a run made of exactly that version.
+ */
+function bespoke_launch_have_file( $rel, $md5 ) {
+	$here = bespoke_launch_uploads()['dir'] . $rel;
+	if ( ! file_exists( $here ) ) {
+		return false;
+	}
+	$have = md5_file( $here );
+	if ( $have === $md5 ) {
+		return true;
+	}
+	$svg = ( (array) get_option( 'bespoke_launch_svg_md5', [] ) )[ $rel ] ?? null;
+	return is_array( $svg ) && ( $svg['came'] ?? '' ) === $md5 && ( $svg['kept'] ?? '' ) === $have;
 }
 
 /** The font list as it would be here: every address pointing at this site's fonts folder. */
@@ -577,13 +652,60 @@ function bespoke_launch_fonts_target( $file ) {
 	return $fonts;
 }
 
-/** A design's meta as it would be here: addresses swapped. */
+/**
+ * A design's meta as it would be here: addresses swapped, and only the
+ * fields a design has, each cleaned the way the design screen cleans them.
+ * Artwork addresses must end up in this site's uploads — the customiser
+ * draws whatever they return into the page.
+ */
 function bespoke_launch_design_target( $d, $from ) {
+	$in   = (array) ( $d['meta'] ?? [] );
 	$meta = [];
-	foreach ( (array) ( $d['meta'] ?? [] ) as $k => $v ) {
-		if ( 0 === strpos( (string) $k, '_bespoke_' ) && '_bespoke_thumb_id' !== $k ) {
-			$meta[ $k ] = bespoke_launch_swap_urls( $v, $from );
+	$url  = function ( $u ) use ( $from ) {
+		$u = esc_url_raw( (string) bespoke_launch_swap_urls( (string) $u, $from ) );
+		return function_exists( 'bespoke_is_local_upload_url' ) && bespoke_is_local_upload_url( $u ) ? $u : '';
+	};
+	if ( array_key_exists( '_bespoke_active', $in ) ) {
+		$meta['_bespoke_active'] = '1' === (string) $in['_bespoke_active'] ? '1' : '0';
+	}
+	if ( array_key_exists( '_bespoke_order', $in ) ) {
+		$meta['_bespoke_order'] = (string) (int) $in['_bespoke_order']; // stored as text, as WordPress keeps it
+	}
+	if ( array_key_exists( '_bespoke_products', $in ) ) {
+		$meta['_bespoke_products'] = array_values( array_map( 'sanitize_key', (array) $in['_bespoke_products'] ) );
+	}
+	if ( array_key_exists( '_bespoke_start_text', $in ) ) {
+		$meta['_bespoke_start_text'] = sanitize_textarea_field( (string) $in['_bespoke_start_text'] ); // keeps its line breaks ("Autism" / "Awareness"), as the design screen does
+	}
+	if ( array_key_exists( '_bespoke_start_colour', $in ) ) {
+		$meta['_bespoke_start_colour'] = (string) sanitize_hex_color( (string) $in['_bespoke_start_colour'] );
+	}
+	if ( array_key_exists( '_bespoke_svg_url', $in ) ) {
+		$meta['_bespoke_svg_url'] = $url( $in['_bespoke_svg_url'] );
+	}
+	if ( array_key_exists( '_bespoke_layers', $in ) ) {
+		$layers = [];
+		foreach ( array_values( (array) $in['_bespoke_layers'] ) as $layer ) {
+			$clean = [];
+			foreach ( (array) $layer as $k => $v ) {
+				$k = sanitize_key( (string) $k );
+				if ( preg_match( '/(^|_)url$/', $k ) ) { // file_url, and any other address
+					$clean[ $k ] = $url( $v );
+				} elseif ( 'default' === $k ) {
+					$clean[ $k ] = (string) sanitize_hex_color( (string) $v );
+				} elseif ( 'file_filename' === $k ) {
+					$clean[ $k ] = sanitize_file_name( (string) $v );
+				} elseif ( 'colours' === $k ) {
+					$clean[ $k ] = array_values( array_filter( array_map( function ( $c ) {
+						return (string) sanitize_hex_color( (string) $c );
+					}, (array) $v ) ) );
+				} elseif ( is_scalar( $v ) ) {
+					$clean[ $k ] = sanitize_text_field( (string) $v );
+				}
+			}
+			$layers[] = $clean;
 		}
+		$meta['_bespoke_layers'] = $layers;
 	}
 	ksort( $meta );
 	return $meta;
@@ -797,7 +919,10 @@ function bespoke_launch_el_match( $doc ) {
 			return $kit;
 		}
 	}
-	return bespoke_launch_find_post( (string) ( $doc['post_type'] ?? 'page' ), (string) ( $doc['slug'] ?? '' ) );
+	// Pages and Elementor templates only: a file naming another type (a
+	// product, a post) must not be able to overwrite it by its address.
+	$type = in_array( $doc['post_type'] ?? '', [ 'page', 'elementor_library' ], true ) ? $doc['post_type'] : 'page';
+	return bespoke_launch_find_post( $type, (string) ( $doc['slug'] ?? '' ) );
 }
 
 /** This site's copy of an Elementor document, in the shape the file uses. */
@@ -1491,28 +1616,44 @@ function bespoke_launch_run_job( $job, $file ) {
 	switch ( $job['kind'] ) {
 
 		case 'files':
+			if ( ! bespoke_launch_source_ok( $file ) ) {
+				throw new Exception( 'this file doesn\'t come from staging, so nothing is fetched.' );
+			}
 			$up      = bespoke_launch_uploads();
 			$base    = trailingslashit( (string) ( $file['uploads'] ?? '' ) );
 			$made    = [];
 			$moved   = [];
 			$failed  = [];
+			$svgs    = (array) get_option( 'bespoke_launch_svg_md5', [] );
 			foreach ( (array) $job['args'] as $f ) {
 				$rel = (string) $f['path'];
 				if ( ! bespoke_launch_safe_path( $rel ) || '' === $base ) {
 					continue;
 				}
+				$dest = $up['dir'] . $rel;
+				if ( bespoke_launch_have_file( $rel, (string) $f['md5'] ) ) {
+					continue; // already here (a step tried again after a time-out)
+				}
+				// The safe fetcher (no addresses inside the server's network),
+				// and never more than the file is meant to weigh.
 				$url  = $base . implode( '/', array_map( 'rawurlencode', explode( '/', $rel ) ) );
-				$resp = wp_remote_get( $url, [ 'timeout' => 60 ] );
+				$resp = wp_safe_remote_get( $url, [ 'timeout' => 60, 'limit_response_size' => min( 32 * MB_IN_BYTES, max( 0, (int) ( $f['size'] ?? 0 ) ) + KB_IN_BYTES ) ] );
 				$body = is_wp_error( $resp ) ? '' : wp_remote_retrieve_body( $resp );
 				if ( is_wp_error( $resp ) || 200 !== (int) wp_remote_retrieve_response_code( $resp ) || md5( $body ) !== (string) $f['md5'] ) {
 					$failed[] = $rel;
 					continue;
 				}
-				$dest = $up['dir'] . $rel;
-				wp_mkdir_p( dirname( $dest ) );
-				if ( file_exists( $dest ) && md5_file( $dest ) === (string) $f['md5'] ) {
-					continue; // already here (a step tried again after a time-out)
+				// SVGs are cleaned like every other SVG the site stores; what
+				// came and what was kept are remembered, so it isn't fetched again.
+				if ( 'svg' === strtolower( pathinfo( $rel, PATHINFO_EXTENSION ) ) ) {
+					$body = function_exists( 'bespoke_sanitise_svg' ) ? bespoke_sanitise_svg( $body ) : '';
+					if ( '' === $body ) {
+						$failed[] = $rel . ' (not a safe SVG)';
+						continue;
+					}
+					$svgs[ $rel ] = [ 'came' => (string) $f['md5'], 'kept' => md5( $body ) ];
 				}
+				wp_mkdir_p( dirname( $dest ) );
 				if ( file_exists( $dest ) ) {
 					// Kept beside it, so Undo can put it back — never over a
 					// copy already kept.
@@ -1525,6 +1666,7 @@ function bespoke_launch_run_job( $job, $file ) {
 				}
 				file_put_contents( $dest, $body ); // phpcs:ignore WordPress.WP.AlternativeFunctions
 			}
+			update_option( 'bespoke_launch_svg_md5', $svgs, false );
 			if ( $failed ) {
 				throw new Exception( count( $failed ) . ' file(s) could not be fetched from staging: ' . implode( ', ', array_slice( $failed, 0, 5 ) ) . '. Check staging is up, then try again.' );
 			}
@@ -1609,12 +1751,24 @@ function bespoke_launch_run_job( $job, $file ) {
 				wp_trash_post( $row['id'] );
 			}
 			$warnings = [];
-			$mark     = function ( $pid ) {
+			// Pictures from staging's uploads only, like every other fetch.
+			$entry   = $row['entry'];
+			$base    = trailingslashit( (string) ( $file['uploads'] ?? '' ) );
+			$staging = function ( $ref ) use ( $base ) {
+				return is_array( $ref ) && '/' !== $base && 0 === strpos( (string) ( $ref['url'] ?? '' ), $base );
+			};
+			if ( isset( $entry['create']['image'] ) && ! $staging( $entry['create']['image'] ) ) {
+				$entry['create']['image'] = null;
+			}
+			if ( isset( $entry['create']['gallery'] ) ) {
+				$entry['create']['gallery'] = array_values( array_filter( (array) $entry['create']['gallery'], $staging ) );
+			}
+			$mark = function ( $pid ) {
 				bespoke_launch_mark_made( $pid );
 			};
 			add_action( 'woocommerce_new_product', $mark );
 			try {
-				$id = bespoke_copy_create_product( $row['entry'], $warnings );
+				$id = bespoke_copy_create_product( $entry, $warnings );
 			} finally {
 				remove_action( 'woocommerce_new_product', $mark );
 			}
@@ -1632,9 +1786,20 @@ function bespoke_launch_run_job( $job, $file ) {
 			}
 			bespoke_copy_apply_product( $id, $row['entry'], $keys );
 			foreach ( (array) ( $row['entry']['extra'] ?? [] ) as $k => $v ) {
-				if ( in_array( $k, [ '_links_to', '_links_to_target', 'rank_math_robots' ], true ) ) {
-					update_post_meta( $id, $k, bespoke_launch_swap_urls( $v, $from ) );
+				if ( '_links_to' === $k ) {
+					// A tile forwards visitors: only ever to a page of this site.
+					$v = esc_url_raw( (string) bespoke_launch_swap_urls( (string) $v, $from ) );
+					if ( wp_parse_url( $v, PHP_URL_HOST ) !== wp_parse_url( home_url(), PHP_URL_HOST ) ) {
+						continue;
+					}
+				} elseif ( '_links_to_target' === $k ) {
+					$v = sanitize_key( (string) $v );
+				} elseif ( 'rank_math_robots' === $k ) {
+					$v = array_values( array_map( 'sanitize_key', (array) $v ) );
+				} else {
+					continue;
 				}
+				update_post_meta( $id, $k, $v );
 			}
 			return [ 'message' => 'made as a draft' . ( $warnings ? ' (' . implode( '; ', $warnings ) . ')' : '' ), 'undo' => [ 'made' => [ (int) $id ] ], 'made' => [ 'products' => [ (int) $id ] ] ];
 
@@ -1884,7 +2049,7 @@ function bespoke_launch_apply_doc( $doc, $from ) {
 	$want = bespoke_launch_el_target( $doc, $from, true, $warnings, (int) $id );
 	update_post_meta( $id, '_elementor_edit_mode', 'builder' );
 	update_post_meta( $id, '_elementor_data', wp_slash( wp_json_encode( $want['data'] ) ) );
-	update_post_meta( $id, '_elementor_page_settings', $want['settings'] );
+	update_post_meta( $id, '_elementor_page_settings', wp_slash( $want['settings'] ) ); // slashed, or "\f101" in page CSS loses its backslash
 	if ( ! empty( $doc['template_type'] ) ) {
 		update_post_meta( $id, '_elementor_template_type', sanitize_key( $doc['template_type'] ) );
 	}
@@ -2058,7 +2223,7 @@ function bespoke_launch_undo_job( $job ) {
 					if ( '' === $b[ $k ] || null === $b[ $k ] ) {
 						delete_post_meta( $id, $k );
 					} else {
-						update_post_meta( $id, $k, '_elementor_data' === $k ? wp_slash( $b[ $k ] ) : $b[ $k ] );
+						update_post_meta( $id, $k, wp_slash( $b[ $k ] ) );
 					}
 				}
 				foreach ( BESPOKE_LAUNCH_PAGE_SEO as $k ) {
@@ -2314,6 +2479,9 @@ function bespoke_launch_handle_post() {
 			}
 			if ( untrailingslashit( (string) ( $data['site'] ?? '' ) ) === untrailingslashit( home_url() ) ) {
 				return '<div class="notice notice-error"><p>That file was made on this site. Upload it on the other one.</p></div>';
+			}
+			if ( ! bespoke_launch_source_ok( $data ) ) {
+				return '<div class="notice notice-error"><p>That file doesn\'t come from staging (' . esc_html( (string) ( $data['site'] ?? '?' ) ) . '), so it can\'t be used here.</p></div>';
 			}
 			update_option( BESPOKE_LAUNCH_FILE, $data, false );
 			delete_option( BESPOKE_LAUNCH_RUN );
