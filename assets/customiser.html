@@ -1087,7 +1087,7 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
            upload applies to Outside AND Inside; turn off to give each face
            its own. Says "inside and outside" rather than "both sides", which
            now means left and right in the controls above. -->
-      <div class="toggle-row" id="badge-share-row" style="display:none;" onclick="toggleSameBadge()"><div class="tog-track on" id="badge-tog"><div class="tog-thumb"></div></div><div><div class="tog-label">Same club badge inside and outside</div><div class="tog-sub">Turn off to upload a different club badge for the inside</div></div></div>
+      <div class="toggle-row" id="badge-share-row" style="display:none;" onclick="toggleSameBadge()"><div class="tog-track" id="badge-tog"><div class="tog-thumb"></div></div><div><div class="tog-label">Same club badge inside and outside</div><div class="tog-sub">Turn on to put the outside club badge on the inside too</div></div></div>
     </div>
     <!-- 2. Background-variant toggle. Shown only when the admin has
          uploaded a Background (Alt) for this product. The button labels
@@ -1839,7 +1839,9 @@ var S = {
   // How many players go on the mug. Free choice, not a priced variation —
   // every squad size costs the same.
   playerCount:11,
-  sameBadge:true,
+  // Double-sided armbands: the inside starts blank (Nick, launch day 29 Oct
+  // 2026); the customer turns this on to copy the outside club badge in.
+  sameBadge:false,
   badge:null, badgeURL:null, design:DEFDESIGN,
   // Second badge spot (armbands): what position R shows. 'same' (default)
   // renders the club badge in both positions as before; 'different' renders
@@ -6063,7 +6065,7 @@ function fillSummary(){
   setSumRow('sd-nu',  'sh-nu',  S.numColor,  null);
 }
 function reset(){
-  S={step:0,bgColor:'#feef00',patColor:'#211d33',patColors:[],bgGradient:null,patGradients:[],nameColor:DEFCOL.name,numColor:DEFCOL.num,nameL:'',nameR:'',numL:'',numR:'',sameName:true,sameNum:true,sameBadge:true,badge:null,badgeURL:null,badge2:null,badge2URL:null,badge2Mode:'same',badgeSwap:false,textBoxes:[],design:DEFDESIGN,padSize:bespokeDefaultSize(),orderNotes:"",badgeSize:DEFSZ.badgeSize,nameSize:DEFSZ.nameSize,numSize:DEFSZ.numSize,nameFontFamily:'"Arial Black", Arial, sans-serif',numFontFamily:'"Arial Black", Arial, sans-serif',useBgAlt:false, hidden:{badgeL:false,badgeR:false,nameL:false,nameR:false,numL:false,numR:false}, selected:null, rot:{badgeL:0,badgeR:0,nameL:0,nameR:0,numL:0,numR:0},pos:JSON.parse(JSON.stringify(DEF))};
+  S={step:0,bgColor:'#feef00',patColor:'#211d33',patColors:[],bgGradient:null,patGradients:[],nameColor:DEFCOL.name,numColor:DEFCOL.num,nameL:'',nameR:'',numL:'',numR:'',sameName:true,sameNum:true,sameBadge:false,badge:null,badgeURL:null,badge2:null,badge2URL:null,badge2Mode:'same',badgeSwap:false,textBoxes:[],design:DEFDESIGN,padSize:bespokeDefaultSize(),orderNotes:"",badgeSize:DEFSZ.badgeSize,nameSize:DEFSZ.nameSize,numSize:DEFSZ.numSize,nameFontFamily:'"Arial Black", Arial, sans-serif',numFontFamily:'"Arial Black", Arial, sans-serif',useBgAlt:false, hidden:{badgeL:false,badgeR:false,nameL:false,nameR:false,numL:false,numR:false}, selected:null, rot:{badgeL:0,badgeR:0,nameL:0,nameR:0,numL:0,numR:0},pos:JSON.parse(JSON.stringify(DEF))};
   // The fresh state is written for an armband's second spot; a product that
   // starts differently is put right here, as at first load.
   if (bespokeBadgeSpotsStartMode() !== 'same') bespokeResetBadgeSpots(S);
@@ -6078,9 +6080,9 @@ function reset(){
   bespokeSyncSizeSliders();
   try {
     bespokeInitFaces(); bespokeSyncFaceTabs();
-    // Fresh S has sameBadge:true — snap the toggle's visual back to ON.
+    // Fresh S has sameBadge:false — snap the toggle's visual back to OFF.
     var _bt = document.getElementById('badge-tog');
-    if (_bt) _bt.className = 'tog-track on';
+    if (_bt) _bt.className = 'tog-track';
   } catch(_){}
   try { bespokeShowBadge2UI(); } catch(_){}
   // Fresh S is back on the default font — redraw the pickers to match.
