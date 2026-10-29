@@ -1363,7 +1363,7 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
     <div class="sec-label" id="label-name-size" data-boot-hide>Text size</div>
     <div class="size-row" data-boot-hide>
       <label>Small</label>
-      <input type="range" id="name-size-slider" min="40" max="300" value="90" oninput="onNameSize(this.value)">
+      <input type="range" id="name-size-slider" min="16" max="300" value="90" oninput="onNameSize(this.value)">
       <label>Large</label>
       <span class="size-val" id="name-size-val">90</span>
     </div>
@@ -1673,6 +1673,10 @@ var DEF = {
 // Built-in default SIZES (shin-pad values). Kept SEPARATE from DEF so that
 // the JSON deep-copy of DEF into S.pos stays positions-only.
 var DEFSZ = { badgeSize:210, nameSize:90, numSize:155 };
+// The dark outline round text. Below size 40 (the old smallest; grip socks
+// needed smaller, 29 Oct 2026) it thins with the text so small names stay
+// readable; from 40 up it is exactly what it always was.
+function bespokeTextStroke(size){ return size >= 40 ? Math.max(8, size * 0.12) : size * 0.2; }
 // Built-in default TEXT COLOURS. Held in a variable (rather than inline in the
 // state object) so the per-product overrides below can change the STARTING
 // colour — e.g. referee bands print black on a light band, not the usual white.
@@ -3370,8 +3374,8 @@ function updatePreview(stepId) {
   if(tl) {
     tl.innerHTML = '';
     var items = [
-      {key:'nameL', x:S.pos.nameL.x, y:S.pos.nameL.y, txt:S.nameL, size:S.nameSize, col:S.nameColor, sw:Math.max(8,S.nameSize*0.12),  font:S.nameFontFamily},
-      {key:'nameR', x:S.pos.nameR.x, y:S.pos.nameR.y, txt:S.nameR, size:S.nameSize, col:S.nameColor, sw:Math.max(8,S.nameSize*0.12),  font:S.nameFontFamily},
+      {key:'nameL', x:S.pos.nameL.x, y:S.pos.nameL.y, txt:S.nameL, size:S.nameSize, col:S.nameColor, sw:bespokeTextStroke(S.nameSize),  font:S.nameFontFamily},
+      {key:'nameR', x:S.pos.nameR.x, y:S.pos.nameR.y, txt:S.nameR, size:S.nameSize, col:S.nameColor, sw:bespokeTextStroke(S.nameSize),  font:S.nameFontFamily},
       {key:'numL',  x:S.pos.numL.x,  y:S.pos.numL.y,  txt:S.numL,  size:S.numSize,  col:S.numColor,  sw:Math.max(10,S.numSize*0.1), font:S.numFontFamily},
       {key:'numR',  x:S.pos.numR.x,  y:S.pos.numR.y,  txt:S.numR,  size:S.numSize,  col:S.numColor,  sw:Math.max(10,S.numSize*0.1), font:S.numFontFamily}
     ];
@@ -3391,7 +3395,7 @@ function updatePreview(stepId) {
       S.textBoxes.forEach(function(b){
         var _tp = S.pos[b.id];
         if (!_tp) return;
-        items.push({key:b.id, x:_tp.x, y:_tp.y, txt:b.text, size:b.size, col:b.color, sw:Math.max(8,b.size*0.12), font:b.font});
+        items.push({key:b.id, x:_tp.x, y:_tp.y, txt:b.text, size:b.size, col:b.color, sw:bespokeTextStroke(b.size), font:b.font});
       });
     }
     // Drop any text items the customer has explicitly hidden via the
@@ -3764,7 +3768,7 @@ function setupDrag(svg, stepId) {
       if (bsv) bsv.textContent = S.badgeSize;
       fastPinchSize('badge');
     } else if (resizing.indexOf('name') === 0) {
-      S.nameSize = Math.max(40, Math.min(300, Math.round(newSize)));
+      S.nameSize = Math.max(16, Math.min(300, Math.round(newSize)));
       var nsl = document.getElementById('name-size-slider');
       var nsv = document.getElementById('name-size-val');
       if (nsl) nsl.value = S.nameSize;
@@ -3989,7 +3993,7 @@ function setupDrag(svg, stepId) {
       var dist = Math.sqrt(dx*dx+dy*dy);
       var ratio = dist/pinchStart;
       if(pinchKey==='badge'){ S.badgeSize=Math.round(Math.max(50,Math.min(500,pinchStartSize*ratio))); document.getElementById('badge-size-slider').value=S.badgeSize; document.getElementById('badge-size-val').textContent=S.badgeSize; }
-      if(pinchKey==='name') { S.nameSize=Math.round(Math.max(40,Math.min(300,pinchStartSize*ratio))); document.getElementById('name-size-slider').value=S.nameSize; document.getElementById('name-size-val').textContent=S.nameSize; }
+      if(pinchKey==='name') { S.nameSize=Math.round(Math.max(16,Math.min(300,pinchStartSize*ratio))); document.getElementById('name-size-slider').value=S.nameSize; document.getElementById('name-size-val').textContent=S.nameSize; }
       if(pinchKey==='num')  { S.numSize=Math.round(Math.max(60,Math.min(220,pinchStartSize*ratio))); document.getElementById('num-size-slider').value=S.numSize; document.getElementById('num-size-val').textContent=S.numSize; }
       if(pinchKey.indexOf('tb')===0 && bespokeTextBox(pinchKey)) { bespokeTextBox(pinchKey).size=Math.round(Math.max(30,Math.min(300,pinchStartSize*ratio))); _bespokeTextBoxSizeUI(pinchKey); }
       fastPinchSize(pinchKey);
@@ -4026,7 +4030,7 @@ function setupDrag(svg, stepId) {
     e.preventDefault();
     var delta = e.deltaY > 0 ? -5 : 5;
     if(key.startsWith('badge')){ S.badgeSize=Math.max(50,Math.min(500,S.badgeSize+delta*4)); document.getElementById('badge-size-slider').value=S.badgeSize; document.getElementById('badge-size-val').textContent=S.badgeSize; }
-    if(key.startsWith('name')) { S.nameSize=Math.max(40,Math.min(300,S.nameSize+delta*2)); document.getElementById('name-size-slider').value=S.nameSize; document.getElementById('name-size-val').textContent=S.nameSize; }
+    if(key.startsWith('name')) { S.nameSize=Math.max(16,Math.min(300,S.nameSize+delta*2)); document.getElementById('name-size-slider').value=S.nameSize; document.getElementById('name-size-val').textContent=S.nameSize; }
     if(key.startsWith('num'))  { S.numSize=Math.max(60,Math.min(220,S.numSize+delta*3)); document.getElementById('num-size-slider').value=S.numSize; document.getElementById('num-size-val').textContent=S.numSize; }
     if(key.startsWith('tb') && bespokeTextBox(key)) { var _wb = bespokeTextBox(key); _wb.size=Math.max(30,Math.min(300,_wb.size+delta*2)); _bespokeTextBoxSizeUI(key); }
     syncAll();
@@ -4689,7 +4693,7 @@ function fastPinchSize(kind){
   } else if (kind === 'name' || kind === 'num' || isTb) {
     var newSize = isTb ? ((bespokeTextBox(kind) || {}).size || 70)
                        : (kind === 'name') ? S.nameSize : S.numSize;
-    var sw      = (kind === 'num') ? Math.max(10, newSize*0.1) : Math.max(8, newSize*0.12);
+    var sw      = (kind === 'num') ? Math.max(10, newSize*0.1) : bespokeTextStroke(newSize);
     for (var j = 0; j < nodes.length; j++) {
       var ng = nodes[j];
       var t  = ng.querySelector('text');
