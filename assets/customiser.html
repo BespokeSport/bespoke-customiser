@@ -168,6 +168,10 @@ body{font-family:"Inter",system-ui,sans-serif;background:#0D0D0D;display:flex;ju
 #bespoke-customiser-root .bcp-slot-x:hover{color:#F5F5F0 !important;}
 #bespoke-customiser-root .bcp-badge-add{display:block;width:100%;box-sizing:border-box;margin:0 0 14px;padding:12px 14px;text-align:center;background:#161616;border:1px solid #5DCAA5;border-radius:10px;color:#5DCAA5;font-family:inherit;font-size:14px;font-weight:600;line-height:1.3;text-transform:none;letter-spacing:0;cursor:pointer;user-select:none;}
 #bespoke-customiser-root .bcp-badge-add:hover{background:rgba(93,202,165,.10);}
+#bespoke-customiser-root .bcp-badge-slot.bcp-can-replace{cursor:pointer;}
+#bespoke-customiser-root .bcp-badge-slot.bcp-can-replace:hover,#bespoke-customiser-root .bcp-badge-slot.bcp-can-replace:focus-visible{border-color:#5DCAA5;outline:none;}
+#bespoke-customiser-root .bcp-slot-change{margin-top:4px;font-size:11px;color:#8A8A85;text-decoration:underline;}
+#bespoke-customiser-root .bcp-badge-slot.bcp-can-replace:hover .bcp-slot-change{color:#5DCAA5;}
 #bespoke-customiser-root .bcp-badge-links{display:flex;flex-wrap:wrap;gap:6px 18px;margin:-4px 0 14px;}
 #bespoke-customiser-root .bcp-badge-link,
 #bespoke-customiser-root .bcp-badge-link:hover,
@@ -4857,6 +4861,10 @@ function bespokeShowBadge2UI(){
     var side = (key === 'badgeL') ? bespokeT('Left') : bespokeT('Right');
     var what = bespokeBadgeSpotContent(key);
     card.innerHTML = '';
+    // Last paint's click-to-change is undone first: an empty card has none.
+    card.onclick = null; card.onkeydown = null;
+    card.classList.remove('bcp-can-replace');
+    card.removeAttribute('role'); card.removeAttribute('tabindex'); card.removeAttribute('aria-label');
     var lbl = document.createElement('div');
     lbl.className = 'bcp-slot-side';
     lbl.textContent = side;
@@ -4881,8 +4889,29 @@ function bespokeShowBadge2UI(){
       x.className = 'bcp-slot-x';
       x.setAttribute('aria-label', bespokeT((key === 'badgeL') ? 'Leave the left side empty' : 'Leave the right side empty'));
       x.textContent = '×';
-      x.onclick = function(){ removeBadge2(); };
+      x.onclick = function(ev){ if (ev) ev.stopPropagation(); removeBadge2(); };
       card.appendChild(x);
+    }
+    // Click a card to change what's on it — the club badge, or the second
+    // badge — without hunting for the links underneath (Nick, launch day
+    // 29 Oct 2026: a wrong upload looked impossible to replace).
+    var input = document.getElementById(what === 'other' ? 'badge2-file' : 'badge-file');
+    if (input){
+      card.classList.add('bcp-can-replace');
+      card.setAttribute('role', 'button');
+      card.setAttribute('tabindex', '0');
+      card.setAttribute('aria-label', bespokeT(what === 'other' ? 'Change this badge' : 'Change club badge'));
+      var chg = document.createElement('div');
+      chg.className = 'bcp-slot-change';
+      chg.textContent = bespokeT('Change');
+      card.appendChild(chg);
+      card.onclick = function(ev){
+        if (ev && ev.target && ev.target.closest && ev.target.closest('.bcp-slot-x')) return;
+        input.click();
+      };
+      card.onkeydown = function(ev){
+        if (ev.key === 'Enter' || ev.key === ' '){ ev.preventDefault(); input.click(); }
+      };
     }
   });
   var add  = document.getElementById('badge2-add');
@@ -5371,6 +5400,20 @@ function toggleSameBadge(){
   if (S.sameBadge && typeof bespokeIsDoubleSided === 'function' && bespokeIsDoubleSided()){
     bespokeInitFaces();
     var other = (S.currentFace === 'inside') ? 'outside' : 'inside';
+    var otherSnap = S.faceStore && S.faceStore[other];
+    // The inside now starts blank, so the switch is usually turned on from
+    // the inside with the badge on the outside: take the outside's badge
+    // here rather than push this blank face over it (which emptied the
+    // outside). Whichever face has a club badge wins; if both do, this one.
+    if (otherSnap && !S.badgeURL && otherSnap.badgeURL){
+      S.badge    = otherSnap.badge;
+      S.badgeURL = otherSnap.badgeURL;
+      if (S.faceBadgeFiles) S.faceBadgeFiles[S.currentFace || 'outside'] = S.faceBadgeFiles[other];
+      try { bespokeRepaintFaceControls(); } catch(_){}
+      try { bespokeShowBadge2UI(); } catch(_){}
+      if (typeof syncAll === 'function') syncAll();
+      return;
+    }
     if (S.faceStore && S.faceStore[other]){
       S.faceStore[other].badge    = S.badge;
       S.faceStore[other].badgeURL = S.badgeURL;

@@ -45,6 +45,9 @@ function bespoke_customiser_ui_strings() {
 		'Your second badge'                 => __( 'Your second badge', 'bespoke-customiser' ),
 		'Leave the left side empty'         => __( 'Leave the left side empty', 'bespoke-customiser' ),
 		'Leave the right side empty'        => __( 'Leave the right side empty', 'bespoke-customiser' ),
+		'Change'                            => __( 'Change', 'bespoke-customiser' ),
+		'Change club badge'                 => __( 'Change club badge', 'bespoke-customiser' ),
+		'Change this badge'                 => __( 'Change this badge', 'bespoke-customiser' ),
 
 		// ── Text step: the font dropdown ──────────────────────────────────
 		'Choose a font'                     => __( 'Choose a font', 'bespoke-customiser' ),
