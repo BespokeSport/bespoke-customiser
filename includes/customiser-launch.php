@@ -2665,7 +2665,8 @@ function bespoke_launch_render_run( $run ) {
 			<?php if ( $done && empty( $run['undone'] ) ) : ?>
 				<button class="button" id="bespoke-launch-undo">Undo the launch</button>
 			<?php endif; ?>
-			<?php if ( ! empty( $run['undone'] ) || ( $finished && ! empty( $run['published'] ) ) ) : ?>
+			<?php // Once finished, always clearable: new products published by hand (launch day, 29 Oct) left none for the button to record, so it never showed. ?>
+			<?php if ( ! empty( $run['undone'] ) || $finished ) : ?>
 				<form method="post" style="display:inline;">
 					<?php wp_nonce_field( 'bespoke_launch' ); ?>
 					<button class="button" name="bespoke_launch_action" value="forget">Clear this page</button>
