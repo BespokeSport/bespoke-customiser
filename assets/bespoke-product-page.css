@@ -314,7 +314,11 @@ body.single-product .woocommerce-tabs .wc-tab strong {
    -------------------------------------------------------------------------- */
 body.single-product .single_add_to_cart_button,
 body.single-product button.alt,
-body.single-product .button.alt {
+body.single-product .button.alt,
+/* Stronger than the brand base's black ".woocommerce div.product form.cart
+   .button", which left Add to basket dark on the products without the
+   customiser — pre-designed armbands, mugs (Nick, launch day 29 Oct 2026). */
+body.single-product.woocommerce div.product form.cart .single_add_to_cart_button {
   background: var(--bs-mint) !important;
   color: var(--bs-ink) !important;
   border: 0 !important;
@@ -328,7 +332,10 @@ body.single-product .button.alt {
   transition: filter 0.2s;
   box-shadow: none !important;
 }
-body.single-product .single_add_to_cart_button:hover {
+body.single-product .single_add_to_cart_button:hover,
+body.single-product.woocommerce div.product form.cart .single_add_to_cart_button:hover {
+  background: var(--bs-mint) !important;
+  color: var(--bs-ink) !important;
   filter: brightness(1.08) !important;
 }
 

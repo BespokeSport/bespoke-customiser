@@ -481,16 +481,21 @@ body.woocommerce-cart a.checkout-button.button.alt {
   color: var(--bs-ink) !important;
   border: 0 !important;
   border-radius: 999px !important;
-  padding: 18px 28px !important;
+  padding: 15px 28px !important;
   font-family: var(--bs-font-ui) !important;
   font-size: 14px !important;
   font-weight: 700 !important;
+  line-height: 1.4 !important;
   letter-spacing: 0.1em !important;
   text-transform: uppercase !important;
   text-align: center !important;
   text-decoration: none !important;
   transition: filter 0.2s ease;
 }
+/* The cart page's content runs through wpautop, which puts a <br> before the
+   label: an empty first line that made the button twice as tall with the
+   words sitting low (Nick, launch day 29 Oct 2026). */
+body.woocommerce-cart .wc-proceed-to-checkout a.checkout-button br { display: none !important; }
 body.woocommerce-cart .wc-proceed-to-checkout a.checkout-button:hover { filter: brightness(1.08) !important; }
 
 

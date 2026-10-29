@@ -60,6 +60,20 @@ function bespoke_pdp_template_include( $template ) {
     return file_exists( $custom ) ? $custom : $template;
 }
 
+/*
+ * Our template is designed full width (Astra's "Full Width / Stretched").
+ * That's a per-product setting in Astra, and products made since — the
+ * running tags, the remembrance armband — kept the boxed default, which caps
+ * the page at 1240px and squeezes the customiser and its preview (Nick,
+ * launch day 29 Oct 2026). Every customiser product gets the full width.
+ */
+add_filter( 'astra_get_content_layout', function ( $layout ) {
+    if ( function_exists( 'is_product' ) && is_product() && get_post_meta( get_queried_object_id(), '_bespoke_product_type', true ) ) {
+        return 'page-builder';
+    }
+    return $layout;
+} );
+
 
 /* =========================================================================
    1. PRODUCT DATA TAB

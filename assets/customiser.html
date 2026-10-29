@@ -5721,6 +5721,16 @@ function _bcpPickTextColor(bg, patternColors, candidates){
   return bestColor;
 }
 
+/** The colour itself if the layer allows it (or allows anything); otherwise one of the layer's allowed colours at random. */
+function _surpriseAllowed(layer, colour){
+  var list = (layer && layer.colours && layer.colours.length) ? layer.colours : null;
+  if (!list) return colour;
+  for (var i = 0; i < list.length; i++) {
+    if (String(list[i]).toUpperCase() === String(colour || '').toUpperCase()) return list[i];
+  }
+  return list[Math.floor(Math.random() * list.length)];
+}
+
 function surpriseMe(){
   if (!window.ALL_DESIGNS || !window.ALL_DESIGNS.length) return;
 
@@ -5773,6 +5783,17 @@ function surpriseMe(){
     patColors.push(palette.patterns[i % palette.patterns.length]);
   }
 
+  // A layer the Designs admin limited to "Allowed colours" only ever gets
+  // one of them — the picker already keeps to the list, and Surprise Me
+  // must too (Nick, launch day: it gave the Game Changer's base and cap
+  // colours that can't be made). Layer 0 is the background; pattern
+  // colour i is layer i + 1.
+  var regLayers = (registered && registered.layers) || [];
+  var bgColor   = _surpriseAllowed(regLayers[0], palette.bg);
+  for (var k = 0; k < patColors.length; k++) {
+    patColors[k] = _surpriseAllowed(regLayers[k + 1], patColors[k]);
+  }
+
   // Pick a single text colour for both name AND number so they
   // look collective. Candidates: pure white, near-black, and the
   // palette's curated name / num accents (preserves designer
@@ -5780,13 +5801,13 @@ function surpriseMe(){
   // chosen bg + pattern layers). _bcpPickTextColor scores each by
   // its WORST-case contrast against the entire composition and
   // returns the highest scorer.
-  var textColor = _bcpPickTextColor(palette.bg, patColors, [
+  var textColor = _bcpPickTextColor(bgColor, patColors, [
     '#FFFFFF', '#1A1A1A', palette.name, palette.num
   ]);
 
   // Update state
   S.design     = design.id;
-  S.bgColor    = palette.bg;
+  S.bgColor    = bgColor;
   S.patColor   = patColors[0];
   S.patColors  = patColors;
   S.nameColor  = textColor;
