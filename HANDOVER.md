@@ -1370,6 +1370,55 @@ escalation, fixed 11.2.0): update staging. Staging holds a copy of live's
 customer accounts — protect or delete it after launch (not before: live
 fetches files from it).
 
+### 6.31 LAUNCHED — 29 Oct 2026
+
+Live runs the new shop. Launch file `bespoke-launch-2026-10-29-0722.json`
+(staging, 07:22): 162 steps, no errors, holding page up about 3½ hours
+(most of it fixing what Nick found looking round). In order:
+
+- **Preview:** two templates came unticked as "live's copy newer": the Shop
+  archive (ticked by hand — staging's version hides 88 products from the
+  grid, incl. 15 awareness tags) and Customized products MAIN (left: staging
+  only added customiser shortcodes, which our own PDP template covers).
+- **Nick published the new products by hand**, so Publish had nothing to
+  record and "Clear this page" never appeared → fix: Clear shows whenever a
+  run has finished (7474b15).
+- **Grip socks missed its customiser:** live's copy was edited 22 Oct, after
+  staging's, so its row was left unticked. Second pass with the same file,
+  only that row ticked. Also learned: after a run, a second preview lists
+  ~20 products as "Description, Short description" changed with "live
+  newer" — false alarms (what customers read is identical; the stored HTML
+  differs invisibly, and today's run made live "newer"). Worth normalising
+  the comparison (line endings / kses entity changes) before the next launch.
+- **Fixes from Nick's look round, all now live:** Surprise Me keeps to
+  "Allowed colours" (trophy base/cap); full-width Astra layout forced for
+  every customiser product (`astra_get_content_layout` → `page-builder`;
+  running tags + remembrance armband were boxed at 1240px); Add to basket
+  mint on non-customiser products; Proceed to checkout one line (wpautop
+  `<br>`); old FPD orders: design shown large + Download, and every picture
+  listed with the customer's upload first; grip socks name down to size 16
+  (outline thins below 40); double-sided inside starts blank (sameBadge
+  default false, and turning it on copies from the face that has a badge);
+  badge cards clickable to change their badge. Nick uploaded the first batch
+  to live by mistake instead of staging — harmless (holding page up).
+- **Checked from outside after opening:** 120/122 pages clean (cart and
+  checkout noindex, correct); dropped products 404; security headers on;
+  postage for "letter" items £2.85 UK / £11.85 international, mugs £4.85;
+  Nick's test "Flat rate" isn't offered to guests; shin pad customiser draws
+  with 22 designs, no console errors.
+- **Sitemaps 404 after launch** (they worked before): only Rank Math's
+  rewrite rules went — product URLs work. Most likely FPD's deactivation
+  flushed rewrite rules inside our admin-ajax step, where Rank Math doesn't
+  add its sitemap rules. Fix: re-save Settings → Permalinks. (Next launch:
+  flush rewrite rules in a normal admin request after deactivating plugins.)
+
+**Still to do after launch:** homepage water-bottles box links to a 404
+(Nick's call to leave it, now worth removing on live); switch off Custom
+Code "FPD Inside/Outside Button Fix" on live; Clear the Launch page and
+delete the launch JSONs from the NAS/Downloads (they hold every page);
+protect or delete staging (copy of customer accounts); translated-label
+innerHTML, CSP and orphan-upload cleanup from §6.30.
+
 ## 7. Tooling notes (for you, on the new machine)
 
 - **There is no PHP locally.** `tools/` in the repo has what you need — run `npm install`
